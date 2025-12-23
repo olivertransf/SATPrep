@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct StudySATApp: App {
+    @AppStorage("darkModeEnabled") private var darkModeEnabled = false
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .preferredColorScheme(darkModeEnabled ? .dark : .light)
         }
     }
 }
