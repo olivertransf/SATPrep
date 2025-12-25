@@ -14,13 +14,14 @@ struct FilterOptions: Codable, Equatable {
     var primaryClassCdDesc: String?
     var skillDesc: String?
     var difficulty: String?
-    var seenStatus: SeenStatus
+    var answerStatus: AnswerStatus
     var isBluebook: BluebookFilter?
     
-    enum SeenStatus: String, Codable, CaseIterable {
+    enum AnswerStatus: String, Codable, CaseIterable {
         case all = "All"
-        case seen = "Seen"
-        case unseen = "Unseen"
+        case unanswered = "Unanswered"
+        case incorrect = "Answered Incorrectly"
+        case correct = "Answered Correctly"
     }
     
     enum BluebookFilter: String, Codable, CaseIterable {
@@ -35,7 +36,7 @@ struct FilterOptions: Codable, Equatable {
         primaryClassCdDesc: String? = nil,
         skillDesc: String? = nil,
         difficulty: String? = nil,
-        seenStatus: SeenStatus = .all,
+        answerStatus: AnswerStatus = .all,
         isBluebook: BluebookFilter? = nil
     ) {
         self.program = program
@@ -43,7 +44,7 @@ struct FilterOptions: Codable, Equatable {
         self.primaryClassCdDesc = primaryClassCdDesc
         self.skillDesc = skillDesc
         self.difficulty = difficulty
-        self.seenStatus = seenStatus
+        self.answerStatus = answerStatus
         self.isBluebook = isBluebook
     }
     

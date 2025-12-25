@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var progressManager: ProgressManager
+    @ObservedObject private var quizStateManager = QuizStateManager.shared
     @AppStorage("darkModeEnabled") private var darkModeEnabled = false
     
     var body: some View {
@@ -18,8 +19,14 @@ struct SettingsView: View {
                     Toggle("Dark Mode", isOn: $darkModeEnabled)
                 }
                 
-                Section(header: Text("Sync"), footer: Text("Sync your progress across all your devices using iCloud. Make sure iCloud is enabled in your device settings and the app has iCloud capability enabled in Xcode.")) {
-                    Toggle("iCloud Sync", isOn: $progressManager.isICloudSyncEnabled)
+                Section(header: Text("Sync"), footer: Text("Sync your progress and saved quizzes across all your devices using iCloud. Make sure iCloud is enabled in your device settings and the app has iCloud capability enabled in Xcode.")) {
+                    Toggle("iCloud Sync", isOn: Binding(
+                        get: { progressManager.isICloudSyncEnabled },
+                        set: { newValue in
+                            progressManager.isICloudSyncEnabled = newValue
+                            quizStateManager.isICloudSyncEnabled = newValue
+                        }
+                    ))
                     
                     if progressManager.isICloudSyncEnabled {
                         HStack {
@@ -32,6 +39,7 @@ struct SettingsView: View {
                         
                         Button(action: {
                             progressManager.manualSync()
+                            quizStateManager.manualSync()
                         }) {
                             HStack {
                                 Image(systemName: "arrow.clockwise")

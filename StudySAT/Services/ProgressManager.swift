@@ -15,8 +15,12 @@ class ProgressManager: ObservableObject {
     
     private let userDefaultsKey = "questionProgress"
     private let iCloudKey = "questionProgress"
+    private let deletedProgressKey = "deletedQuestionProgress"
+    private let iCloudDeletedKey = "deletedQuestionProgress"
     private var iCloudStore: NSUbiquitousKeyValueStore?
     private var cancellables = Set<AnyCancellable>()
+    
+    private var deletedProgressTimestamps: [String: Date] = [:] // Track when progress was deleted
     
     @Published var isICloudSyncEnabled: Bool {
         didSet {
@@ -31,6 +35,13 @@ class ProgressManager: ObservableObject {
     
     private init() {
         self.isICloudSyncEnabled = UserDefaults.standard.bool(forKey: "iCloudSyncEnabled")
+        
+        // Load deleted progress timestamps
+        if let data = UserDefaults.standard.data(forKey: deletedProgressKey),
+           let decoded = try? JSONDecoder().decode([String: Date].self, from: data) {
+            deletedProgressTimestamps = decoded
+        }
+        
         loadProgress()
         
         // Enable iCloud sync by default if not explicitly disabled
@@ -61,6 +72,11 @@ class ProgressManager: ObservableObject {
             UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
         }
         
+        // Save deleted timestamps
+        if let encoded = try? JSONEncoder().encode(deletedProgressTimestamps) {
+            UserDefaults.standard.set(encoded, forKey: deletedProgressKey)
+        }
+        
         // Sync to iCloud if enabled
         if isICloudSyncEnabled && iCloudStore != nil {
             // Use async to avoid blocking
@@ -77,6 +93,14 @@ class ProgressManager: ObservableObject {
         currentProgress.seen = true
         currentProgress.lastAttempted = Date()
         progress[questionId] = currentProgress
+        
+        // Clear deletion timestamp if new progress is more recent
+        if let deleteTime = deletedProgressTimestamps[questionId],
+           let lastAttempted = currentProgress.lastAttempted,
+           lastAttempted > deleteTime {
+            deletedProgressTimestamps.removeValue(forKey: questionId)
+        }
+        
         saveProgress()
     }
     
@@ -86,6 +110,14 @@ class ProgressManager: ObservableObject {
         currentProgress.correct = correct
         currentProgress.lastAttempted = Date()
         progress[questionId] = currentProgress
+        
+        // Clear deletion timestamp if new progress is more recent
+        if let deleteTime = deletedProgressTimestamps[questionId],
+           let lastAttempted = currentProgress.lastAttempted,
+           lastAttempted > deleteTime {
+            deletedProgressTimestamps.removeValue(forKey: questionId)
+        }
+        
         saveProgress()
     }
     
@@ -157,6 +189,11 @@ class ProgressManager: ObservableObject {
     // MARK: - Reset Operations
     
     func resetAllProgress() {
+        let deletedIds = Set(progress.keys)
+        let now = Date()
+        for questionId in deletedIds {
+            deletedProgressTimestamps[questionId] = now
+        }
         progress.removeAll()
         saveProgress()
     }
@@ -164,6 +201,12 @@ class ProgressManager: ObservableObject {
     func resetProgress(byProgram program: String, questionLoader: QuestionLoader) {
         let questions = questionLoader.getQuestions(byProgram: program)
         let questionIds = Set(questions.map { $0.questionId })
+        let now = Date()
+        for questionId in questionIds {
+            if progress[questionId] != nil {
+                deletedProgressTimestamps[questionId] = now
+            }
+        }
         progress = progress.filter { !questionIds.contains($0.key) }
         saveProgress()
     }
@@ -171,6 +214,12 @@ class ProgressManager: ObservableObject {
     func resetProgress(byModule module: String, questionLoader: QuestionLoader) {
         let questions = questionLoader.getQuestions(byModule: module)
         let questionIds = Set(questions.map { $0.questionId })
+        let now = Date()
+        for questionId in questionIds {
+            if progress[questionId] != nil {
+                deletedProgressTimestamps[questionId] = now
+            }
+        }
         progress = progress.filter { !questionIds.contains($0.key) }
         saveProgress()
     }
@@ -178,6 +227,12 @@ class ProgressManager: ObservableObject {
     func resetProgress(byPrimaryClass primaryClass: String, questionLoader: QuestionLoader) {
         let questions = questionLoader.getQuestions(byPrimaryClass: primaryClass)
         let questionIds = Set(questions.map { $0.questionId })
+        let now = Date()
+        for questionId in questionIds {
+            if progress[questionId] != nil {
+                deletedProgressTimestamps[questionId] = now
+            }
+        }
         progress = progress.filter { !questionIds.contains($0.key) }
         saveProgress()
     }
@@ -185,6 +240,12 @@ class ProgressManager: ObservableObject {
     func resetProgress(bySkillDesc skillDesc: String, questionLoader: QuestionLoader) {
         let questions = questionLoader.getQuestions(bySkillDesc: skillDesc)
         let questionIds = Set(questions.map { $0.questionId })
+        let now = Date()
+        for questionId in questionIds {
+            if progress[questionId] != nil {
+                deletedProgressTimestamps[questionId] = now
+            }
+        }
         progress = progress.filter { !questionIds.contains($0.key) }
         saveProgress()
     }
@@ -192,6 +253,12 @@ class ProgressManager: ObservableObject {
     func resetProgress(byDifficulty difficulty: String, questionLoader: QuestionLoader) {
         let questions = questionLoader.getQuestions(byDifficulty: difficulty)
         let questionIds = Set(questions.map { $0.questionId })
+        let now = Date()
+        for questionId in questionIds {
+            if progress[questionId] != nil {
+                deletedProgressTimestamps[questionId] = now
+            }
+        }
         progress = progress.filter { !questionIds.contains($0.key) }
         saveProgress()
     }
@@ -277,12 +344,19 @@ class ProgressManager: ObservableObject {
             return
         }
         
-        guard let encoded = try? JSONEncoder().encode(progress) else {
+        // Save progress
+        if let encoded = try? JSONEncoder().encode(progress) {
+            store.set(encoded, forKey: iCloudKey)
+        } else {
             print("Failed to encode progress for iCloud")
             return
         }
         
-        store.set(encoded, forKey: iCloudKey)
+        // Save deleted timestamps
+        if let encoded = try? JSONEncoder().encode(deletedProgressTimestamps) {
+            store.set(encoded, forKey: iCloudDeletedKey)
+        }
+        
         let synced = store.synchronize()
         
         if synced {
@@ -300,20 +374,72 @@ class ProgressManager: ObservableObject {
             return
         }
         
-        // Try to get iCloud data
-        guard let data = store.data(forKey: iCloudKey),
-              let iCloudProgress = try? JSONDecoder().decode([String: QuestionProgress].self, from: data) else {
-            // No iCloud data yet - push local data to iCloud
+        // Get iCloud progress
+        var iCloudProgress: [String: QuestionProgress] = [:]
+        if let data = store.data(forKey: iCloudKey),
+           let decoded = try? JSONDecoder().decode([String: QuestionProgress].self, from: data) {
+            iCloudProgress = decoded
+        }
+        
+        // Get iCloud deleted timestamps
+        var iCloudDeletedTimestamps: [String: Date] = [:]
+        if let data = store.data(forKey: iCloudDeletedKey),
+           let decoded = try? JSONDecoder().decode([String: Date].self, from: data) {
+            iCloudDeletedTimestamps = decoded
+        }
+        
+        // If no iCloud data, push local data
+        if iCloudProgress.isEmpty && iCloudDeletedTimestamps.isEmpty {
             syncToICloud()
             return
         }
         
-        // Merge: use most recent timestamp for conflicts
+        // Merge deleted timestamps - keep the most recent deletion
+        var mergedDeletedTimestamps = deletedProgressTimestamps
+        for (questionId, iCloudDeleteTime) in iCloudDeletedTimestamps {
+            if let localDeleteTime = mergedDeletedTimestamps[questionId] {
+                // Keep the more recent deletion
+                if iCloudDeleteTime > localDeleteTime {
+                    mergedDeletedTimestamps[questionId] = iCloudDeleteTime
+                }
+            } else {
+                // Only in iCloud
+                mergedDeletedTimestamps[questionId] = iCloudDeleteTime
+            }
+        }
+        
+        // Merge progress - respect deletions
         var hasChanges = false
         var mergedProgress = progress
         
-        // Process iCloud items
+        // Process iCloud items - only add if not deleted (or deleted before last attempt)
         for (questionId, iCloudProgressItem) in iCloudProgress {
+            // Check if this progress was deleted
+            let iCloudDeleteTime = iCloudDeletedTimestamps[questionId]
+            let localDeleteTime = mergedDeletedTimestamps[questionId]
+            
+            // If deleted and deletion is after last attempt, skip it
+            if let deleteTime = iCloudDeleteTime ?? localDeleteTime,
+               let lastAttempted = iCloudProgressItem.lastAttempted,
+               deleteTime > lastAttempted {
+                // Deleted - respect deletion
+                if mergedProgress[questionId] != nil {
+                    mergedProgress.removeValue(forKey: questionId)
+                    hasChanges = true
+                }
+                continue
+            }
+            
+            // If progress exists and is newer than deletion, clear deletion timestamp
+            if let lastAttempted = iCloudProgressItem.lastAttempted {
+                if let deleteTime = mergedDeletedTimestamps[questionId],
+                   lastAttempted > deleteTime {
+                    mergedDeletedTimestamps.removeValue(forKey: questionId)
+                    hasChanges = true
+                }
+            }
+            
+            // Progress is valid - merge it
             let localProgressItem = mergedProgress[questionId]
             
             if let local = localProgressItem, let localDate = local.lastAttempted, let iCloudDate = iCloudProgressItem.lastAttempted {
@@ -333,21 +459,50 @@ class ProgressManager: ObservableObject {
             }
         }
         
-        // Check for local items not in iCloud
+        // Check for local items not in iCloud (if not deleted)
         for (questionId, localItem) in mergedProgress {
             if iCloudProgress[questionId] == nil {
+                // Check if deleted
+                if let deleteTime = mergedDeletedTimestamps[questionId],
+                   let lastAttempted = localItem.lastAttempted,
+                   deleteTime > lastAttempted {
+                    // Deleted - remove it
+                    mergedProgress.removeValue(forKey: questionId)
+                    hasChanges = true
+                    continue
+                }
+                
+                // If progress exists and is newer than deletion, clear deletion timestamp
+                if let lastAttempted = localItem.lastAttempted {
+                    if let deleteTime = mergedDeletedTimestamps[questionId],
+                       lastAttempted > deleteTime {
+                        mergedDeletedTimestamps.removeValue(forKey: questionId)
+                        hasChanges = true
+                    }
+                }
+                
                 // Local item not in iCloud - will be pushed
                 hasChanges = true
             }
         }
         
-        if hasChanges {
+        // Clean up old deletion timestamps (older than 30 days)
+        let thirtyDaysAgo = Date().addingTimeInterval(-30 * 24 * 60 * 60)
+        mergedDeletedTimestamps = mergedDeletedTimestamps.filter { $0.value > thirtyDaysAgo }
+        
+        if hasChanges || mergedDeletedTimestamps != deletedProgressTimestamps {
             // Update progress
             progress = mergedProgress
+            
+            // Update deleted timestamps
+            deletedProgressTimestamps = mergedDeletedTimestamps
             
             // Save locally
             if let encoded = try? JSONEncoder().encode(progress) {
                 UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
+            }
+            if let encoded = try? JSONEncoder().encode(deletedProgressTimestamps) {
+                UserDefaults.standard.set(encoded, forKey: deletedProgressKey)
             }
             
             // Push to iCloud

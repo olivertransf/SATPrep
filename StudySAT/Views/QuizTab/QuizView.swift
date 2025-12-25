@@ -13,9 +13,13 @@ struct QuizView: View {
     let questions: [Question]
     @Binding var filters: FilterOptions
     @Binding var showFilters: Bool
+    @Binding var savedQuestionIds: [String]
+    @Binding var currentQuizId: String?
     var onEndQuiz: (() -> Void)? = nil
     
     @State private var currentIndex = 0
+    
+    private let quizStateManager = QuizStateManager.shared
     @State private var selectedAnswerId: String?
     @State private var hasSubmitted = false
     @State private var showExplanation = false
@@ -49,17 +53,36 @@ struct QuizView: View {
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    endQuiz()
+                    saveAndExit()
                 } label: {
-                    Text("End Quiz")
-                        .foregroundColor(.red)
+                    Text("Save Quiz")
+                        .foregroundColor(.blue)
                 }
             }
         }
         .onAppear {
+            // Restore saved quiz position if question IDs match
+            if let quizId = currentQuizId,
+               let savedState = quizStateManager.loadQuizState(id: quizId),
+               savedState.questionIds == questions.map({ $0.questionId }),
+               savedState.hasActiveQuiz {
+                currentIndex = min(savedState.currentIndex, questions.count - 1)
+                
+                // Restore answer state for current question
+                if let question = currentQuestion,
+                   let answerState = savedState.answerStates[question.questionId] {
+                    selectedAnswerId = answerState.selectedAnswerId
+                    hasSubmitted = answerState.hasSubmitted
+                    showExplanation = answerState.hasSubmitted
+                }
+            }
+            
             if let question = currentQuestion {
                 progressManager.markSeen(questionId: question.questionId)
             }
+            
+            // Save initial state
+            saveQuizState()
         }
     }
     
@@ -314,27 +337,39 @@ struct QuizView: View {
         }
         
         progressManager.markAnswered(questionId: question.questionId, correct: isCorrect)
+        
+        // Save answer state immediately with the correct value
+        saveCurrentQuestionState(isCorrect: isCorrect)
+        saveQuizState()
     }
     
     private func previousQuestion() {
         if currentIndex > 0 {
+            // Save current question state before moving
+            saveCurrentQuestionState()
+            
             currentIndex -= 1
-            resetQuestionState()
+            restoreQuestionState()
             
             if let question = currentQuestion {
                 progressManager.markSeen(questionId: question.questionId)
             }
+            saveQuizState()
         }
     }
     
     private func nextQuestion() {
         if currentIndex < questions.count - 1 {
+            // Save current question state before moving
+            saveCurrentQuestionState()
+            
             currentIndex += 1
-            resetQuestionState()
+            restoreQuestionState()
             
             if let question = currentQuestion {
                 progressManager.markSeen(questionId: question.questionId)
             }
+            saveQuizState()
         }
     }
     
@@ -349,6 +384,59 @@ struct QuizView: View {
         answerHeights.removeAll()
     }
     
+    private func saveCurrentQuestionState(isCorrect: Bool? = nil) {
+        guard let question = currentQuestion,
+              let quizId = currentQuizId,
+              var savedState = quizStateManager.loadQuizState(id: quizId) else { return }
+        
+        let correctValue = isCorrect ?? (hasSubmitted ? getCurrentQuestionCorrectness() : nil)
+        let answerState = QuestionAnswerState(
+            questionId: question.questionId,
+            selectedAnswerId: selectedAnswerId,
+            hasSubmitted: hasSubmitted,
+            isCorrect: correctValue
+        )
+        savedState.answerStates[question.questionId] = answerState
+        quizStateManager.saveQuizState(savedState)
+    }
+    
+    private func restoreQuestionState() {
+        guard let question = currentQuestion,
+              let quizId = currentQuizId,
+              let savedState = quizStateManager.loadQuizState(id: quizId),
+              let answerState = savedState.answerStates[question.questionId] else {
+            resetQuestionState()
+            return
+        }
+        
+        selectedAnswerId = answerState.selectedAnswerId
+        hasSubmitted = answerState.hasSubmitted
+        showExplanation = answerState.hasSubmitted
+        // Reset heights for new question
+        passageHeight = nil
+        questionStemHeight = nil
+        explanationHeight = nil
+        answerHeights.removeAll()
+    }
+    
+    private func getCurrentQuestionCorrectness() -> Bool? {
+        guard let question = currentQuestion,
+              let selectedId = selectedAnswerId else { return nil }
+        
+        let correctAnswers = question.content.displayCorrectAnswer
+        let answerOptions = question.content.displayAnswerOptions
+        
+        guard let selectedOption = answerOptions.first(where: { $0.id == selectedId }),
+              let selectedIndex = answerOptions.firstIndex(where: { $0.id == selectedId }) else { return nil }
+        let selectedLabel = selectedOption.label ?? String(Character(UnicodeScalar(65 + selectedIndex)!))
+        
+        let isCorrect = correctAnswers.contains { answer in
+            return answer.uppercased() == selectedLabel.uppercased() || answer.uppercased() == selectedId.uppercased()
+        }
+        
+        return isCorrect
+    }
+    
     // Helper function to validate and return safe height value
     private func safeHeight(_ height: CGFloat?, default: CGFloat = 100) -> CGFloat {
         guard let height = height, height.isFinite && height > 0 && height < 10000 else {
@@ -357,16 +445,48 @@ struct QuizView: View {
         return max(height, `default`)
     }
     
-    private func endQuiz() {
-        // Reset quiz state
-        currentIndex = 0
-        resetQuestionState()
+    private func saveAndExit() {
+        // Save current state before exiting
+        saveQuizState()
         // Call onEndQuiz callback if provided, otherwise just show filters
         if let onEndQuiz = onEndQuiz {
             onEndQuiz()
         } else {
             showFilters = true
         }
+    }
+    
+    private func saveQuizState() {
+        // Use existing quiz ID or create new one
+        let quizId = currentQuizId ?? UUID().uuidString
+        
+        // Get existing answer states or create new dictionary
+        var existingAnswerStates: [String: QuestionAnswerState] = [:]
+        if let existingState = quizStateManager.loadQuizState(id: quizId) {
+            existingAnswerStates = existingState.answerStates
+        }
+        
+        // Save current question state (will be merged with existing)
+        if let question = currentQuestion {
+            let correctValue = hasSubmitted ? getCurrentQuestionCorrectness() : nil
+            let answerState = QuestionAnswerState(
+                questionId: question.questionId,
+                selectedAnswerId: selectedAnswerId,
+                hasSubmitted: hasSubmitted,
+                isCorrect: correctValue
+            )
+            existingAnswerStates[question.questionId] = answerState
+        }
+        
+        let state = QuizState(
+            id: quizId,
+            filters: filters,
+            currentIndex: currentIndex,
+            questionIds: questions.map { $0.questionId },
+            answerStates: existingAnswerStates
+        )
+        currentQuizId = quizId
+        quizStateManager.saveQuizState(state)
     }
 }
 

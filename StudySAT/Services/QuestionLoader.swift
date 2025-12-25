@@ -58,12 +58,24 @@ class QuestionLoader: ObservableObject {
         // Apply filters using the matches method
         filtered = filtered.filter { filters.matches($0) }
         
-        // Apply seen status filter
-        switch filters.seenStatus {
-        case .seen:
-            filtered = filtered.filter { progressManager.isSeen(questionId: $0.questionId) }
-        case .unseen:
-            filtered = filtered.filter { !progressManager.isSeen(questionId: $0.questionId) }
+        // Apply answer status filter
+        switch filters.answerStatus {
+        case .unanswered:
+            filtered = filtered.filter { progressManager.getProgress(questionId: $0.questionId)?.correct == nil }
+        case .incorrect:
+            filtered = filtered.filter { 
+                if let progress = progressManager.getProgress(questionId: $0.questionId) {
+                    return progress.correct == false
+                }
+                return false
+            }
+        case .correct:
+            filtered = filtered.filter { 
+                if let progress = progressManager.getProgress(questionId: $0.questionId) {
+                    return progress.correct == true
+                }
+                return false
+            }
         case .all:
             break
         }
