@@ -10,7 +10,7 @@ import SwiftUI
 struct StatsView: View {
     @ObservedObject var progressManager: ProgressManager
     @ObservedObject var questionLoader: QuestionLoader
-    
+
     @State private var showResetConfirmation = false
     @State private var resetType: ResetType?
     @State private var showProgramPicker = false
@@ -18,7 +18,7 @@ struct StatsView: View {
     @State private var showPrimaryClassPicker = false
     @State private var showSkillDescPicker = false
     @State private var showDifficultyPicker = false
-    
+
     enum ResetType {
         case all
         case program(String)
@@ -27,92 +27,53 @@ struct StatsView: View {
         case skillDesc(String)
         case difficulty(String)
     }
-    
-    // Helper function to safely calculate width
-    private func safeWidth(_ width: CGFloat) -> CGFloat {
-        guard width.isFinite && width > 0 else { return 1000 }
-        return min(max(width - 40, 200), 1000) // Ensure at least 200, max 1000
-    }
-    
+
     var body: some View {
         NavigationStack {
-            GeometryReader { geometry in
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Overall Stats
-                        overallStatsCard
-                        
-                        // Breakdown by Category
-                        categoryBreakdownSection
-                        
-                        // Reset Progress Section
-                        resetProgressSection
-                    }
-                    .padding()
-                    .frame(maxWidth: safeWidth(geometry.size.width))
-                    .frame(maxWidth: .infinity)
+            ScrollView {
+                VStack(spacing: 20) {
+                    overallStatsCard
+                    categoryBreakdownSection
+                    resetProgressSection
                 }
+                .padding()
             }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Statistics")
             .alert("Reset Progress", isPresented: $showResetConfirmation) {
-                Button("Cancel", role: .cancel) {
-                    resetType = nil
-                }
-                Button("Reset", role: .destructive) {
-                    performReset()
-                }
+                Button("Cancel", role: .cancel) { resetType = nil }
+                Button("Reset", role: .destructive) { performReset() }
             } message: {
                 if let resetType = resetType {
                     Text(resetMessage(for: resetType))
                 }
             }
             .sheet(isPresented: $showProgramPicker) {
-                resetPickerSheet(
-                    title: "Select Program",
-                    items: questionLoader.getAvailablePrograms(),
-                    isPresented: $showProgramPicker
-                ) { program in
+                resetPickerSheet(title: "Select Program", items: questionLoader.getAvailablePrograms(), isPresented: $showProgramPicker) { program in
                     resetType = .program(program)
                     showResetConfirmation = true
                 }
             }
             .sheet(isPresented: $showModulePicker) {
-                resetPickerSheet(
-                    title: "Select Module",
-                    items: questionLoader.getAvailableModules(),
-                    isPresented: $showModulePicker
-                ) { module in
+                resetPickerSheet(title: "Select Module", items: questionLoader.getAvailableModules(), isPresented: $showModulePicker) { module in
                     resetType = .module(module)
                     showResetConfirmation = true
                 }
             }
             .sheet(isPresented: $showPrimaryClassPicker) {
-                resetPickerSheet(
-                    title: "Select Primary Class",
-                    items: questionLoader.getAvailablePrimaryClasses(for: nil),
-                    isPresented: $showPrimaryClassPicker
-                ) { primaryClass in
+                resetPickerSheet(title: "Select Primary Class", items: questionLoader.getAvailablePrimaryClasses(for: nil), isPresented: $showPrimaryClassPicker) { primaryClass in
                     resetType = .primaryClass(primaryClass)
                     showResetConfirmation = true
                 }
             }
             .sheet(isPresented: $showSkillDescPicker) {
-                resetPickerSheet(
-                    title: "Select Skill Description",
-                    items: questionLoader.getAvailableSkillDescs(for: nil, primaryClass: nil),
-                    isPresented: $showSkillDescPicker
-                ) { skillDesc in
+                resetPickerSheet(title: "Select Skill", items: questionLoader.getAvailableSkillDescs(for: nil, primaryClass: nil), isPresented: $showSkillDescPicker) { skillDesc in
                     resetType = .skillDesc(skillDesc)
                     showResetConfirmation = true
                 }
             }
             .sheet(isPresented: $showDifficultyPicker) {
-                resetPickerSheet(
-                    title: "Select Difficulty",
-                    items: questionLoader.getAvailableDifficulties().map { difficultyDescription($0) },
-                    isPresented: $showDifficultyPicker
-                ) { difficultyDisplay in
-                    // Find the actual difficulty code
+                resetPickerSheet(title: "Select Difficulty", items: questionLoader.getAvailableDifficulties().map { difficultyDescription($0) }, isPresented: $showDifficultyPicker) { difficultyDisplay in
                     let difficulty = questionLoader.getAvailableDifficulties().first { difficultyDescription($0) == difficultyDisplay } ?? difficultyDisplay
                     resetType = .difficulty(difficulty)
                     showResetConfirmation = true
@@ -120,14 +81,14 @@ struct StatsView: View {
             }
         }
     }
-    
+
     private func resetPickerSheet(
         title: String,
         items: [String],
         isPresented: Binding<Bool>,
         onSelect: @escaping (String) -> Void
     ) -> some View {
-        NavigationView {
+        NavigationStack {
             List {
                 ForEach(items, id: \.self) { item in
                     Button(action: {
@@ -149,68 +110,76 @@ struct StatsView: View {
             }
         }
     }
-    
+
+    // MARK: - Overall Stats
+
     private var overallStatsCard: some View {
-        VStack(spacing: 16) {
+        let attempted = progressManager.getTotalAttempted()
+        let seen = progressManager.getTotalSeen()
+        let accuracy = progressManager.getOverallAccuracy()
+        let total = questionLoader.questions.count
+
+        return VStack(spacing: 16) {
             Text("Overall Performance")
-                .font(.title2)
-                .fontWeight(.bold)
-            
-            HStack(spacing: 16) {
-                VStack(spacing: 4) {
-                    Text("\(Int(progressManager.getOverallAccuracy()))")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.blue)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                    Text("Accuracy")
+                .font(.headline)
+
+            // Circular progress
+            ZStack {
+                Circle()
+                    .stroke(Color(.systemGray5), lineWidth: 8)
+                Circle()
+                    .trim(from: 0, to: attempted > 0 ? CGFloat(accuracy / 100) : 0)
+                    .stroke(accuracyColor(accuracy), style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.easeInOut(duration: 0.5), value: accuracy)
+
+                VStack(spacing: 2) {
+                    Text("\(Int(accuracy))%")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(attempted > 0 ? accuracyColor(accuracy) : .secondary)
+                    Text("accuracy")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity)
-                
-                Divider()
-                    .frame(height: 50)
-                
-                VStack(spacing: 4) {
-                    Text("\(progressManager.getTotalSeen())")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.green)
-                        .lineLimit(1)
-                    Text("Seen")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                
-                Divider()
-                    .frame(height: 50)
-                
-                VStack(spacing: 4) {
-                    Text("\(progressManager.getTotalAttempted())")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.orange)
-                        .lineLimit(1)
-                    Text("Attempted")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
+            }
+            .frame(width: 120, height: 120)
+
+            // Stats row
+            HStack(spacing: 0) {
+                statItem(value: "\(seen)", label: "Seen", color: .blue)
+                Divider().frame(height: 40)
+                statItem(value: "\(attempted)", label: "Attempted", color: .orange)
+                Divider().frame(height: 40)
+                statItem(value: "\(total)", label: "Total", color: .secondary)
             }
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(16)
     }
-    
+
+    private func statItem(value: String, label: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundColor(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(label)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Category Breakdown
+
     private var categoryBreakdownSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Breakdown by Category")
-                .font(.title2)
-                .fontWeight(.bold)
-            
-            // By Module
+            Text("Breakdown")
+                .font(.headline)
+
             categoryCard(
                 title: "By Module",
                 items: questionLoader.getAvailableModules().map { module in
@@ -220,8 +189,7 @@ struct StatsView: View {
                     )
                 }
             )
-            
-            // By Difficulty
+
             categoryCard(
                 title: "By Difficulty",
                 items: questionLoader.getAvailableDifficulties().map { difficulty in
@@ -231,8 +199,7 @@ struct StatsView: View {
                     )
                 }
             )
-            
-            // By Primary Class
+
             categoryCard(
                 title: "By Primary Class",
                 items: questionLoader.getAvailablePrimaryClasses(for: nil).prefix(10).map { primaryClass in
@@ -244,13 +211,13 @@ struct StatsView: View {
             )
         }
     }
-    
+
     private func categoryCard(title: String, items: [CategoryItem]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.headline)
-                .padding(.bottom, 4)
-            
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.secondary)
+
             if items.isEmpty {
                 Text("No data available")
                     .font(.subheadline)
@@ -258,24 +225,40 @@ struct StatsView: View {
                     .padding(.vertical, 8)
             } else {
                 ForEach(items, id: \.name) { item in
-                    HStack {
-                        Text(item.name)
-                            .font(.subheadline)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Spacer()
-                        if item.accuracy > 0 {
-                            Text("\(Int(item.accuracy))")
+                    VStack(spacing: 6) {
+                        HStack {
+                            Text(item.name)
                                 .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(accuracyColor(item.accuracy))
-                        } else {
-                            Text("—")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                            Spacer()
+                            if item.accuracy > 0 {
+                                Text("\(Int(item.accuracy))%")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(accuracyColor(item.accuracy))
+                            } else {
+                                Text("--")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
                         }
+
+                        // Progress bar
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Rectangle()
+                                    .fill(Color(.systemGray5))
+                                    .cornerRadius(2)
+                                if item.accuracy > 0 {
+                                    Rectangle()
+                                        .fill(accuracyColor(item.accuracy))
+                                        .cornerRadius(2)
+                                        .frame(width: geo.size.width * CGFloat(item.accuracy / 100))
+                                }
+                            }
+                        }
+                        .frame(height: 4)
                     }
-                    .padding(.vertical, 6)
-                    
+
                     if item.name != items.last?.name {
                         Divider()
                     }
@@ -283,50 +266,38 @@ struct StatsView: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(16)
     }
-    
+
+    // MARK: - Reset Progress
+
     private var resetProgressSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Reset Progress")
-                .font(.title2)
-                .fontWeight(.bold)
-            
-            VStack(spacing: 12) {
+                .font(.headline)
+
+            VStack(spacing: 0) {
                 resetButton(title: "Reset All Progress", color: .red) {
                     resetType = .all
                     showResetConfirmation = true
                 }
-                
-                Divider()
-                
-                resetButton(title: "Reset by Program", color: .orange) {
-                    showProgramPicker = true
-                }
-                
-                resetButton(title: "Reset by Module", color: .orange) {
-                    showModulePicker = true
-                }
-                
-                resetButton(title: "Reset by Primary Class", color: .orange) {
-                    showPrimaryClassPicker = true
-                }
-                
-                resetButton(title: "Reset by Skill Description", color: .orange) {
-                    showSkillDescPicker = true
-                }
-                
-                resetButton(title: "Reset by Difficulty", color: .orange) {
-                    showDifficultyPicker = true
-                }
+                Divider().padding(.leading)
+                resetButton(title: "Reset by Program", color: .orange) { showProgramPicker = true }
+                Divider().padding(.leading)
+                resetButton(title: "Reset by Module", color: .orange) { showModulePicker = true }
+                Divider().padding(.leading)
+                resetButton(title: "Reset by Primary Class", color: .orange) { showPrimaryClassPicker = true }
+                Divider().padding(.leading)
+                resetButton(title: "Reset by Skill", color: .orange) { showSkillDescPicker = true }
+                Divider().padding(.leading)
+                resetButton(title: "Reset by Difficulty", color: .orange) { showDifficultyPicker = true }
             }
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(16)
         }
     }
-    
+
     private func resetButton(title: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
@@ -337,9 +308,12 @@ struct StatsView: View {
                     .foregroundColor(.secondary)
                     .font(.caption)
             }
+            .padding()
         }
     }
-    
+
+    // MARK: - Helpers
+
     private func difficultyDescription(_ difficulty: String) -> String {
         switch difficulty {
         case "E": return "Easy"
@@ -348,17 +322,13 @@ struct StatsView: View {
         default: return difficulty
         }
     }
-    
+
     private func accuracyColor(_ accuracy: Double) -> Color {
-        if accuracy >= 80 {
-            return .green
-        } else if accuracy >= 60 {
-            return .orange
-        } else {
-            return .red
-        }
+        if accuracy >= 80 { return .green }
+        if accuracy >= 60 { return .orange }
+        return .red
     }
-    
+
     private func resetMessage(for type: ResetType) -> String {
         switch type {
         case .all:
@@ -375,10 +345,9 @@ struct StatsView: View {
             return "Are you sure you want to reset progress for all \(difficultyDescription(difficulty)) questions?"
         }
     }
-    
+
     private func performReset() {
         guard let resetType = resetType else { return }
-        
         switch resetType {
         case .all:
             progressManager.resetAllProgress()
@@ -393,7 +362,6 @@ struct StatsView: View {
         case .difficulty(let difficulty):
             progressManager.resetProgress(byDifficulty: difficulty, questionLoader: questionLoader)
         }
-        
         self.resetType = nil
     }
 }
@@ -402,4 +370,3 @@ struct CategoryItem {
     let name: String
     let accuracy: Double
 }
-

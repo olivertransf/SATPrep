@@ -33,8 +33,9 @@ struct HTMLContentView: UIViewRepresentable {
         webView.scrollView.bounces = false
         webView.scrollView.showsVerticalScrollIndicator = isScrollable
         webView.scrollView.showsHorizontalScrollIndicator = false
-        // Control user interaction based on allowInteraction parameter
-        webView.isUserInteractionEnabled = allowInteraction
+        // Always enable interaction so tables can be scrolled horizontally.
+        // Link navigation is blocked in the coordinator's decidePolicyFor method.
+        webView.isUserInteractionEnabled = true
         return webView
     }
     
@@ -110,6 +111,25 @@ struct HTMLContentView: UIViewRepresentable {
                     max-width: 100%;
                     height: auto;
                     display: block;
+                    margin: 8px auto;
+                    border-radius: 4px;
+                }
+                ul, ol {
+                    padding-left: 20px;
+                    margin: 8px 0;
+                }
+                li {
+                    margin: 4px 0;
+                }
+                blockquote {
+                    border-left: 3px solid \(isDark ? "#555" : "#ccc");
+                    padding-left: 12px;
+                    margin: 8px 0;
+                    color: \(isDark ? "#aaa" : "#666");
+                }
+                sup, sub {
+                    font-size: 0.75em;
+                    line-height: 0;
                 }
                 math {
                     font-size: 1.1em;
@@ -128,6 +148,29 @@ struct HTMLContentView: UIViewRepresentable {
                 table {
                     width: 100%;
                     border-collapse: collapse;
+                    margin: 8px 0;
+                    font-size: 14px;
+                }
+                table, th, td {
+                    border: 1px solid \(isDark ? "#444" : "#ccc");
+                }
+                th, td {
+                    padding: 8px 10px;
+                    text-align: left;
+                    vertical-align: top;
+                }
+                th {
+                    background-color: \(isDark ? "#1a1a1a" : "#f0f0f0");
+                    font-weight: 600;
+                }
+                tr:nth-child(even) {
+                    background-color: \(isDark ? "#111" : "#fafafa");
+                }
+                /* Scrollable table wrapper (injected via JS below) */
+                .table-scroll-wrapper {
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                    margin: 8px 0;
                 }
                 .sr-only {
                     position: absolute;
@@ -148,6 +191,16 @@ struct HTMLContentView: UIViewRepresentable {
         <body>
             \(processedContent)
             <script>
+                // Wrap tables in scrollable containers
+                document.querySelectorAll('table').forEach(function(table) {
+                    if (!table.parentElement.classList.contains('table-scroll-wrapper')) {
+                        var wrapper = document.createElement('div');
+                        wrapper.className = 'table-scroll-wrapper';
+                        table.parentNode.insertBefore(wrapper, table);
+                        wrapper.appendChild(table);
+                    }
+                });
+
                 if (window.MathJax && window.MathJax.typesetPromise) {
                     MathJax.typesetPromise().then(function() {
                         // Update height after MathJax renders
@@ -180,6 +233,15 @@ struct HTMLContentView: UIViewRepresentable {
             contentHeight = height
         }
         
+        // Block link navigation so the web view stays on the rendered content
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            if navigationAction.navigationType == .linkActivated {
+                decisionHandler(.cancel)
+                return
+            }
+            decisionHandler(.allow)
+        }
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             // Wait for MathJax to potentially render, then get content height
             // Try multiple times to account for MathJax rendering

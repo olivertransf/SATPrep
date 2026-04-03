@@ -54,23 +54,23 @@ class QuestionLoader: ObservableObject {
     
     func getFilteredQuestions(filters: FilterOptions, progressManager: ProgressManager) -> [Question] {
         var filtered = questions
-        
+
         // Apply filters using the matches method
         filtered = filtered.filter { filters.matches($0) }
-        
+
         // Apply answer status filter
         switch filters.answerStatus {
         case .unanswered:
             filtered = filtered.filter { progressManager.getProgress(questionId: $0.questionId)?.correct == nil }
         case .incorrect:
-            filtered = filtered.filter { 
+            filtered = filtered.filter {
                 if let progress = progressManager.getProgress(questionId: $0.questionId) {
                     return progress.correct == false
                 }
                 return false
             }
         case .correct:
-            filtered = filtered.filter { 
+            filtered = filtered.filter {
                 if let progress = progressManager.getProgress(questionId: $0.questionId) {
                     return progress.correct == true
                 }
@@ -79,8 +79,34 @@ class QuestionLoader: ObservableObject {
         case .all:
             break
         }
-        
+
+        // Shuffle if requested
+        if filters.shuffled {
+            filtered.shuffle()
+        }
+
+        // Apply question limit
+        if let limit = filters.questionLimit, limit > 0, limit < filtered.count {
+            filtered = Array(filtered.prefix(limit))
+        }
+
         return filtered
+    }
+
+    /// Returns count of questions matching filters (without shuffle/limit) for preview
+    func getFilteredQuestionCount(filters: FilterOptions, progressManager: ProgressManager) -> Int {
+        let previewFilters = FilterOptions(
+            program: filters.program,
+            module: filters.module,
+            primaryClassCdDesc: filters.primaryClassCdDesc,
+            skillDesc: filters.skillDesc,
+            difficulty: filters.difficulty,
+            answerStatus: filters.answerStatus,
+            isBluebook: filters.isBluebook,
+            shuffled: false,
+            questionLimit: nil
+        )
+        return getFilteredQuestions(filters: previewFilters, progressManager: progressManager).count
     }
     
     // Get unique values for filter options

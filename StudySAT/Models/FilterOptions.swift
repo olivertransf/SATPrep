@@ -16,20 +16,29 @@ struct FilterOptions: Codable, Equatable {
     var difficulty: String?
     var answerStatus: AnswerStatus
     var isBluebook: BluebookFilter?
-    
+    var shuffled: Bool
+    var questionLimit: Int?
+
     enum AnswerStatus: String, Codable, CaseIterable {
         case all = "All"
         case unanswered = "Unanswered"
         case incorrect = "Answered Incorrectly"
         case correct = "Answered Correctly"
     }
-    
+
     enum BluebookFilter: String, Codable, CaseIterable {
         case all = "All"
         case bluebook = "Bluebook"
         case notBluebook = "Not Bluebook"
     }
-    
+
+    enum SortOrder: String, Codable, CaseIterable {
+        case original = "Default"
+        case random = "Random"
+        case easyFirst = "Easy First"
+        case hardFirst = "Hard First"
+    }
+
     init(
         program: String? = nil,
         module: String? = nil,
@@ -37,7 +46,9 @@ struct FilterOptions: Codable, Equatable {
         skillDesc: String? = nil,
         difficulty: String? = nil,
         answerStatus: AnswerStatus = .all,
-        isBluebook: BluebookFilter? = nil
+        isBluebook: BluebookFilter? = nil,
+        shuffled: Bool = true,
+        questionLimit: Int? = nil
     ) {
         self.program = program
         self.module = module
@@ -46,6 +57,8 @@ struct FilterOptions: Codable, Equatable {
         self.difficulty = difficulty
         self.answerStatus = answerStatus
         self.isBluebook = isBluebook
+        self.shuffled = shuffled
+        self.questionLimit = questionLimit
     }
     
     func matches(_ question: Question) -> Bool {
