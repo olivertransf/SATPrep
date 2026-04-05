@@ -1,0 +1,3507 @@
+{
+  "words": [
+    {
+      "id": "1",
+      "word": "abate",
+      "definition": "become less intense or severe",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "2",
+      "word": "aberration",
+      "definition": "a departure from what is normal or expected",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "3",
+      "word": "abhor",
+      "definition": "regard with disgust or hatred",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "4",
+      "word": "abstain",
+      "definition": "restrain from doing something",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "5",
+      "word": "acclaim",
+      "definition": "praise enthusiastically",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "6",
+      "word": "acquiesce",
+      "definition": "accept reluctantly but without protest",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "7",
+      "word": "acrimony",
+      "definition": "bitterness or ill feeling",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "8",
+      "word": "admonish",
+      "definition": "warn firmly; scold mildly",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "9",
+      "word": "adroit",
+      "definition": "clever and skillful",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "10",
+      "word": "adversary",
+      "definition": "an opponent in a conflict",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "11",
+      "word": "aesthetic",
+      "definition": "concerned with beauty or artistic taste",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "12",
+      "word": "affable",
+      "definition": "friendly and easy to talk to",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "13",
+      "word": "affluent",
+      "definition": "wealthy; abundant",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "14",
+      "word": "aggrandize",
+      "definition": "increase power, status, or wealth",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "15",
+      "word": "alacrity",
+      "definition": "cheerful readiness or promptness",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "16",
+      "word": "alleviate",
+      "definition": "make suffering or a problem less severe",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "17",
+      "word": "aloof",
+      "definition": "distant or detached in manner",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "18",
+      "word": "altruistic",
+      "definition": "selflessly concerned for others",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "19",
+      "word": "ambivalent",
+      "definition": "having mixed feelings",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "20",
+      "word": "ameliorate",
+      "definition": "make something bad better",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "21",
+      "word": "amiable",
+      "definition": "friendly and pleasant",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "22",
+      "word": "anachronism",
+      "definition": "a thing belonging to another time period",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "23",
+      "word": "analogous",
+      "definition": "comparable in certain respects",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "24",
+      "word": "anarchy",
+      "definition": "absence of government or order",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "25",
+      "word": "animosity",
+      "definition": "strong hostility",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "26",
+      "word": "antipathy",
+      "definition": "a deep-seated feeling of dislike",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "27",
+      "word": "antithesis",
+      "definition": "a direct opposite; a contrast",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "28",
+      "word": "apathetic",
+      "definition": "showing little interest or concern",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "29",
+      "word": "archaic",
+      "definition": "very old or old-fashioned",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "30",
+      "word": "ascetic",
+      "definition": "severe self-discipline; avoiding pleasure",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "31",
+      "word": "assuage",
+      "definition": "make an unpleasant feeling less intense",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "32",
+      "word": "atrophy",
+      "definition": "waste away from disuse",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "33",
+      "word": "austere",
+      "definition": "severe in manner; without comfort",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "34",
+      "word": "authoritarian",
+      "definition": "favoring strict obedience to authority",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "35",
+      "word": "autonomous",
+      "definition": "self-governing; independent",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "36",
+      "word": "aversion",
+      "definition": "a strong dislike",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "37",
+      "word": "banal",
+      "definition": "lacking originality; clichéd",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "38",
+      "word": "belie",
+      "definition": "fail to give a true impression of",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "39",
+      "word": "belligerent",
+      "definition": "hostile and aggressive",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "40",
+      "word": "benevolent",
+      "definition": "well-meaning and kindly",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "41",
+      "word": "bolster",
+      "definition": "support or strengthen",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "42",
+      "word": "boorish",
+      "definition": "rough and bad-mannered",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "43",
+      "word": "burgeon",
+      "definition": "grow or increase rapidly",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "44",
+      "word": "cacophony",
+      "definition": "a harsh mixture of sounds",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "45",
+      "word": "callous",
+      "definition": "showing no sympathy",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "46",
+      "word": "calumny",
+      "definition": "a false statement meant to harm reputation",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "47",
+      "word": "candor",
+      "definition": "the quality of being open and honest",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "48",
+      "word": "capricious",
+      "definition": "given to sudden changes of mood",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "49",
+      "word": "captivate",
+      "definition": "attract and hold interest",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "50",
+      "word": "castigate",
+      "definition": "reprimand severely",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "51",
+      "word": "caustic",
+      "definition": "sarcastic in a biting way",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "52",
+      "word": "censor",
+      "definition": "suppress unacceptable parts",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "53",
+      "word": "censure",
+      "definition": "express severe disapproval",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "54",
+      "word": "cerebral",
+      "definition": "intellectual rather than emotional",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "55",
+      "word": "circumspect",
+      "definition": "wary and unwilling to take risks",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "56",
+      "word": "clandestine",
+      "definition": "kept secret",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "57",
+      "word": "coalesce",
+      "definition": "come together to form one mass",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "58",
+      "word": "cogent",
+      "definition": "clear, logical, and convincing",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "59",
+      "word": "compliant",
+      "definition": "disposed to agree or obey",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "60",
+      "word": "conciliatory",
+      "definition": "intended to placate or reconcile",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "61",
+      "word": "condone",
+      "definition": "accept behavior one disapproves of",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "62",
+      "word": "conspicuous",
+      "definition": "easily seen; attracting notice",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "63",
+      "word": "contentious",
+      "definition": "likely to cause disagreement",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "64",
+      "word": "contrite",
+      "definition": "feeling remorse",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "65",
+      "word": "conundrum",
+      "definition": "a confusing problem",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "66",
+      "word": "converge",
+      "definition": "come together from different directions",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "67",
+      "word": "convoluted",
+      "definition": "extremely complex and difficult to follow",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "68",
+      "word": "copious",
+      "definition": "abundant in quantity",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "69",
+      "word": "corroborate",
+      "definition": "confirm or support with evidence",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "70",
+      "word": "credulous",
+      "definition": "too ready to believe",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "71",
+      "word": "culpable",
+      "definition": "deserving blame",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "72",
+      "word": "cursory",
+      "definition": "hasty and not thorough",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "73",
+      "word": "curtail",
+      "definition": "reduce in extent or quantity",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "74",
+      "word": "dearth",
+      "definition": "a scarcity or lack",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "75",
+      "word": "debunk",
+      "definition": "expose the falseness of",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "76",
+      "word": "decorum",
+      "definition": "behavior in keeping with good taste",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "77",
+      "word": "deference",
+      "definition": "humble respect for another’s judgment",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "78",
+      "word": "deflect",
+      "definition": "cause to change direction; turn aside",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "79",
+      "word": "delineate",
+      "definition": "describe precisely",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "80",
+      "word": "denounce",
+      "definition": "publicly declare wrong or evil",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "81",
+      "word": "deplete",
+      "definition": "use up resources",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "82",
+      "word": "despot",
+      "definition": "a ruler with total power",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "83",
+      "word": "deteriorate",
+      "definition": "become progressively worse",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "84",
+      "word": "detrimental",
+      "definition": "harmful",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "85",
+      "word": "didactic",
+      "definition": "intended to teach, often moralizing",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "86",
+      "word": "diffident",
+      "definition": "modest or shy due to lack of confidence",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "87",
+      "word": "discern",
+      "definition": "perceive or recognize clearly",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "88",
+      "word": "discrepancy",
+      "definition": "a lack of compatibility between facts",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "89",
+      "word": "disdain",
+      "definition": "the feeling that someone is unworthy",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "90",
+      "word": "disinterested",
+      "definition": "unbiased; not influenced by personal gain",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "91",
+      "word": "disparage",
+      "definition": "regard as worthless; belittle",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "92",
+      "word": "disparate",
+      "definition": "essentially different",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "93",
+      "word": "disseminate",
+      "definition": "spread widely",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "94",
+      "word": "dissonance",
+      "definition": "lack of harmony; tension",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "95",
+      "word": "dogmatic",
+      "definition": "asserting opinions as established truth",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "96",
+      "word": "dubious",
+      "definition": "hesitating or doubting; questionable",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "97",
+      "word": "duplicity",
+      "definition": "deceitfulness; double-dealing",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "98",
+      "word": "ebullient",
+      "definition": "cheerful and full of energy",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "99",
+      "word": "eccentric",
+      "definition": "unconventional and slightly strange",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "100",
+      "word": "eclectic",
+      "definition": "deriving ideas from a broad range",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "101",
+      "word": "elicit",
+      "definition": "evoke or draw out a response",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "102",
+      "word": "eloquent",
+      "definition": "fluent and persuasive in speaking",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "103",
+      "word": "elucidate",
+      "definition": "make clear; explain",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "104",
+      "word": "embellish",
+      "definition": "make more attractive by adding detail",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "105",
+      "word": "empirical",
+      "definition": "based on observation or experience",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "106",
+      "word": "enervate",
+      "definition": "drain of energy or vitality",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "107",
+      "word": "engender",
+      "definition": "cause or give rise to",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "108",
+      "word": "enigma",
+      "definition": "a person or thing that is mysterious",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "109",
+      "word": "ephemeral",
+      "definition": "lasting for a very short time",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "110",
+      "word": "equanimity",
+      "definition": "calm composure under stress",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "111",
+      "word": "equivocate",
+      "definition": "use ambiguous language to mislead",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "112",
+      "word": "eradicate",
+      "definition": "destroy completely",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "113",
+      "word": "erratic",
+      "definition": "unpredictably uneven",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "114",
+      "word": "erudite",
+      "definition": "showing great learning",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "115",
+      "word": "esoteric",
+      "definition": "intended for a small informed group",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "116",
+      "word": "eulogy",
+      "definition": "a speech praising someone who has died",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "117",
+      "word": "euphemism",
+      "definition": "a mild word substituted for a harsh one",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "118",
+      "word": "exacerbate",
+      "definition": "make a problem worse",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "119",
+      "word": "exacting",
+      "definition": "demanding great skill or care",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "120",
+      "word": "exonerate",
+      "definition": "absolve from blame",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "121",
+      "word": "expedient",
+      "definition": "convenient though possibly improper",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "122",
+      "word": "extraneous",
+      "definition": "irrelevant; not belonging",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "123",
+      "word": "facile",
+      "definition": "ignoring the true complexities; too easy",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "124",
+      "word": "fastidious",
+      "definition": "very attentive to accuracy and detail",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "125",
+      "word": "fatuous",
+      "definition": "foolish and complacent",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "126",
+      "word": "fervent",
+      "definition": "having great intensity of feeling",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "127",
+      "word": "flippant",
+      "definition": "not showing serious respect",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "128",
+      "word": "flout",
+      "definition": "openly disregard a rule",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "129",
+      "word": "foment",
+      "definition": "instigate trouble",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "130",
+      "word": "forestall",
+      "definition": "prevent by acting ahead",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "131",
+      "word": "fortitude",
+      "definition": "courage in pain or adversity",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "132",
+      "word": "fractious",
+      "definition": "irritable and quarrelsome",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "133",
+      "word": "frivolous",
+      "definition": "not serious; carefree to excess",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "134",
+      "word": "frugal",
+      "definition": "sparing or economical with money",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "135",
+      "word": "futile",
+      "definition": "incapable of producing a result",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "136",
+      "word": "garrulous",
+      "definition": "excessively talkative",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "137",
+      "word": "germane",
+      "definition": "relevant to the subject",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "138",
+      "word": "glib",
+      "definition": "fluent but insincere or shallow",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "139",
+      "word": "gregarious",
+      "definition": "fond of company; sociable",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "140",
+      "word": "guile",
+      "definition": "sly or cunning intelligence",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "141",
+      "word": "hackneyed",
+      "definition": "lacking originality through overuse",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "142",
+      "word": "hardy",
+      "definition": "robust; able to endure difficult conditions",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "143",
+      "word": "hedonist",
+      "definition": "a person devoted to pleasure",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "144",
+      "word": "hegemony",
+      "definition": "leadership or dominance of one group",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "145",
+      "word": "hyperbole",
+      "definition": "exaggerated statements not meant literally",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "146",
+      "word": "iconoclast",
+      "definition": "a person who attacks cherished beliefs",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "147",
+      "word": "ignominious",
+      "definition": "deserving or causing public disgrace",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "148",
+      "word": "illicit",
+      "definition": "forbidden by law or rules",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "149",
+      "word": "immutable",
+      "definition": "unchanging over time",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "150",
+      "word": "impartial",
+      "definition": "treating all rivals equally; fair",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "151",
+      "word": "impede",
+      "definition": "delay or prevent progress",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "152",
+      "word": "imperious",
+      "definition": "domineering; arrogant",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "153",
+      "word": "impertinent",
+      "definition": "not showing respect; irrelevant",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "154",
+      "word": "impetuous",
+      "definition": "acting suddenly with little thought",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "155",
+      "word": "imprudent",
+      "definition": "not showing care for consequences",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "156",
+      "word": "inadvertent",
+      "definition": "not resulting from intention",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "157",
+      "word": "incisive",
+      "definition": "clear and sharply analytical",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "158",
+      "word": "incongruous",
+      "definition": "not in harmony with surroundings",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "159",
+      "word": "incorrigible",
+      "definition": "unable to be corrected or reformed",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "160",
+      "word": "indifferent",
+      "definition": "having no preference; mediocre",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "161",
+      "word": "indigenous",
+      "definition": "originating naturally in a place",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "162",
+      "word": "indignant",
+      "definition": "feeling anger at unfair treatment",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "163",
+      "word": "indolent",
+      "definition": "lazy; wanting to avoid activity",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "164",
+      "word": "inept",
+      "definition": "having no skill; inappropriate",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "165",
+      "word": "inexorable",
+      "definition": "impossible to stop or persuade",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "166",
+      "word": "ingenious",
+      "definition": "clever and original",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "167",
+      "word": "ingenuous",
+      "definition": "innocent and unsuspecting",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "168",
+      "word": "innocuous",
+      "definition": "not harmful or offensive",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "169",
+      "word": "inscrutable",
+      "definition": "impossible to understand",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "170",
+      "word": "insipid",
+      "definition": "lacking flavor or interest",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "171",
+      "word": "insolent",
+      "definition": "rude and disrespectful",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "172",
+      "word": "intermittent",
+      "definition": "stopping and starting at intervals",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "173",
+      "word": "intrepid",
+      "definition": "fearless; adventurous",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "174",
+      "word": "inundate",
+      "definition": "overwhelm with things to deal with",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "175",
+      "word": "invective",
+      "definition": "insulting or abusive language",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "176",
+      "word": "invigorate",
+      "definition": "give strength or energy to",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "177",
+      "word": "irascible",
+      "definition": "easily angered",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "178",
+      "word": "jubilant",
+      "definition": "feeling great joy",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "179",
+      "word": "judicious",
+      "definition": "showing good judgment",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "180",
+      "word": "laconic",
+      "definition": "using very few words",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "181",
+      "word": "laudable",
+      "definition": "deserving praise",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "182",
+      "word": "lavish",
+      "definition": "sumptuously rich or elaborate",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "183",
+      "word": "lethargic",
+      "definition": "affected by sluggishness",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "184",
+      "word": "levity",
+      "definition": "treatment of a serious matter with humor",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "185",
+      "word": "loquacious",
+      "definition": "tending to talk a great deal",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "186",
+      "word": "lucid",
+      "definition": "clearly expressed; bright",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "187",
+      "word": "ludicrous",
+      "definition": "so foolish it provokes laughter",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "188",
+      "word": "magnanimous",
+      "definition": "generous in forgiving",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "189",
+      "word": "maladroit",
+      "definition": "ineffective; clumsy",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "190",
+      "word": "malevolent",
+      "definition": "wishing evil on others",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "191",
+      "word": "malign",
+      "definition": "speak harmful untruths about",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "192",
+      "word": "malleable",
+      "definition": "easily influenced; able to be hammered",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "193",
+      "word": "melancholy",
+      "definition": "a feeling of pensive sadness",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "194",
+      "word": "mercurial",
+      "definition": "subject to sudden changes of mood",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "195",
+      "word": "meticulous",
+      "definition": "showing great attention to detail",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "196",
+      "word": "modicum",
+      "definition": "a small quantity",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "197",
+      "word": "mollify",
+      "definition": "calm the anger of",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "198",
+      "word": "monotonous",
+      "definition": "dull and tedious",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "199",
+      "word": "morose",
+      "definition": "sullen and ill-humored",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "200",
+      "word": "myopic",
+      "definition": "lacking imagination or foresight",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "201",
+      "word": "nascent",
+      "definition": "just coming into existence",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "202",
+      "word": "nebulous",
+      "definition": "vague or ill-defined",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "203",
+      "word": "nefarious",
+      "definition": "wicked or criminal",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "204",
+      "word": "negligible",
+      "definition": "so small as to be unimportant",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "205",
+      "word": "nonchalant",
+      "definition": "casually calm and relaxed",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "206",
+      "word": "noxious",
+      "definition": "harmful or poisonous",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "207",
+      "word": "nuance",
+      "definition": "a subtle difference",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "208",
+      "word": "obdurate",
+      "definition": "stubbornly refusing to change",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "209",
+      "word": "obfuscate",
+      "definition": "make obscure or unclear",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "210",
+      "word": "oblivious",
+      "definition": "unaware of what is happening",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "211",
+      "word": "obsequious",
+      "definition": "obedient to an excessive degree",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "212",
+      "word": "obstinate",
+      "definition": "stubbornly refusing to change",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "213",
+      "word": "ominous",
+      "definition": "giving the impression something bad will happen",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "214",
+      "word": "onerous",
+      "definition": "involving great effort and difficulty",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "215",
+      "word": "opaque",
+      "definition": "not able to be seen through; hard to understand",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "216",
+      "word": "opportune",
+      "definition": "well chosen for a particular time",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "217",
+      "word": "ostentatious",
+      "definition": "designed to impress or attract notice",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "218",
+      "word": "painstaking",
+      "definition": "done with great care and thoroughness",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "219",
+      "word": "parsimony",
+      "definition": "extreme unwillingness to spend",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "220",
+      "word": "partisan",
+      "definition": "a strong supporter of a party",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "221",
+      "word": "pathos",
+      "definition": "a quality evoking pity or sadness",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "222",
+      "word": "paucity",
+      "definition": "a small number of something",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "223",
+      "word": "pedantic",
+      "definition": "excessively concerned with minor rules",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "224",
+      "word": "pejorative",
+      "definition": "expressing disapproval",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "225",
+      "word": "penchant",
+      "definition": "a strong liking",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "226",
+      "word": "perceptive",
+      "definition": "having sensitive insight",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "227",
+      "word": "perfunctory",
+      "definition": "carried out with minimum effort",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "228",
+      "word": "permeate",
+      "definition": "spread throughout",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "229",
+      "word": "pernicious",
+      "definition": "having a harmful effect in a gradual way",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "230",
+      "word": "petulant",
+      "definition": "childishly sulky or bad-tempered",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "231",
+      "word": "philanthropic",
+      "definition": "seeking to promote human welfare",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "232",
+      "word": "plethora",
+      "definition": "a large excess of something",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "233",
+      "word": "poignant",
+      "definition": "evoking sadness or regret",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "234",
+      "word": "polemic",
+      "definition": "a strong verbal attack",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "235",
+      "word": "precarious",
+      "definition": "not securely held; uncertain",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "236",
+      "word": "precipitate",
+      "definition": "cause to happen suddenly; hasty",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "237",
+      "word": "preclude",
+      "definition": "prevent from happening",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "238",
+      "word": "predilection",
+      "definition": "a preference for something",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "239",
+      "word": "prerequisite",
+      "definition": "required beforehand",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "240",
+      "word": "presumptuous",
+      "definition": "failing to observe limits of due respect",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "241",
+      "word": "probity",
+      "definition": "integrity and honesty",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "242",
+      "word": "proclivity",
+      "definition": "a tendency to choose or do something",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "243",
+      "word": "profuse",
+      "definition": "very plentiful; extravagant",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "244",
+      "word": "proliferate",
+      "definition": "increase rapidly in number",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "245",
+      "word": "prosaic",
+      "definition": "lacking poetic beauty; dull",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "246",
+      "word": "provincial",
+      "definition": "narrow in outlook; of a province",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "247",
+      "word": "prudent",
+      "definition": "acting with care for the future",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "248",
+      "word": "pugnacious",
+      "definition": "eager to fight",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "249",
+      "word": "quandary",
+      "definition": "a state of uncertainty in a dilemma",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "250",
+      "word": "quell",
+      "definition": "subdue or put an end to",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "251",
+      "word": "querulous",
+      "definition": "complaining in a petulant way",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "252",
+      "word": "rancor",
+      "definition": "bitterness or resentfulness",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "253",
+      "word": "rebuke",
+      "definition": "express sharp disapproval",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "254",
+      "word": "recalcitrant",
+      "definition": "stubbornly uncooperative",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "255",
+      "word": "recluse",
+      "definition": "a person who lives in isolation",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "256",
+      "word": "recondite",
+      "definition": "little known; abstruse",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "257",
+      "word": "refute",
+      "definition": "prove a statement false",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "258",
+      "word": "relegate",
+      "definition": "assign to a lower position",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "259",
+      "word": "relinquish",
+      "definition": "voluntarily cease to keep",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "260",
+      "word": "remiss",
+      "definition": "lacking care for duty",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "261",
+      "word": "renounce",
+      "definition": "formally give up",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "262",
+      "word": "reprehensible",
+      "definition": "deserving censure",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "263",
+      "word": "reproach",
+      "definition": "address in a way expressing disapproval",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "264",
+      "word": "repudiate",
+      "definition": "refuse to accept",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "265",
+      "word": "rescind",
+      "definition": "revoke or cancel officially",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "266",
+      "word": "resolute",
+      "definition": "admirably purposeful",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "267",
+      "word": "rudimentary",
+      "definition": "involving basic principles; undeveloped",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "268",
+      "word": "sacrosanct",
+      "definition": "regarded as too important to interfere with",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "269",
+      "word": "sagacious",
+      "definition": "having keen judgment",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "270",
+      "word": "salient",
+      "definition": "most noticeable or important",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "271",
+      "word": "sanguine",
+      "definition": "optimistic, especially in difficulty",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "272",
+      "word": "sardonic",
+      "definition": "grimly mocking",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "273",
+      "word": "scathing",
+      "definition": "witheringly harsh",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "274",
+      "word": "scrupulous",
+      "definition": "diligent and thorough",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "275",
+      "word": "solicitous",
+      "definition": "showing anxious care",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "276",
+      "word": "specious",
+      "definition": "superficially plausible but wrong",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "277",
+      "word": "spurious",
+      "definition": "not genuine; false",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "278",
+      "word": "stagnant",
+      "definition": "not flowing; showing no activity",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "279",
+      "word": "steadfast",
+      "definition": "resolutely unwavering",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "280",
+      "word": "stigma",
+      "definition": "a mark of disgrace",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "281",
+      "word": "stoic",
+      "definition": "enduring pain without complaint",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "282",
+      "word": "stringent",
+      "definition": "strict and precise",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "283",
+      "word": "subjugate",
+      "definition": "bring under domination",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "284",
+      "word": "sublime",
+      "definition": "of great excellence or beauty",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "285",
+      "word": "substantiate",
+      "definition": "provide evidence to support",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "286",
+      "word": "succinct",
+      "definition": "briefly and clearly expressed",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "287",
+      "word": "superfluous",
+      "definition": "unnecessary, especially through excess",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "288",
+      "word": "suppress",
+      "definition": "forcibly put an end to",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "289",
+      "word": "surreptitious",
+      "definition": "kept secret because improper",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "290",
+      "word": "tacit",
+      "definition": "understood without being stated",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "291",
+      "word": "taciturn",
+      "definition": "reserved or uncommunicative",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "292",
+      "word": "tantamount",
+      "definition": "equivalent in seriousness",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "293",
+      "word": "tedious",
+      "definition": "too long or dull",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "294",
+      "word": "temerity",
+      "definition": "excessive confidence or boldness",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "295",
+      "word": "tenacious",
+      "definition": "tending to keep a firm hold",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "296",
+      "word": "terse",
+      "definition": "sparing in words",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "297",
+      "word": "tirade",
+      "definition": "a long angry speech",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "298",
+      "word": "torpor",
+      "definition": "a state of physical or mental inactivity",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "299",
+      "word": "trenchant",
+      "definition": "vigorous in expression",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "300",
+      "word": "trepidation",
+      "definition": "great worry about something",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "301",
+      "word": "trite",
+      "definition": "overused and consequently boring",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "302",
+      "word": "truculent",
+      "definition": "eager to argue or fight",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "303",
+      "word": "ubiquitous",
+      "definition": "present everywhere",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "304",
+      "word": "unassailable",
+      "definition": "unable to be attacked or questioned",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "305",
+      "word": "uncanny",
+      "definition": "strange or mysterious",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "306",
+      "word": "undermine",
+      "definition": "erode the base of; weaken",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "307",
+      "word": "unequivocal",
+      "definition": "leaving no doubt",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "308",
+      "word": "unprecedented",
+      "definition": "never done or known before",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "309",
+      "word": "usurp",
+      "definition": "take a position of power illegally",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "310",
+      "word": "vacillate",
+      "definition": "alternate between opinions",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "311",
+      "word": "vacuous",
+      "definition": "having no intelligence or interest",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "312",
+      "word": "venerate",
+      "definition": "regard with great respect",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "313",
+      "word": "verbose",
+      "definition": "using more words than needed",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "314",
+      "word": "vex",
+      "definition": "annoy or worry",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "315",
+      "word": "vilify",
+      "definition": "speak or write about in abusive terms",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "316",
+      "word": "vindicate",
+      "definition": "clear of blame or suspicion",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "317",
+      "word": "virulent",
+      "definition": "bitterly hostile; severe",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "318",
+      "word": "vociferous",
+      "definition": "loud and insistent",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "319",
+      "word": "voracious",
+      "definition": "wanting great quantities of food or knowledge",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "320",
+      "word": "whimsical",
+      "definition": "playfully quaint or fanciful",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "321",
+      "word": "wily",
+      "definition": "skilled at gaining an advantage",
+      "partOfSpeech": "other"
+    },
+    {
+      "id": "322",
+      "word": "zealous",
+      "definition": "showing great fervor for a person or cause",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "323",
+      "word": "abrogate",
+      "definition": "repeal or do away with formally",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "324",
+      "word": "abscond",
+      "definition": "leave hurriedly and secretly to escape custody",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "325",
+      "word": "abstruse",
+      "definition": "difficult to understand; obscure",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "326",
+      "word": "accretion",
+      "definition": "growth or increase by gradual addition",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "327",
+      "word": "acerbic",
+      "definition": "sharp and forthright; harsh in tone",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "328",
+      "word": "acumen",
+      "definition": "keen insight and good judgment",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "329",
+      "word": "adamant",
+      "definition": "refusing to change one’s mind",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "330",
+      "word": "admonitory",
+      "definition": "giving a firm warning or reprimand",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "331",
+      "word": "adventitious",
+      "definition": "coming from outside; not inherent",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "332",
+      "word": "adumbrate",
+      "definition": "outline faintly; foreshadow",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "333",
+      "word": "anathema",
+      "definition": "something intensely disliked; a curse",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "334",
+      "word": "approbation",
+      "definition": "approval or praise",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "335",
+      "word": "arrogate",
+      "definition": "claim or seize without justification",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "336",
+      "word": "assiduous",
+      "definition": "showing great care and perseverance",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "337",
+      "word": "attenuate",
+      "definition": "reduce in force, effect, or value",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "338",
+      "word": "bowdlerize",
+      "definition": "remove material considered improper",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "339",
+      "word": "burnish",
+      "definition": "polish; enhance a reputation",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "340",
+      "word": "cadge",
+      "definition": "ask for or obtain something scrounging",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "341",
+      "word": "calumniate",
+      "definition": "make false and defamatory statements about",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "342",
+      "word": "contumacious",
+      "definition": "stubbornly disobedient",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "343",
+      "word": "denigrate",
+      "definition": "criticize unfairly; disparage",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "344",
+      "word": "deprecate",
+      "definition": "express disapproval of; belittle",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "345",
+      "word": "desiccate",
+      "definition": "remove all moisture; dry out",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "346",
+      "word": "dilettante",
+      "definition": "a person with superficial interest in an art",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "347",
+      "word": "effrontery",
+      "definition": "insolent boldness; audacity",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "348",
+      "word": "encomium",
+      "definition": "a speech or text of high praise",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "349",
+      "word": "eschew",
+      "definition": "deliberately avoid; shun",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "350",
+      "word": "exigent",
+      "definition": "pressing; demanding immediate action",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "351",
+      "word": "expurgate",
+      "definition": "remove objectionable material from a text",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "352",
+      "word": "gainsay",
+      "definition": "deny or contradict",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "353",
+      "word": "heterodox",
+      "definition": "not conforming with accepted standards",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "354",
+      "word": "imbroglio",
+      "definition": "a complicated and confused situation",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "355",
+      "word": "impugn",
+      "definition": "dispute the truth or validity of",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "356",
+      "word": "inchoate",
+      "definition": "just begun and not fully formed",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "357",
+      "word": "inimical",
+      "definition": "tending to obstruct or harm; unfriendly",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "358",
+      "word": "insuperable",
+      "definition": "impossible to overcome",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "359",
+      "word": "interloper",
+      "definition": "a person who intrudes where unwelcome",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "360",
+      "word": "intransigent",
+      "definition": "unwilling to change one’s views",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "361",
+      "word": "importune",
+      "definition": "harass with persistent requests",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "362",
+      "word": "limpid",
+      "definition": "clear; transparent; easily understood",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "363",
+      "word": "obloquy",
+      "definition": "strong public criticism; disgrace",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "364",
+      "word": "odium",
+      "definition": "widespread hatred or disgust",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "365",
+      "word": "opprobrium",
+      "definition": "harsh criticism or censure",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "366",
+      "word": "ossify",
+      "definition": "harden; become rigid in habits or ideas",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "367",
+      "word": "palliate",
+      "definition": "make a problem seem less serious",
+      "partOfSpeech": "verb"
+    },
+    {
+      "id": "368",
+      "word": "panacea",
+      "definition": "a remedy for all difficulties",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "369",
+      "word": "peccadillo",
+      "definition": "a small, relatively unimportant offense",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "370",
+      "word": "perspicacious",
+      "definition": "having keen mental perception",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "371",
+      "word": "phlegmatic",
+      "definition": "calm and unemotional in temperament",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "372",
+      "word": "salubrious",
+      "definition": "health-giving; favorable to well-being",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "373",
+      "word": "sedulous",
+      "definition": "showing dedication and diligence",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "374",
+      "word": "soporific",
+      "definition": "tending to induce drowsiness",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "375",
+      "word": "subterfuge",
+      "definition": "deceit used to achieve a goal",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "376",
+      "word": "tendentious",
+      "definition": "expressing a partisan viewpoint",
+      "partOfSpeech": "adj"
+    },
+    {
+      "id": "377",
+      "word": "venality",
+      "definition": "susceptibility to bribery; corruption",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "378",
+      "word": "verisimilitude",
+      "definition": "appearance of being true or real",
+      "partOfSpeech": "noun"
+    },
+    {
+      "id": "379",
+      "word": "vituperate",
+      "definition": "blame or insult in strong language",
+      "partOfSpeech": "verb"
+    }
+  ],
+  "roots": [
+    {
+      "id": "1",
+      "root": "anthrop",
+      "meaning": "human",
+      "origin": "Greek",
+      "examples": [
+        "anthropology",
+        "philanthropy",
+        "misanthrope"
+      ]
+    },
+    {
+      "id": "2",
+      "root": "bio",
+      "meaning": "life",
+      "origin": "Greek",
+      "examples": [
+        "biology",
+        "symbiosis",
+        "antibiotic"
+      ]
+    },
+    {
+      "id": "3",
+      "root": "chron",
+      "meaning": "time",
+      "origin": "Greek",
+      "examples": [
+        "chronology",
+        "anachronism",
+        "chronic"
+      ]
+    },
+    {
+      "id": "4",
+      "root": "cosm",
+      "meaning": "world, universe",
+      "origin": "Greek",
+      "examples": [
+        "cosmos",
+        "cosmetic",
+        "microcosm"
+      ]
+    },
+    {
+      "id": "5",
+      "root": "dem",
+      "meaning": "people",
+      "origin": "Greek",
+      "examples": [
+        "democracy",
+        "demographics",
+        "epidemic"
+      ]
+    },
+    {
+      "id": "6",
+      "root": "dyn",
+      "meaning": "power",
+      "origin": "Greek",
+      "examples": [
+        "dynasty",
+        "dynamic",
+        "dynamite"
+      ]
+    },
+    {
+      "id": "7",
+      "root": "gen",
+      "meaning": "birth, race, kind",
+      "origin": "Greek/Latin",
+      "examples": [
+        "generate",
+        "genesis",
+        "genetic",
+        "benign"
+      ]
+    },
+    {
+      "id": "8",
+      "root": "geo",
+      "meaning": "earth",
+      "origin": "Greek",
+      "examples": [
+        "geology",
+        "geography",
+        "geometry"
+      ]
+    },
+    {
+      "id": "9",
+      "root": "graph",
+      "meaning": "write",
+      "origin": "Greek",
+      "examples": [
+        "graphic",
+        "biography",
+        "photograph"
+      ]
+    },
+    {
+      "id": "10",
+      "root": "log",
+      "meaning": "word, reason, study",
+      "origin": "Greek",
+      "examples": [
+        "logic",
+        "biology",
+        "dialogue"
+      ]
+    },
+    {
+      "id": "11",
+      "root": "meter",
+      "meaning": "measure",
+      "origin": "Greek",
+      "examples": [
+        "thermometer",
+        "diameter",
+        "symmetry"
+      ]
+    },
+    {
+      "id": "12",
+      "root": "morph",
+      "meaning": "form",
+      "origin": "Greek",
+      "examples": [
+        "amorphous",
+        "metamorphosis",
+        "anthropomorphic"
+      ]
+    },
+    {
+      "id": "13",
+      "root": "path",
+      "meaning": "feeling, suffering",
+      "origin": "Greek",
+      "examples": [
+        "sympathy",
+        "apathy",
+        "pathology"
+      ]
+    },
+    {
+      "id": "14",
+      "root": "phon",
+      "meaning": "sound",
+      "origin": "Greek",
+      "examples": [
+        "phonics",
+        "symphony",
+        "cacophony"
+      ]
+    },
+    {
+      "id": "15",
+      "root": "photo",
+      "meaning": "light",
+      "origin": "Greek",
+      "examples": [
+        "photograph",
+        "photosynthesis"
+      ]
+    },
+    {
+      "id": "16",
+      "root": "psych",
+      "meaning": "mind",
+      "origin": "Greek",
+      "examples": [
+        "psychology",
+        "psychiatry"
+      ]
+    },
+    {
+      "id": "17",
+      "root": "scope",
+      "meaning": "see, watch",
+      "origin": "Greek",
+      "examples": [
+        "microscope",
+        "telescope",
+        "periscope"
+      ]
+    },
+    {
+      "id": "18",
+      "root": "tele",
+      "meaning": "far",
+      "origin": "Greek",
+      "examples": [
+        "telephone",
+        "television",
+        "telepathy"
+      ]
+    },
+    {
+      "id": "19",
+      "root": "the",
+      "meaning": "god",
+      "origin": "Greek",
+      "examples": [
+        "theology",
+        "atheist",
+        "monotheism"
+      ]
+    },
+    {
+      "id": "20",
+      "root": "therm",
+      "meaning": "heat",
+      "origin": "Greek",
+      "examples": [
+        "thermal",
+        "thermometer",
+        "hypothermia"
+      ]
+    },
+    {
+      "id": "21",
+      "root": "act",
+      "meaning": "do, drive",
+      "origin": "Latin",
+      "examples": [
+        "action",
+        "react",
+        "transact"
+      ]
+    },
+    {
+      "id": "22",
+      "root": "aud",
+      "meaning": "hear",
+      "origin": "Latin",
+      "examples": [
+        "audience",
+        "audible",
+        "audit"
+      ]
+    },
+    {
+      "id": "23",
+      "root": "bell",
+      "meaning": "war",
+      "origin": "Latin",
+      "examples": [
+        "belligerent",
+        "rebel",
+        "antebellum"
+      ]
+    },
+    {
+      "id": "24",
+      "root": "bene",
+      "meaning": "good, well",
+      "origin": "Latin",
+      "examples": [
+        "benefit",
+        "benevolent",
+        "benign"
+      ]
+    },
+    {
+      "id": "25",
+      "root": "bon",
+      "meaning": "good",
+      "origin": "Latin",
+      "examples": [
+        "bonus",
+        "bona fide"
+      ]
+    },
+    {
+      "id": "26",
+      "root": "cap",
+      "meaning": "take, hold",
+      "origin": "Latin",
+      "examples": [
+        "capture",
+        "capacity",
+        "incipient"
+      ]
+    },
+    {
+      "id": "27",
+      "root": "ced",
+      "meaning": "go, yield",
+      "origin": "Latin",
+      "examples": [
+        "precede",
+        "recede",
+        "concession"
+      ]
+    },
+    {
+      "id": "28",
+      "root": "cent",
+      "meaning": "hundred",
+      "origin": "Latin",
+      "examples": [
+        "century",
+        "percent",
+        "bicentennial"
+      ]
+    },
+    {
+      "id": "29",
+      "root": "circum",
+      "meaning": "around",
+      "origin": "Latin",
+      "examples": [
+        "circumference",
+        "circumnavigate",
+        "circumspect"
+      ]
+    },
+    {
+      "id": "30",
+      "root": "cis",
+      "meaning": "cut",
+      "origin": "Latin",
+      "examples": [
+        "incision",
+        "precise",
+        "scissors"
+      ]
+    },
+    {
+      "id": "31",
+      "root": "cogn",
+      "meaning": "know",
+      "origin": "Latin",
+      "examples": [
+        "recognize",
+        "incognito",
+        "cognition"
+      ]
+    },
+    {
+      "id": "32",
+      "root": "corp",
+      "meaning": "body",
+      "origin": "Latin",
+      "examples": [
+        "corporate",
+        "corpse",
+        "incorporate"
+      ]
+    },
+    {
+      "id": "33",
+      "root": "cred",
+      "meaning": "believe, trust",
+      "origin": "Latin",
+      "examples": [
+        "credible",
+        "credulous",
+        "credential"
+      ]
+    },
+    {
+      "id": "34",
+      "root": "culp",
+      "meaning": "blame",
+      "origin": "Latin",
+      "examples": [
+        "culpable",
+        "exculpate",
+        "culprit"
+      ]
+    },
+    {
+      "id": "35",
+      "root": "cur",
+      "meaning": "run, care",
+      "origin": "Latin",
+      "examples": [
+        "current",
+        "concur",
+        "curator"
+      ]
+    },
+    {
+      "id": "36",
+      "root": "dict",
+      "meaning": "say",
+      "origin": "Latin",
+      "examples": [
+        "predict",
+        "contradict",
+        "verdict"
+      ]
+    },
+    {
+      "id": "37",
+      "root": "doc",
+      "meaning": "teach",
+      "origin": "Latin",
+      "examples": [
+        "doctor",
+        "doctrine",
+        "indoctrinate"
+      ]
+    },
+    {
+      "id": "38",
+      "root": "dom",
+      "meaning": "rule, home",
+      "origin": "Latin",
+      "examples": [
+        "dominate",
+        "domestic",
+        "predominant"
+      ]
+    },
+    {
+      "id": "39",
+      "root": "duc",
+      "meaning": "lead",
+      "origin": "Latin",
+      "examples": [
+        "conduct",
+        "deduce",
+        "seduce"
+      ]
+    },
+    {
+      "id": "40",
+      "root": "equ",
+      "meaning": "equal",
+      "origin": "Latin",
+      "examples": [
+        "equity",
+        "equanimity",
+        "equivocate"
+      ]
+    },
+    {
+      "id": "41",
+      "root": "fac",
+      "meaning": "make, do",
+      "origin": "Latin",
+      "examples": [
+        "factory",
+        "benefactor",
+        "facile"
+      ]
+    },
+    {
+      "id": "42",
+      "root": "fer",
+      "meaning": "carry, bear",
+      "origin": "Latin",
+      "examples": [
+        "transfer",
+        "refer",
+        "proliferate"
+      ]
+    },
+    {
+      "id": "43",
+      "root": "fid",
+      "meaning": "faith, trust",
+      "origin": "Latin",
+      "examples": [
+        "confide",
+        "diffident",
+        "perfidy"
+      ]
+    },
+    {
+      "id": "44",
+      "root": "fin",
+      "meaning": "end, limit",
+      "origin": "Latin",
+      "examples": [
+        "final",
+        "define",
+        "infinite"
+      ]
+    },
+    {
+      "id": "45",
+      "root": "fort",
+      "meaning": "strong",
+      "origin": "Latin",
+      "examples": [
+        "fortitude",
+        "fortify",
+        "fortress"
+      ]
+    },
+    {
+      "id": "46",
+      "root": "frag",
+      "meaning": "break",
+      "origin": "Latin",
+      "examples": [
+        "fragment",
+        "refract",
+        "fracture"
+      ]
+    },
+    {
+      "id": "47",
+      "root": "fus",
+      "meaning": "pour",
+      "origin": "Latin",
+      "examples": [
+        "confuse",
+        "diffuse",
+        "profuse"
+      ]
+    },
+    {
+      "id": "48",
+      "root": "grad",
+      "meaning": "step, go",
+      "origin": "Latin",
+      "examples": [
+        "progress",
+        "degrade",
+        "gradual"
+      ]
+    },
+    {
+      "id": "49",
+      "root": "greg",
+      "meaning": "flock, herd",
+      "origin": "Latin",
+      "examples": [
+        "congregate",
+        "gregarious",
+        "segregate"
+      ]
+    },
+    {
+      "id": "50",
+      "root": "ject",
+      "meaning": "throw",
+      "origin": "Latin",
+      "examples": [
+        "reject",
+        "project",
+        "conjecture"
+      ]
+    },
+    {
+      "id": "51",
+      "root": "jud",
+      "meaning": "judge",
+      "origin": "Latin",
+      "examples": [
+        "judicial",
+        "prejudice",
+        "adjudicate"
+      ]
+    },
+    {
+      "id": "52",
+      "root": "junct",
+      "meaning": "join",
+      "origin": "Latin",
+      "examples": [
+        "junction",
+        "conjunction",
+        "adjunct"
+      ]
+    },
+    {
+      "id": "53",
+      "root": "jur",
+      "meaning": "swear, law",
+      "origin": "Latin",
+      "examples": [
+        "jury",
+        "perjury",
+        "abjure"
+      ]
+    },
+    {
+      "id": "54",
+      "root": "leg",
+      "meaning": "law, read",
+      "origin": "Latin",
+      "examples": [
+        "legal",
+        "privilege",
+        "legacy"
+      ]
+    },
+    {
+      "id": "55",
+      "root": "lev",
+      "meaning": "lift, light",
+      "origin": "Latin",
+      "examples": [
+        "elevate",
+        "levity",
+        "alleviate"
+      ]
+    },
+    {
+      "id": "56",
+      "root": "liber",
+      "meaning": "free",
+      "origin": "Latin",
+      "examples": [
+        "liberty",
+        "liberal",
+        "deliver"
+      ]
+    },
+    {
+      "id": "57",
+      "root": "loc",
+      "meaning": "place",
+      "origin": "Latin",
+      "examples": [
+        "local",
+        "relocate",
+        "dislocate"
+      ]
+    },
+    {
+      "id": "58",
+      "root": "loqu",
+      "meaning": "speak",
+      "origin": "Latin",
+      "examples": [
+        "eloquent",
+        "loquacious",
+        "colloquial"
+      ]
+    },
+    {
+      "id": "59",
+      "root": "luc",
+      "meaning": "light",
+      "origin": "Latin",
+      "examples": [
+        "lucid",
+        "elucidate",
+        "translucent"
+      ]
+    },
+    {
+      "id": "60",
+      "root": "magn",
+      "meaning": "great",
+      "origin": "Latin",
+      "examples": [
+        "magnify",
+        "magnitude",
+        "magnanimous"
+      ]
+    },
+    {
+      "id": "61",
+      "root": "mal",
+      "meaning": "bad",
+      "origin": "Latin",
+      "examples": [
+        "malice",
+        "malevolent",
+        "maladroit"
+      ]
+    },
+    {
+      "id": "62",
+      "root": "man",
+      "meaning": "hand",
+      "origin": "Latin",
+      "examples": [
+        "manual",
+        "manuscript",
+        "emancipate"
+      ]
+    },
+    {
+      "id": "63",
+      "root": "mem",
+      "meaning": "mind, memory",
+      "origin": "Latin",
+      "examples": [
+        "memory",
+        "memorialize",
+        "commemorate"
+      ]
+    },
+    {
+      "id": "64",
+      "root": "mit",
+      "meaning": "send",
+      "origin": "Latin",
+      "examples": [
+        "transmit",
+        "submit",
+        "emit"
+      ]
+    },
+    {
+      "id": "65",
+      "root": "mob",
+      "meaning": "move",
+      "origin": "Latin",
+      "examples": [
+        "mobile",
+        "motivate",
+        "automobile"
+      ]
+    },
+    {
+      "id": "66",
+      "root": "mort",
+      "meaning": "death",
+      "origin": "Latin",
+      "examples": [
+        "mortal",
+        "mortify",
+        "rigor mortis"
+      ]
+    },
+    {
+      "id": "67",
+      "root": "mut",
+      "meaning": "change",
+      "origin": "Latin",
+      "examples": [
+        "mutation",
+        "transmute",
+        "commute"
+      ]
+    },
+    {
+      "id": "68",
+      "root": "nom",
+      "meaning": "name",
+      "origin": "Latin",
+      "examples": [
+        "nominate",
+        "misnomer",
+        "ignominious"
+      ]
+    },
+    {
+      "id": "69",
+      "root": "nov",
+      "meaning": "new",
+      "origin": "Latin",
+      "examples": [
+        "novelty",
+        "innovate",
+        "renovate"
+      ]
+    },
+    {
+      "id": "70",
+      "root": "oper",
+      "meaning": "work",
+      "origin": "Latin",
+      "examples": [
+        "operate",
+        "cooperate",
+        "opulent"
+      ]
+    },
+    {
+      "id": "71",
+      "root": "pac",
+      "meaning": "peace",
+      "origin": "Latin",
+      "examples": [
+        "pacify",
+        "pacific"
+      ]
+    },
+    {
+      "id": "72",
+      "root": "pass",
+      "meaning": "feel, suffer",
+      "origin": "Latin",
+      "examples": [
+        "passion",
+        "impassive",
+        "compassion"
+      ]
+    },
+    {
+      "id": "73",
+      "root": "ped",
+      "meaning": "foot (Latin); child (Greek)",
+      "origin": "Latin/Greek",
+      "examples": [
+        "pedal",
+        "pedestrian",
+        "encyclopedia"
+      ]
+    },
+    {
+      "id": "74",
+      "root": "pel",
+      "meaning": "drive, push",
+      "origin": "Latin",
+      "examples": [
+        "compel",
+        "expel",
+        "propeller"
+      ]
+    },
+    {
+      "id": "75",
+      "root": "pend",
+      "meaning": "hang",
+      "origin": "Latin",
+      "examples": [
+        "depend",
+        "pending",
+        "appendix"
+      ]
+    },
+    {
+      "id": "76",
+      "root": "pet",
+      "meaning": "seek",
+      "origin": "Latin",
+      "examples": [
+        "compete",
+        "impetus",
+        "petition"
+      ]
+    },
+    {
+      "id": "77",
+      "root": "phil",
+      "meaning": "love",
+      "origin": "Greek",
+      "examples": [
+        "philosophy",
+        "bibliophile"
+      ]
+    },
+    {
+      "id": "78",
+      "root": "plic",
+      "meaning": "fold",
+      "origin": "Latin",
+      "examples": [
+        "implicate",
+        "replicate",
+        "complicit"
+      ]
+    },
+    {
+      "id": "79",
+      "root": "pon",
+      "meaning": "place, put",
+      "origin": "Latin",
+      "examples": [
+        "component",
+        "postpone",
+        "opponent"
+      ]
+    },
+    {
+      "id": "80",
+      "root": "port",
+      "meaning": "carry",
+      "origin": "Latin",
+      "examples": [
+        "export",
+        "import",
+        "portable"
+      ]
+    },
+    {
+      "id": "81",
+      "root": "pos",
+      "meaning": "place, put",
+      "origin": "Latin",
+      "examples": [
+        "position",
+        "compose",
+        "deposit"
+      ]
+    },
+    {
+      "id": "82",
+      "root": "prim",
+      "meaning": "first",
+      "origin": "Latin",
+      "examples": [
+        "primary",
+        "primitive",
+        "primer"
+      ]
+    },
+    {
+      "id": "83",
+      "root": "pug",
+      "meaning": "fight",
+      "origin": "Latin",
+      "examples": [
+        "pugnacious",
+        "impugn",
+        "repugnant"
+      ]
+    },
+    {
+      "id": "84",
+      "root": "reg",
+      "meaning": "rule, straight",
+      "origin": "Latin",
+      "examples": [
+        "regulate",
+        "regime",
+        "derange"
+      ]
+    },
+    {
+      "id": "85",
+      "root": "rupt",
+      "meaning": "break",
+      "origin": "Latin",
+      "examples": [
+        "disrupt",
+        "abrupt",
+        "corrupt"
+      ]
+    },
+    {
+      "id": "86",
+      "root": "sci",
+      "meaning": "know",
+      "origin": "Latin",
+      "examples": [
+        "science",
+        "conscience",
+        "omniscient"
+      ]
+    },
+    {
+      "id": "87",
+      "root": "scrib",
+      "meaning": "write",
+      "origin": "Latin",
+      "examples": [
+        "describe",
+        "inscribe",
+        "proscribe"
+      ]
+    },
+    {
+      "id": "88",
+      "root": "sec",
+      "meaning": "follow",
+      "origin": "Latin",
+      "examples": [
+        "second",
+        "sequential"
+      ]
+    },
+    {
+      "id": "89",
+      "root": "sed",
+      "meaning": "sit",
+      "origin": "Latin",
+      "examples": [
+        "sedentary",
+        "preside",
+        "residue"
+      ]
+    },
+    {
+      "id": "90",
+      "root": "sens",
+      "meaning": "feel",
+      "origin": "Latin",
+      "examples": [
+        "sensitive",
+        "consensus",
+        "resent"
+      ]
+    },
+    {
+      "id": "91",
+      "root": "serv",
+      "meaning": "keep, save",
+      "origin": "Latin",
+      "examples": [
+        "conserve",
+        "preserve",
+        "observe"
+      ]
+    },
+    {
+      "id": "92",
+      "root": "spec",
+      "meaning": "look",
+      "origin": "Latin",
+      "examples": [
+        "spectator",
+        "circumspect",
+        "introspection"
+      ]
+    },
+    {
+      "id": "93",
+      "root": "spir",
+      "meaning": "breathe",
+      "origin": "Latin",
+      "examples": [
+        "inspire",
+        "conspire",
+        "respiration"
+      ]
+    },
+    {
+      "id": "94",
+      "root": "sta",
+      "meaning": "stand",
+      "origin": "Latin",
+      "examples": [
+        "static",
+        "obstacle",
+        "status"
+      ]
+    },
+    {
+      "id": "95",
+      "root": "stru",
+      "meaning": "build",
+      "origin": "Latin",
+      "examples": [
+        "construct",
+        "destroy",
+        "instrument"
+      ]
+    },
+    {
+      "id": "96",
+      "root": "tang",
+      "meaning": "touch",
+      "origin": "Latin",
+      "examples": [
+        "tangible",
+        "tangent",
+        "contingent"
+      ]
+    },
+    {
+      "id": "97",
+      "root": "temp",
+      "meaning": "time",
+      "origin": "Latin",
+      "examples": [
+        "temporary",
+        "contemporary",
+        "extemporaneous"
+      ]
+    },
+    {
+      "id": "98",
+      "root": "ten",
+      "meaning": "hold",
+      "origin": "Latin",
+      "examples": [
+        "tenant",
+        "tenacious",
+        "retention"
+      ]
+    },
+    {
+      "id": "99",
+      "root": "terr",
+      "meaning": "earth, land",
+      "origin": "Latin",
+      "examples": [
+        "terrain",
+        "territory",
+        "extraterrestrial"
+      ]
+    },
+    {
+      "id": "100",
+      "root": "tract",
+      "meaning": "pull",
+      "origin": "Latin",
+      "examples": [
+        "attract",
+        "contract",
+        "tractable"
+      ]
+    },
+    {
+      "id": "101",
+      "root": "trans",
+      "meaning": "across",
+      "origin": "Latin",
+      "examples": [
+        "transfer",
+        "transient",
+        "transcend"
+      ]
+    },
+    {
+      "id": "102",
+      "root": "uni",
+      "meaning": "one",
+      "origin": "Latin",
+      "examples": [
+        "unify",
+        "unanimous",
+        "unilateral"
+      ]
+    },
+    {
+      "id": "103",
+      "root": "vac",
+      "meaning": "empty",
+      "origin": "Latin",
+      "examples": [
+        "vacate",
+        "evacuate",
+        "vacuous"
+      ]
+    },
+    {
+      "id": "104",
+      "root": "vad",
+      "meaning": "go",
+      "origin": "Latin",
+      "examples": [
+        "invade",
+        "evade",
+        "pervade"
+      ]
+    },
+    {
+      "id": "105",
+      "root": "val",
+      "meaning": "worth, strength",
+      "origin": "Latin",
+      "examples": [
+        "value",
+        "ambivalent",
+        "prevalent"
+      ]
+    },
+    {
+      "id": "106",
+      "root": "ven",
+      "meaning": "come",
+      "origin": "Latin",
+      "examples": [
+        "convene",
+        "intervene",
+        "revenue"
+      ]
+    },
+    {
+      "id": "107",
+      "root": "ver",
+      "meaning": "truth",
+      "origin": "Latin",
+      "examples": [
+        "verify",
+        "veracity",
+        "aver"
+      ]
+    },
+    {
+      "id": "108",
+      "root": "vert",
+      "meaning": "turn",
+      "origin": "Latin",
+      "examples": [
+        "convert",
+        "avert",
+        "revert"
+      ]
+    },
+    {
+      "id": "109",
+      "root": "vid",
+      "meaning": "see",
+      "origin": "Latin",
+      "examples": [
+        "evident",
+        "provide",
+        "video"
+      ]
+    },
+    {
+      "id": "110",
+      "root": "viv",
+      "meaning": "live",
+      "origin": "Latin",
+      "examples": [
+        "vivid",
+        "revive",
+        "vivacious"
+      ]
+    },
+    {
+      "id": "111",
+      "root": "voc",
+      "meaning": "call, voice",
+      "origin": "Latin",
+      "examples": [
+        "vocabulary",
+        "advocate",
+        "equivocate"
+      ]
+    },
+    {
+      "id": "112",
+      "root": "vol",
+      "meaning": "wish, will",
+      "origin": "Latin",
+      "examples": [
+        "voluntary",
+        "malevolent",
+        "benevolent"
+      ]
+    }
+  ]
+}
