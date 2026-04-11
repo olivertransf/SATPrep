@@ -6,9 +6,13 @@
 //
 
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 struct QuizView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @ObservedObject var questionLoader: QuestionLoader
     @ObservedObject var progressManager: ProgressManager
@@ -31,6 +35,8 @@ struct QuizView: View {
     @State private var explanationHeight: CGFloat?
     @State private var answerHeights: [String: CGFloat] = [:]
     @State private var showQuestionJumper = false
+    /// macOS: measured from the question `ScrollView` / split pane for adaptive column width.
+    @State private var quizDetailPaneWidth: CGFloat = 720
 
     var currentQuestion: Question? {
         guard currentIndex < questions.count else { return nil }
@@ -41,7 +47,44 @@ struct QuizView: View {
         currentQuestion?.content.displayAnswerOptions.isEmpty == true
     }
 
-    // Track quiz-level stats
+    /// macOS always; iPad regular uses the same split-pane quiz as macOS.
+    private var useSplitPaneQuizLayout: Bool {
+        #if os(macOS)
+        true
+        #else
+        horizontalSizeClass == .regular
+        #endif
+    }
+
+    private var questionContentBlockSpacing: CGFloat {
+        useSplitPaneQuizLayout ? MacStudiumDesign.quizBlockSpacing : 20
+    }
+
+    /// Passage HTML body scale in the webview (split-pane and single-column share Mac baseline).
+    private var passageHTMLFontPoints: CGFloat { 17 }
+
+    /// Stem, explanation, answer rows: optional bump on iPad single-column only.
+    private var quizBlockHTMLFontOverride: CGFloat? {
+        #if os(iOS)
+        useSplitPaneQuizLayout ? nil : (horizontalSizeClass == .regular ? 17 : nil)
+        #else
+        nil
+        #endif
+    }
+
+    @ViewBuilder
+    private func quizHorizontalPaddingIOS<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        #if os(iOS)
+        if useSplitPaneQuizLayout {
+            content()
+        } else {
+            content().padding(.horizontal)
+        }
+        #else
+        content()
+        #endif
+    }
+
     private var answeredCount: Int {
         guard let quizId = currentQuizId,
               let state = quizStateManager.loadQuizState(id: quizId) else { return 0 }
@@ -63,9 +106,9 @@ struct QuizView: View {
             }
         }
         .navigationTitle("Quiz")
-        .navigationBarTitleDisplayMode(.inline)
+        .navInlineTitle()
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
+            ToolbarItem(placement: .navLeading) {
                 Button {
                     saveAndExit()
                 } label: {
@@ -76,7 +119,7 @@ struct QuizView: View {
                     }
                 }
             }
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .navTrailing) {
                 Button {
                     showFilters = true
                 } label: {
@@ -86,6 +129,14 @@ struct QuizView: View {
         }
         .sheet(isPresented: $showQuestionJumper) {
             questionJumperSheet
+                .presentationDetentsMediumLarge()
+        }
+        // Keyboard shortcuts (iOS 17+ / macOS 14+)
+        .onKeyPress(.leftArrow)  { previousQuestion(); return .handled }
+        .onKeyPress(.rightArrow) { nextQuestion();     return .handled }
+        .onKeyPress(.return) {
+            if !hasSubmitted { submitAnswer() }
+            return .handled
         }
         .onAppear {
             if let quizId = currentQuizId,
@@ -175,14 +226,13 @@ struct QuizView: View {
                 .padding()
             }
             .navigationTitle("Jump to Question")
-            .navigationBarTitleDisplayMode(.inline)
+            .navInlineTitle()
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { showQuestionJumper = false }
                 }
             }
         }
-        .presentationDetents([.medium, .large])
     }
 
     private func questionJumperColor(index: Int, answerState: QuestionAnswerState?) -> Color {
@@ -190,139 +240,282 @@ struct QuizView: View {
             return Color.accentColor
         }
         guard let state = answerState, state.hasSubmitted else {
-            return Color(.tertiarySystemFill)
+            return Color.tertiarySystemFill
         }
-        return state.isCorrect == true ? Color.green.opacity(colorScheme == .dark ? 0.32 : 0.22) : Color.red.opacity(colorScheme == .dark ? 0.32 : 0.22)
+        return state.isCorrect == true
+            ? Color.green.opacity(colorScheme == .dark ? 0.32 : 0.22)
+            : Color.red.opacity(colorScheme == .dark ? 0.32 : 0.22)
     }
 
     // MARK: - Question View
 
     private func questionView(question: Question) -> some View {
         VStack(spacing: 0) {
-            // Top progress bar
             progressHeader
 
-            GeometryReader { geometry in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        // Difficulty + category badge
-                        questionMetaBadges(question: question)
-                            .padding(.horizontal)
-
-                        // Stimulus/Passage
-                        if let stimulus = question.content.displayStimulus {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Label("Passage", systemImage: "text.book.closed")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal)
-                                HTMLContentView(htmlContent: stimulus, isScrollable: false, allowInteraction: false, contentHeight: $passageHeight)
-                                    .frame(height: safeHeight(passageHeight, default: 100))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 12)
-                                    .background(Color(.tertiarySystemGroupedBackground))
-                                    .cornerRadius(12)
-                                    .padding(.horizontal)
-                            }
-                        }
-
-                        // Question stem
-                        if let stem = question.content.displayStem {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Label("Question", systemImage: "questionmark.circle")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal)
-                                HTMLContentView(htmlContent: stem, isScrollable: false, allowInteraction: false, contentHeight: $questionStemHeight)
-                                    .frame(height: safeHeight(questionStemHeight, default: 100))
-                                    .padding(.horizontal)
-                            }
-                        }
-
-                        // Answer options or free-response input
-                        let answerOptions = question.content.displayAnswerOptions
-                        if !answerOptions.isEmpty {
-                            VStack(alignment: .leading, spacing: 10) {
-                                ForEach(Array(answerOptions.enumerated()), id: \.element.id) { index, option in
-                                    let label = option.label ?? String(Character(UnicodeScalar(65 + index)!))
-                                    let isCorrect = question.content.displayCorrectAnswer.contains { answer in
-                                        answer.uppercased() == label.uppercased() || answer.uppercased() == option.id.uppercased()
-                                    }
-
-                                    answerOptionView(
-                                        option: option,
-                                        index: index,
-                                        question: question,
-                                        isSelected: selectedAnswerId == option.id,
-                                        isCorrect: isCorrect,
-                                        showResult: hasSubmitted
-                                    )
-                                }
-                            }
-                            .padding(.horizontal)
-                        } else {
-                            // Free-response (grid-in) input
-                            freeResponseInputView(question: question)
-                        }
-
-                        // Submit button
-                        if !hasSubmitted {
-                            let canSubmit = answerOptions.isEmpty
-                                ? !freeResponseText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                : selectedAnswerId != nil
-                            Button(action: submitAnswer) {
-                                Text("Submit Answer")
-                                    .font(.headline)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(!canSubmit)
-                            .padding(.horizontal)
-                        } else {
-                            resultBanner(question: question)
-                                .padding(.horizontal)
-                        }
-
-                        // Explanation
-                        if showExplanation, let rationale = question.content.rationale {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Label("Explanation", systemImage: "lightbulb")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(.orange)
-                                    .padding(.horizontal)
-                                HTMLContentView(htmlContent: rationale, isScrollable: false, allowInteraction: false, contentHeight: $explanationHeight)
-                                    .frame(height: safeHeight(explanationHeight, default: 100))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 12)
-                                    .background(Color.orange.opacity(0.08))
-                                    .cornerRadius(12)
-                                    .padding(.horizontal)
-                            }
-                        }
-
-                        // Navigation buttons
-                        navigationButtons
-                            .padding(.horizontal)
-                            .padding(.bottom, 20)
-                    }
-                    .padding(.top, 12)
-                    .frame(maxWidth: min(geometry.size.width, 800))
-                    .frame(maxWidth: .infinity)
+            if useSplitPaneQuizLayout {
+                // Do NOT wrap in GeometryReader — it can report zero size during
+                // the initial layout pass of a split column, collapsing WKWebView widths.
+                splitPaneQuestionLayout(question: question)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                GeometryReader { geometry in
+                    iOSQuestionScrollView(question: question, geometry: geometry)
                 }
             }
         }
+    }
+
+    // MARK: - Split-pane layout (macOS + iPad regular)
+
+    /// Questions with a stimulus get passage left, question + answers right (SAT-style).
+    /// Uses flexible HStack sizing (no GeometryReader) to avoid zero-width collapse on first layout.
+    @ViewBuilder
+    private func splitPaneQuestionLayout(question: Question) -> some View {
+        let hasStimulus = question.content.displayStimulus != nil
+        let columnMax = LayoutMetrics.quizQuestionColumnMaxWidth(paneWidth: quizDetailPaneWidth)
+
+        if hasStimulus {
+            HStack(spacing: 0) {
+                // Left pane — passage
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Passage", systemImage: "text.book.closed")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(.secondary)
+                            .textCase(.uppercase)
+                            .tracking(0.4)
+                        if let stimulus = question.content.displayStimulus {
+                            HTMLContentView(
+                                htmlContent: stimulus,
+                                isScrollable: false,
+                                allowInteraction: false,
+                                fontSizeOverride: passageHTMLFontPoints,
+                                contentProfile: .passage,
+                                contentHeight: $passageHeight
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(minHeight: safeHeight(passageHeight, default: 200))
+                        }
+                    }
+                    .padding(.horizontal, MacStudiumDesign.quizPanePaddingH)
+                    .padding(.vertical, MacStudiumDesign.quizPanePaddingV)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minWidth: 260)
+                .background(Color.secondarySystemGroupedBackground)
+
+                Divider()
+
+                // Right pane — question + answers + nav
+                ScrollView {
+                    questionAndAnswersContent(question: question)
+                        .padding(.vertical, MacStudiumDesign.quizPanePaddingV)
+                        .padding(.horizontal, MacStudiumDesign.quizPanePaddingH)
+                        .frame(maxWidth: columnMax)
+                        .frame(maxWidth: .infinity)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minWidth: 320)
+                .trackQuizDetailPaneWidth($quizDetailPaneWidth)
+            }
+        } else {
+            ScrollView {
+                questionAndAnswersContent(question: question)
+                    .padding(.top, MacStudiumDesign.quizPanePaddingV)
+                    .padding(.horizontal, MacStudiumDesign.quizPanePaddingH)
+                    .frame(maxWidth: columnMax)
+                    .frame(maxWidth: .infinity)
+            }
+            .trackQuizDetailPaneWidth($quizDetailPaneWidth)
+        }
+    }
+
+    // MARK: - iOS single-column layout
+
+    private func iOSQuestionScrollView(question: Question, geometry: GeometryProxy) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                questionMetaBadges(question: question)
+                    .padding(.horizontal)
+
+                if let stimulus = question.content.displayStimulus {
+                    VStack(alignment: .leading, spacing: 8) {
+                        sectionLabel("Passage", systemImage: "text.book.closed")
+                            .padding(.horizontal)
+                        HTMLContentView(
+                            htmlContent: stimulus,
+                            isScrollable: false,
+                            allowInteraction: false,
+                            fontSizeOverride: passageHTMLFontPoints,
+                            contentProfile: .passage,
+                            contentHeight: $passageHeight
+                        )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(height: safeHeight(passageHeight, default: 100))
+                            .padding(.horizontal, 22)
+                            .padding(.vertical, 22)
+                            .background(Color.tertiarySystemGroupedBackground)
+                            .cornerRadius(12)
+                            .padding(.horizontal)
+                    }
+                }
+
+                questionAndAnswersContent(question: question)
+            }
+            .padding(.top, 12)
+            .frame(maxWidth: min(geometry.size.width, 800))
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    // MARK: - Shared question + answers content
+
+    @ViewBuilder
+    private func questionAndAnswersContent(question: Question) -> some View {
+        let answerOptions = question.content.displayAnswerOptions
+
+        VStack(alignment: .leading, spacing: questionContentBlockSpacing) {
+            if useSplitPaneQuizLayout {
+                questionMetaBadges(question: question)
+            }
+
+            // Question stem
+            if let stem = question.content.displayStem {
+                VStack(alignment: .leading, spacing: 8) {
+                    quizHorizontalPaddingIOS {
+                        sectionLabel("Question", systemImage: "questionmark.circle")
+                    }
+                    quizHorizontalPaddingIOS {
+                        HTMLContentView(
+                            htmlContent: stem,
+                            isScrollable: false,
+                            allowInteraction: false,
+                            fontSizeOverride: quizBlockHTMLFontOverride,
+                            contentProfile: .quizFigures,
+                            contentHeight: $questionStemHeight
+                        )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(height: safeHeight(questionStemHeight, default: 100))
+                    }
+                }
+            }
+
+            // Answer options or free-response input
+            if !answerOptions.isEmpty {
+                quizHorizontalPaddingIOS {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(Array(answerOptions.enumerated()), id: \.element.id) { index, option in
+                            let label = option.label ?? String(Character(UnicodeScalar(65 + index)!))
+                            let isCorrect = question.content.displayCorrectAnswer.contains { answer in
+                                answer.uppercased() == label.uppercased() || answer.uppercased() == option.id.uppercased()
+                            }
+                            answerOptionView(
+                                option: option,
+                                index: index,
+                                question: question,
+                                isSelected: selectedAnswerId == option.id,
+                                isCorrect: isCorrect,
+                                showResult: hasSubmitted
+                            )
+                        }
+                    }
+                }
+            } else {
+                freeResponseInputView(question: question)
+            }
+
+            // Submit button
+            if !hasSubmitted {
+                let canSubmit = answerOptions.isEmpty
+                    ? !freeResponseText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    : selectedAnswerId != nil
+                quizHorizontalPaddingIOS {
+                    Button(action: submitAnswer) {
+                        Text("Submit Answer")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .modifier(QuizSplitPaneLargeControlSize(enabled: useSplitPaneQuizLayout))
+                    .disabled(!canSubmit)
+                }
+            } else {
+                quizHorizontalPaddingIOS {
+                    resultBanner(question: question)
+                }
+            }
+
+            // Explanation (top-level or nested under `answer` in JSON)
+            if showExplanation {
+                if let rationale = question.content.displayRationale {
+                    VStack(alignment: .leading, spacing: 8) {
+                        quizHorizontalPaddingIOS {
+                            sectionLabel("Explanation", systemImage: "lightbulb.fill")
+                                .foregroundColor(.orange)
+                        }
+                        quizHorizontalPaddingIOS {
+                            HTMLContentView(
+                                htmlContent: rationale,
+                                isScrollable: false,
+                                allowInteraction: false,
+                                fontSizeOverride: quizBlockHTMLFontOverride,
+                                contentProfile: .quizFigures,
+                                contentHeight: $explanationHeight
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(height: safeHeight(explanationHeight, default: 100))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 16)
+                            .background(Color.orange.opacity(0.08))
+                            .cornerRadius(12)
+                        }
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        quizHorizontalPaddingIOS {
+                            sectionLabel("Explanation", systemImage: "lightbulb.fill")
+                                .foregroundColor(.orange)
+                        }
+                        quizHorizontalPaddingIOS {
+                            Text("No written explanation is included for this item.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.orange.opacity(0.06))
+                                .cornerRadius(12)
+                        }
+                    }
+                }
+            }
+
+            quizHorizontalPaddingIOS {
+                navigationButtons
+            }
+            .padding(.bottom, useSplitPaneQuizLayout ? 16 : 20)
+        }
+    }
+
+    private func sectionLabel(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(useSplitPaneQuizLayout ? Font.subheadline.weight(.semibold) : Font.caption.weight(.semibold))
+            .foregroundColor(.secondary)
+            .textCase(.uppercase)
+            .tracking(0.4)
     }
 
     // MARK: - Progress Header
 
     private var progressHeader: some View {
         VStack(spacing: 8) {
-            // Progress bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Rectangle()
-                        .fill(Color(.systemGray5))
+                        .fill(Color.systemGray5)
                     Rectangle()
                         .fill(Color.blue)
                         .frame(width: geo.size.width * CGFloat(currentIndex + 1) / CGFloat(max(questions.count, 1)))
@@ -330,16 +523,22 @@ struct QuizView: View {
             }
             .frame(height: 3)
 
-            // Question counter + stats
             HStack {
                 Button {
                     showQuestionJumper = true
                 } label: {
-                    HStack(spacing: 4) {
-                        Text("Q \(currentIndex + 1)/\(questions.count)")
-                            .font(.subheadline.weight(.semibold))
-                        Image(systemName: "chevron.down")
-                            .font(.caption2)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text("Q \(currentIndex + 1)/\(questions.count)")
+                                .font(.subheadline.weight(.semibold))
+                            Image(systemName: "chevron.down")
+                                .font(.caption2)
+                        }
+                        if let qid = currentQuestion?.questionId {
+                            Text("ID: \(qid)")
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     .foregroundColor(.primary)
                 }
@@ -357,7 +556,7 @@ struct QuizView: View {
                     }
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, useSplitPaneQuizLayout ? MacStudiumDesign.quizProgressHeaderPaddingH : 16)
         }
     }
 
@@ -397,34 +596,35 @@ struct QuizView: View {
     // MARK: - Free Response Input
 
     private func freeResponseInputView(question: Question) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Your Answer", systemImage: "pencil")
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(.secondary)
+        quizHorizontalPaddingIOS {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Your Answer", systemImage: "pencil")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(.secondary)
 
-            HStack(spacing: 12) {
-                TextField("e.g. 5, 1/2, 3.14", text: $freeResponseText)
-                    .textFieldStyle(.roundedBorder)
-                    .disabled(hasSubmitted)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .font(.body.monospacedDigit())
+                HStack(spacing: 12) {
+                    TextField("e.g. 5, 1/2, 3.14", text: $freeResponseText)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(hasSubmitted)
+                        .autocorrectionDisabled()
+                        .autocapitalizationOff()
+                        .font(.body.monospacedDigit())
 
-                if hasSubmitted {
-                    let isCorrect = getCurrentQuestionCorrectness() == true
-                    Image(systemName: isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .foregroundColor(isCorrect ? .green : .red)
-                        .font(.title3)
+                    if hasSubmitted {
+                        let isCorrect = getCurrentQuestionCorrectness() == true
+                        Image(systemName: isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(isCorrect ? .green : .red)
+                            .font(.title3)
+                    }
+                }
+
+                if !hasSubmitted {
+                    Text("Fractions (e.g. 3/4), decimals (.75), and whole numbers are all accepted.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
-
-            if !hasSubmitted {
-                Text("Fractions (e.g. 3/4), decimals (.75), and whole numbers are all accepted.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
         }
-        .padding(.horizontal)
     }
 
     // MARK: - Result Banner
@@ -471,14 +671,14 @@ struct QuizView: View {
             if showResult && isCorrect { return .green }
             if showResult && isSelected && !isCorrect { return .red }
             if isSelected { return .blue }
-            return Color(.systemGray4)
+            return Color.systemGray4
         }()
 
         let bgColor: Color = {
             if showResult && isCorrect { return .green.opacity(0.08) }
             if showResult && isSelected && !isCorrect { return .red.opacity(0.08) }
             if isSelected { return .blue.opacity(0.08) }
-            return Color(.secondarySystemGroupedBackground)
+            return Color.secondarySystemGroupedBackground
         }()
 
         return Button(action: {
@@ -486,42 +686,52 @@ struct QuizView: View {
                 selectedAnswerId = option.id
             }
         }) {
-            HStack(alignment: .top, spacing: 12) {
-                // Label circle
+            HStack(alignment: .top, spacing: useSplitPaneQuizLayout ? 16 : 12) {
                 Text(label)
-                    .font(.subheadline.weight(.bold))
-                    .frame(width: 32, height: 32, alignment: .center)
-                    .background(isSelected ? (showResult ? (isCorrect ? Color.green : Color.red) : Color.blue) : Color(.systemGray5))
+                    .font(useSplitPaneQuizLayout ? Font.body.weight(.bold) : Font.subheadline.weight(.bold))
+                    .frame(
+                        width: useSplitPaneQuizLayout ? 40 : 32,
+                        height: useSplitPaneQuizLayout ? 40 : 32,
+                        alignment: .center
+                    )
+                    .background(isSelected ? (showResult ? (isCorrect ? Color.green : Color.red) : Color.blue) : Color.systemGray5)
                     .foregroundColor(isSelected ? .white : .primary)
                     .clipShape(Circle())
 
-                // Content
-                HTMLContentView(htmlContent: option.content, isScrollable: false, allowInteraction: false, contentHeight: answerHeight)
-                    .frame(height: safeHeight(answerHeight.wrappedValue, default: 40))
+                HTMLContentView(
+                    htmlContent: option.content,
+                    isScrollable: false,
+                    allowInteraction: false,
+                    compact: true,
+                    fontSizeOverride: quizBlockHTMLFontOverride,
+                    contentProfile: .quizFigures,
+                    contentHeight: answerHeight
+                )
+                    .frame(minWidth: 1)
+                    .frame(height: safeHeight(answerHeight.wrappedValue, default: useSplitPaneQuizLayout ? 52 : 40))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .allowsHitTesting(false)
 
-                // Result indicator
                 if showResult {
                     if isCorrect {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
-                            .font(.title3)
+                            .font(useSplitPaneQuizLayout ? Font.title2 : Font.title3)
                     } else if isSelected && !isCorrect {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.red)
-                            .font(.title3)
+                            .font(useSplitPaneQuizLayout ? Font.title2 : Font.title3)
                     }
                 }
             }
-            .padding(12)
+            .padding(useSplitPaneQuizLayout ? 14 : 12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: useSplitPaneQuizLayout ? 14 : 12)
                     .fill(bgColor)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: useSplitPaneQuizLayout ? 14 : 12)
                             .stroke(borderColor, lineWidth: isSelected || (showResult && isCorrect) ? 2 : 1)
                     )
             )
@@ -545,6 +755,7 @@ struct QuizView: View {
                 .padding(.vertical, 12)
             }
             .buttonStyle(.bordered)
+            .modifier(QuizSplitPaneLargeControlSize(enabled: useSplitPaneQuizLayout))
             .disabled(currentIndex == 0)
 
             Button {
@@ -558,6 +769,7 @@ struct QuizView: View {
                 .padding(.vertical, 12)
             }
             .buttonStyle(.borderedProminent)
+            .modifier(QuizSplitPaneLargeControlSize(enabled: useSplitPaneQuizLayout))
             .disabled(currentIndex >= questions.count - 1)
         }
     }
@@ -575,7 +787,6 @@ struct QuizView: View {
 
         let isCorrect: Bool
         if answerOptions.isEmpty {
-            // Free response — store the entered text as the selected "answer id"
             let trimmed = freeResponseText.trimmingCharacters(in: .whitespacesAndNewlines)
             selectedAnswerId = trimmed
             isCorrect = checkFreeResponseCorrect(text: trimmed, correctAnswers: correctAnswers)
@@ -594,28 +805,30 @@ struct QuizView: View {
         saveQuizState()
     }
 
-    private func previousQuestion() {
-        if currentIndex > 0 {
-            saveCurrentQuestionState()
-            currentIndex -= 1
-            restoreQuestionState()
-            if let question = currentQuestion {
-                progressManager.markSeen(questionId: question.questionId)
-            }
-            saveQuizState()
+    @discardableResult
+    private func previousQuestion() -> Bool {
+        guard currentIndex > 0 else { return false }
+        saveCurrentQuestionState()
+        currentIndex -= 1
+        restoreQuestionState()
+        if let question = currentQuestion {
+            progressManager.markSeen(questionId: question.questionId)
         }
+        saveQuizState()
+        return true
     }
 
-    private func nextQuestion() {
-        if currentIndex < questions.count - 1 {
-            saveCurrentQuestionState()
-            currentIndex += 1
-            restoreQuestionState()
-            if let question = currentQuestion {
-                progressManager.markSeen(questionId: question.questionId)
-            }
-            saveQuizState()
+    @discardableResult
+    private func nextQuestion() -> Bool {
+        guard currentIndex < questions.count - 1 else { return false }
+        saveCurrentQuestionState()
+        currentIndex += 1
+        restoreQuestionState()
+        if let question = currentQuestion {
+            progressManager.markSeen(questionId: question.questionId)
         }
+        saveQuizState()
+        return true
     }
 
     private func resetQuestionState() {
@@ -656,12 +869,9 @@ struct QuizView: View {
         selectedAnswerId = answerState.selectedAnswerId
         hasSubmitted = answerState.hasSubmitted
         showExplanation = answerState.hasSubmitted
-        // Restore free-response text from the saved answer id
-        if question.content.displayAnswerOptions.isEmpty {
-            freeResponseText = answerState.selectedAnswerId ?? ""
-        } else {
-            freeResponseText = ""
-        }
+        freeResponseText = question.content.displayAnswerOptions.isEmpty
+            ? (answerState.selectedAnswerId ?? "")
+            : ""
         passageHeight = nil
         questionStemHeight = nil
         explanationHeight = nil
@@ -675,7 +885,6 @@ struct QuizView: View {
         let correctAnswers = question.content.displayCorrectAnswer
         let answerOptions = question.content.displayAnswerOptions
 
-        // Free response — selectedAnswerId holds the submitted text
         if answerOptions.isEmpty {
             return checkFreeResponseCorrect(text: selectedId, correctAnswers: correctAnswers)
         }
@@ -685,58 +894,52 @@ struct QuizView: View {
         let selectedLabel = selectedOption.label ?? String(Character(UnicodeScalar(65 + selectedIndex)!))
 
         return correctAnswers.contains { answer in
-            return answer.uppercased() == selectedLabel.uppercased() || answer.uppercased() == selectedId.uppercased()
+            answer.uppercased() == selectedLabel.uppercased() || answer.uppercased() == selectedId.uppercased()
         }
     }
 
     // MARK: - Free Response Helpers
 
-    /// Flexible comparison: exact match, numeric equivalence, fraction↔decimal, etc.
     private func checkFreeResponseCorrect(text: String, correctAnswers: [String]) -> Bool {
         let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty else { return false }
 
         for correct in correctAnswers {
             let normalizedCorrect = correct.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            // Case-insensitive exact match
-            if normalized.caseInsensitiveCompare(normalizedCorrect) == .orderedSame {
-                return true
-            }
-
-            // Numeric equivalence (handles 0.5 == .5 == 1/2 == 2/4)
+            if normalized.caseInsensitiveCompare(normalizedCorrect) == .orderedSame { return true }
             if let userVal = parseNumericAnswer(normalized),
                let correctVal = parseNumericAnswer(normalizedCorrect),
-               abs(userVal - correctVal) < 0.0001 {
-                return true
-            }
+               abs(userVal - correctVal) < 0.0001 { return true }
         }
         return false
     }
 
     private func parseNumericAnswer(_ s: String) -> Double? {
-        // Direct parse
         if let d = Double(s) { return d }
-        // Leading decimal: ".5" → "0.5"
         if s.hasPrefix("."), let d = Double("0" + s) { return d }
-        // Fraction: "1/2"
         let parts = s.split(separator: "/", maxSplits: 1)
         if parts.count == 2,
            let num = Double(parts[0].trimmingCharacters(in: .whitespaces)),
            let denom = Double(parts[1].trimmingCharacters(in: .whitespaces)),
-           denom != 0 {
-            return num / denom
-        }
+           denom != 0 { return num / denom }
         return nil
     }
 
     // MARK: - Utilities
 
     private func safeHeight(_ height: CGFloat?, default: CGFloat = 100) -> CGFloat {
-        guard let height = height, height.isFinite && height > 0 && height < 10000 else {
-            return `default`
+        let raw: CGFloat
+        if let height = height, height.isFinite && height > 0 && height < 10000 {
+            raw = max(height, `default`)
+        } else {
+            raw = `default`
         }
-        return max(height, `default`)
+        #if os(iOS)
+        let scale = UIScreen.main.scale
+        return (raw * scale).rounded(.toNearestOrAwayFromZero) / scale
+        #else
+        return raw
+        #endif
     }
 
     private func saveAndExit() {
@@ -776,5 +979,17 @@ struct QuizView: View {
         )
         currentQuizId = quizId
         quizStateManager.saveQuizState(state)
+    }
+}
+
+private struct QuizSplitPaneLargeControlSize: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.controlSize(.large)
+        } else {
+            content
+        }
     }
 }

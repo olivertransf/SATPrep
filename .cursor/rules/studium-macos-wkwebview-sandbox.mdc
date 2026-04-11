@@ -1,0 +1,7 @@
+---
+description: macOS App Sandbox + WKWebView in Studium
+globs: Studium/**/*.swift, Studium/**/*.entitlements
+---
+
+- The Studium macOS target uses **App Sandbox** (`ENABLE_APP_SANDBOX`). Sandboxed macOS apps need **`com.apple.security.network.client`** in `Studium.entitlements` for **WKWebView** to run its networking stack and load subresources (e.g. MathJax from a CDN). Without it, HTML from `loadHTMLString` can stay **blank** while the same code works on iOS/iPadOS.
+- Prefer a non-nil **`baseURL`** for `loadHTMLString` when the document loads external scripts (e.g. HTTPS CDN).

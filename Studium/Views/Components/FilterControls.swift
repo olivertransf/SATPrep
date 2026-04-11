@@ -11,9 +11,9 @@ enum FilterPanelMetrics {
     static let formCardCorner: CGFloat = 12
     static let mainPanelCorner: CGFloat = 14
     static let formPadding: CGFloat = 12
-    /// Wide enough for title + play/trash icon column.
-    static let continueCardWidth: CGFloat = 216
-    static let continueCardHeight: CGFloat = 140
+    static let continueCardWidth: CGFloat = 320
+    /// Minimum height so title + progress + Resume / Delete row is not clipped.
+    static let continueCardMinHeight: CGFloat = 256
 }
 
 /// Uppercase strip title (Continue, Filters, …).
@@ -22,7 +22,13 @@ struct FilterStripSectionTitle: View {
 
     var body: some View {
         Text(text)
-            .font(.caption2.weight(.semibold))
+            .font({
+                #if os(macOS)
+                MacStudiumDesign.sectionEyebrow
+                #else
+                Font.footnote.weight(.semibold)
+                #endif
+            }())
             .foregroundStyle(.secondary)
             .textCase(.uppercase)
             .tracking(0.5)
@@ -38,7 +44,13 @@ struct FilterGroupHeading: View {
 
     var body: some View {
         Label(title, systemImage: systemImage)
-            .font(.caption.weight(.semibold))
+            .font({
+                #if os(macOS)
+                MacStudiumDesign.sidebarGroupTitle
+                #else
+                Font.subheadline.weight(.semibold)
+                #endif
+            }())
             .foregroundStyle(.primary)
             .labelStyle(.titleAndIcon)
             .tint(tint)
@@ -81,7 +93,7 @@ struct FilterFormCard<Content: View>: View {
         }
         .padding(FilterPanelMetrics.formPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.secondarySystemGroupedBackground)
         .clipShape(RoundedRectangle(cornerRadius: FilterPanelMetrics.formCardCorner))
     }
 }
@@ -99,19 +111,39 @@ struct FilterChipButton: View {
     var maxTextWidth: CGFloat? = nil
     let action: () -> Void
 
+    private var chipMinHeight: CGFloat {
+        #if os(macOS)
+        MacStudiumDesign.filterChipMinHeight
+        #else
+        36
+        #endif
+    }
+
     var body: some View {
         Button(action: action) {
             Group {
                 if fillsGridCell {
-                    chipText.frame(maxWidth: .infinity, minHeight: 32, alignment: .center)
+                    chipText.frame(maxWidth: .infinity, minHeight: chipMinHeight, alignment: .center)
                 } else if let maxTextWidth {
-                    chipText.frame(maxWidth: maxTextWidth, minHeight: 32, alignment: .center)
+                    chipText.frame(maxWidth: maxTextWidth, minHeight: chipMinHeight, alignment: .center)
                 } else {
-                    chipText.frame(minHeight: 32, alignment: .center)
+                    chipText.frame(minHeight: chipMinHeight, alignment: .center)
                 }
             }
-            .padding(.horizontal, fillsGridCell ? 8 : 12)
-            .padding(.vertical, 6)
+            .padding(.horizontal, {
+                #if os(macOS)
+                fillsGridCell ? MacStudiumDesign.filterChipHPadding : 14
+                #else
+                fillsGridCell ? 8 : 12
+                #endif
+            }())
+            .padding(.vertical, {
+                #if os(macOS)
+                MacStudiumDesign.filterChipVPadding
+                #else
+                6
+                #endif
+            }())
             .background(FilterStyle.chipFill(selected: isSelected, accent: accent, colorScheme: colorScheme))
             .clipShape(RoundedRectangle(cornerRadius: FilterStyle.chipCorner))
             .overlay(
@@ -127,11 +159,17 @@ struct FilterChipButton: View {
 
     private var chipText: some View {
         Text(title)
-            .font(.caption.weight(.medium))
+            .font({
+                #if os(macOS)
+                Font.body.weight(.medium)
+                #else
+                Font.subheadline.weight(.medium)
+                #endif
+            }())
             .multilineTextAlignment(.center)
             .foregroundStyle(.primary)
             .lineLimit(fillsGridCell ? 4 : 2)
-            .minimumScaleFactor(0.82)
+            .minimumScaleFactor(0.88)
     }
 }
 
@@ -144,13 +182,31 @@ struct FilterBadge: View {
 
     var body: some View {
         Text(text)
-            .font(.caption.weight(.medium))
+            .font({
+                #if os(macOS)
+                Font.subheadline.weight(.medium)
+                #else
+                Font.caption.weight(.medium)
+                #endif
+            }())
             .foregroundStyle(.primary)
             .lineLimit(2)
             .multilineTextAlignment(.center)
             .minimumScaleFactor(0.85)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.horizontal, {
+                #if os(macOS)
+                12
+                #else
+                10
+                #endif
+            }())
+            .padding(.vertical, {
+                #if os(macOS)
+                6
+                #else
+                5
+                #endif
+            }())
             .background(FilterStyle.chipFill(selected: true, accent: accent, colorScheme: colorScheme))
             .clipShape(RoundedRectangle(cornerRadius: FilterStyle.chipCorner))
             .overlay(
@@ -177,24 +233,60 @@ struct FilterOrderChoiceButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
                     Image(systemName: systemImage)
-                        .font(.caption.weight(.semibold))
+                        .font({
+                            #if os(macOS)
+                            Font.subheadline.weight(.semibold)
+                            #else
+                            Font.caption.weight(.semibold)
+                            #endif
+                        }())
                         .foregroundStyle(isSelected ? tint : .secondary)
                     Text(title)
-                        .font(.caption.weight(.semibold))
+                        .font({
+                            #if os(macOS)
+                            Font.subheadline.weight(.semibold)
+                            #else
+                            Font.caption.weight(.semibold)
+                            #endif
+                        }())
                         .foregroundStyle(.primary)
                 }
                 Text(subtitle)
-                    .font(.caption2)
+                    .font({
+                        #if os(macOS)
+                        Font.caption.weight(.medium)
+                        #else
+                        Font.caption2
+                        #endif
+                    }())
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .lineLimit(2)
             }
-            .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: {
+                #if os(macOS)
+                MacStudiumDesign.orderChoiceMinHeight
+                #else
+                50
+                #endif
+            }(), alignment: .leading)
+            .padding(.horizontal, {
+                #if os(macOS)
+                MacStudiumDesign.orderChoicePaddingH
+                #else
+                10
+                #endif
+            }())
+            .padding(.vertical, {
+                #if os(macOS)
+                MacStudiumDesign.orderChoicePaddingV
+                #else
+                8
+                #endif
+            }())
             .background(FilterStyle.orderCardFill(selected: isSelected, accent: tint, colorScheme: colorScheme))
             .clipShape(RoundedRectangle(cornerRadius: FilterStyle.cardCorner))
             .overlay(
@@ -223,53 +315,90 @@ struct ContinueSavedQuizCard: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(2)
-                    .truncationMode(.tail)
-                    .minimumScaleFactor(0.88)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
+        VStack(alignment: .leading, spacing: {
+            #if os(macOS)
+            MacStudiumDesign.continueCardSpacing
+            #else
+            12
+            #endif
+        }()) {
+            Text(title)
+                .font({
+                    #if os(macOS)
+                    MacStudiumDesign.continueCardTitle
+                    #else
+                    Font.title3.weight(.semibold)
+                    #endif
+                }())
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.leading)
+                .lineLimit(4)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .contentShape(Rectangle())
+                .onTapGesture { onPlay() }
 
+            VStack(alignment: .leading, spacing: 8) {
                 ProgressView(value: progress)
                     .tint(Color.accentColor)
-
-                Text("\(answered)/\(total)")
-                    .font(.caption2)
+                    #if os(macOS)
+                    .controlSize(.regular)
+                    #else
+                    .controlSize(.small)
+                    #endif
+                Text("\(answered) of \(total) answered")
+                    .font({
+                        #if os(macOS)
+                        MacStudiumDesign.continueCardMeta
+                        #else
+                        Font.body
+                        #endif
+                    }())
                     .foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
             .contentShape(Rectangle())
             .onTapGesture { onPlay() }
 
-            VStack(spacing: 2) {
+            HStack(spacing: 10) {
                 Button(action: onPlay) {
-                    Image(systemName: "play.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(Color.accentColor)
-                        .frame(width: 40, height: 40)
+                    Label("Resume", systemImage: "play.fill")
+                        .font({
+                            #if os(macOS)
+                            Font.headline.weight(.semibold)
+                            #else
+                            Font.body.weight(.semibold)
+                            #endif
+                        }())
+                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Resume quiz")
+                .buttonStyle(.borderedProminent)
+                #if os(macOS)
+                .controlSize(.large)
+                #endif
 
                 Button(role: .destructive, action: onDelete) {
                     Image(systemName: "trash")
-                        .font(.body.weight(.medium))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(Color(.systemRed))
-                        .frame(width: 40, height: 40)
+                        .font(.body)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.bordered)
+                .tint(.red)
                 .accessibilityLabel("Delete saved quiz")
             }
         }
-        .padding(10)
-        .frame(width: FilterPanelMetrics.continueCardWidth, height: FilterPanelMetrics.continueCardHeight, alignment: .topLeading)
-        .background(Color(.tertiarySystemFill))
+        .padding({
+            #if os(macOS)
+            MacStudiumDesign.continueCardPadding
+            #else
+            18
+            #endif
+        }())
+        #if os(macOS)
+        .frame(width: MacStudiumDesign.continueCardWidth, alignment: .topLeading)
+        #else
+        .frame(width: FilterPanelMetrics.continueCardWidth, alignment: .topLeading)
+        .frame(minHeight: FilterPanelMetrics.continueCardMinHeight, alignment: .topLeading)
+        #endif
+        .background(Color.secondarySystemGroupedBackground)
         .clipShape(RoundedRectangle(cornerRadius: FilterStyle.cardCorner))
         .overlay(
             RoundedRectangle(cornerRadius: FilterStyle.cardCorner)

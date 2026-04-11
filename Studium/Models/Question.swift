@@ -100,6 +100,16 @@ struct Question: Codable, Identifiable {
         try container.encode(module, forKey: .module)
         try container.encode(content, forKey: .content)
     }
+
+    /// Official Bluebook-style items in this bank are indicated by a non-empty `ibn` (item booklet number).
+    /// Some exports also set `content.origin` to mention Bluebook; `origin` in the bundled bank is usually `proteus` / `manifold` only.
+    nonisolated var isBluebookTagged: Bool {
+        if let raw = ibn?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty {
+            return true
+        }
+        guard let origin = content.origin?.lowercased() else { return false }
+        return origin.contains("bluebook") || origin.contains("blue book")
+    }
 }
 
 // MARK: - Question Content
@@ -181,6 +191,17 @@ struct QuestionContent: Codable {
             return [correctChoice.uppercased()]
         }
         return []
+    }
+
+    /// Rationale at top level or nested under `answer` (many bank exports only set the latter).
+    var displayRationale: String? {
+        if let r = rationale?.trimmingCharacters(in: .whitespacesAndNewlines), !r.isEmpty {
+            return rationale
+        }
+        if let r = answer?.rationale?.trimmingCharacters(in: .whitespacesAndNewlines), !r.isEmpty {
+            return answer?.rationale
+        }
+        return nil
     }
 }
 

@@ -1,0 +1,18 @@
+---
+description: Studium — iOS Reference search placement, quiz HTML padding, MathJax on iPad
+globs: Studium/**/*.swift
+alwaysApply: false
+---
+
+# iOS Reference + HTML / MathJax
+
+- **Reference (iPhone / iPad):** Keep search inside the same content column as the reference list (first `List` section), not `NavigationStack.searchable` sidebar placement.
+- **Reference layout:** Use native inset grouped `List`, segmented `Picker` for Math vs R&W, and `DisclosureGroup` sections. Keep macOS on chip strip + `ReferenceSectionCard` scroll.
+- **Quiz HTML padding:** Question stem and explanations use `HTMLContentProfile.quizFigures` with `compact: false` so `studium-html-comfortable` applies.
+- **MathJax version:** Use MathJax 3 config only; avoid MathJax 4-only options unless script URL is upgraded.
+- **iPad math rendering:** Prefer `tex-mml-chtml.js` (CHTML output) for crisp display and aligned math; avoid SVG downscaling paths that become blurry.
+- **Robustness:** Include `noerrors` package and keep delayed post-typeset height callbacks so malformed or slow display math does not break the rest of the block.
+
+- **Quiz debugging affordance:** Show current `questionId` in the quiz progress/header row near `Q current/total` so broken render reports can be reproduced quickly.
+
+- **SAT image math:** Treat `img.math-img` / `.math-container` equations as inline math (no global `img { display:block; margin:auto }`), and exclude them from diagram-only image styling selectors.

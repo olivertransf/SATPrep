@@ -19,12 +19,29 @@ struct MainTabView: View {
 
     var quizQuestions: [Question] {
         guard !activeQuizQuestionIds.isEmpty else { return [] }
-        let dict = Dictionary(uniqueKeysWithValues: questionLoader.questions.map { ($0.questionId, $0) })
-        let restored = activeQuizQuestionIds.compactMap { dict[$0] }
+        let byId = questionLoader.questionsById
+        let restored = activeQuizQuestionIds.compactMap { byId[$0] }
         return restored.count == activeQuizQuestionIds.count ? restored : []
     }
 
     var body: some View {
+        // sidebarAdaptable gives a proper sidebar on macOS 15+ and iPad (iOS 18+).
+        // Falls back to standard tab bar on older OS versions.
+        if #available(iOS 18.0, macOS 15.0, *) {
+            sidebarTabs
+        } else {
+            tabs
+        }
+    }
+
+    @available(iOS 18.0, macOS 15.0, *)
+    private var sidebarTabs: some View {
+        tabs.tabViewStyle(.sidebarAdaptable)
+    }
+
+    // MARK: - Tab content (shared)
+
+    private var tabs: some View {
         TabView {
             // Practice Tab
             NavigationStack {
@@ -54,7 +71,7 @@ struct MainTabView: View {
                         }
                     )
                     .navigationTitle("Practice")
-                    .navigationBarTitleDisplayMode(.large)
+                    .navLargeTitle()
                 }
             }
             .tabItem {
@@ -79,7 +96,7 @@ struct MainTabView: View {
             NavigationStack {
                 DesmosCalculatorView()
                     .navigationTitle("Desmos")
-                    .navigationBarTitleDisplayMode(.inline)
+                    .navInlineTitle()
             }
             .tabItem {
                 Label("Desmos", systemImage: "function")

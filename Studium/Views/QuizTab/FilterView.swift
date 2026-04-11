@@ -23,6 +23,7 @@ struct FilterView: View {
     @State private var selectedDifficulty: String?
     @State private var selectedAnswerStatus: FilterOptions.AnswerStatus
     @State private var selectedBluebook: FilterOptions.BluebookFilter?
+    @State private var selectedCbVerified: FilterOptions.CBVerifiedInactiveFilter?
     @State private var shuffled: Bool
     @State private var questionLimit: Int?
     @State private var useQuestionLimit: Bool
@@ -47,6 +48,7 @@ struct FilterView: View {
         _selectedDifficulty = State(initialValue: filters.wrappedValue.difficulty)
         _selectedAnswerStatus = State(initialValue: filters.wrappedValue.answerStatus)
         _selectedBluebook = State(initialValue: filters.wrappedValue.isBluebook)
+        _selectedCbVerified = State(initialValue: filters.wrappedValue.cbVerifiedInactive)
         _shuffled = State(initialValue: filters.wrappedValue.shuffled)
         _questionLimit = State(initialValue: filters.wrappedValue.questionLimit)
         _useQuestionLimit = State(initialValue: filters.wrappedValue.questionLimit != nil)
@@ -61,6 +63,7 @@ struct FilterView: View {
             difficulty: selectedDifficulty,
             answerStatus: selectedAnswerStatus,
             isBluebook: selectedBluebook,
+            cbVerifiedInactive: selectedCbVerified,
             shuffled: false,
             questionLimit: nil
         )
@@ -113,16 +116,16 @@ struct FilterView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.systemGroupedBackground)
             .navigationTitle("Filter Questions")
-            .navigationBarTitleDisplayMode(.inline)
+            .navInlineTitle()
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .navLeading) {
                     Button("Cancel") {
                         isPresented = false
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navTrailing) {
                     Button {
                         applyFilters()
                     } label: {
@@ -163,8 +166,24 @@ struct FilterView: View {
         FilterFormCard {
             FilterGroupHeading(title: "Category", systemImage: "square.grid.2x2", tint: .blue)
 
+            if questionLoader.getAvailablePrograms().count == 1,
+               let onlyProgram = questionLoader.getAvailablePrograms().first {
+                VStack(alignment: .leading, spacing: 5) {
+                    FilterSubgroupLabel(text: QuestionBankFilterLabels.assessmentGroupTitle)
+                    HStack(spacing: 6) {
+                        Text(onlyProgram)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color.secondarySystemGroupedBackground.opacity(0.6))
+                            .clipShape(RoundedRectangle(cornerRadius: FilterStyle.chipCorner))
+                    }
+                }
+            }
+
             VStack(alignment: .leading, spacing: 5) {
-                FilterSubgroupLabel(text: "Module")
+                FilterSubgroupLabel(text: QuestionBankFilterLabels.sectionSubgroup)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
                         FilterChipButton(title: "All", isSelected: selectedModule == nil, accent: .blue, fillsGridCell: false) {
@@ -174,7 +193,7 @@ struct FilterView: View {
                         }
                         ForEach(questionLoader.getAvailableModules(), id: \.self) { module in
                             FilterChipButton(
-                                title: module.capitalized,
+                                title: QuestionBankFilterLabels.sectionChipTitle(module: module),
                                 isSelected: selectedModule == module,
                                 accent: .blue,
                                 fillsGridCell: false
@@ -189,7 +208,7 @@ struct FilterView: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                FilterSubgroupLabel(text: "Primary Class")
+                FilterSubgroupLabel(text: QuestionBankFilterLabels.domainSubgroup)
                 let classes = questionLoader.getAvailablePrimaryClasses(for: selectedModule)
                 if classes.isEmpty {
                     Text("Select a module first")
@@ -220,7 +239,7 @@ struct FilterView: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                FilterSubgroupLabel(text: "Skill")
+                FilterSubgroupLabel(text: QuestionBankFilterLabels.skillSubgroup)
                 let skills = questionLoader.getAvailableSkillDescs(for: selectedModule, primaryClass: selectedPrimaryClass)
                 if skills.isEmpty {
                     Text("No skills for current selection")
@@ -301,18 +320,58 @@ struct FilterView: View {
 
     private var sourceSection: some View {
         FilterFormCard {
-            FilterGroupHeading(title: "Source", systemImage: "books.vertical", tint: .purple)
+            FilterGroupHeading(title: QuestionBankFilterLabels.practiceTestsGroupTitle, systemImage: "books.vertical", tint: .purple)
 
-            LazyVGrid(columns: [GridItem(.flexible())], spacing: 6) {
-                FilterChipButton(title: "All", isSelected: selectedBluebook == nil, accent: .purple, fillsGridCell: true) {
-                    selectedBluebook = nil
+            VStack(alignment: .leading, spacing: 8) {
+                LazyVGrid(columns: [GridItem(.flexible())], spacing: 6) {
+                    FilterChipButton(title: QuestionBankFilterLabels.practiceTestsAll, isSelected: selectedBluebook == nil, accent: .purple, fillsGridCell: true) {
+                        selectedBluebook = nil
+                    }
+                    FilterChipButton(title: QuestionBankFilterLabels.practiceTestsOnly, isSelected: selectedBluebook == .bluebook, accent: .purple, fillsGridCell: true) {
+                        selectedBluebook = (selectedBluebook == .bluebook) ? nil : .bluebook
+                    }
+                    FilterChipButton(title: QuestionBankFilterLabels.excludeActiveShort, isSelected: selectedBluebook == .notBluebook, accent: .purple, fillsGridCell: true) {
+                        selectedBluebook = (selectedBluebook == .notBluebook) ? nil : .notBluebook
+                    }
                 }
-                FilterChipButton(title: "Bluebook", isSelected: selectedBluebook == .bluebook, accent: .purple, fillsGridCell: true) {
-                    selectedBluebook = (selectedBluebook == .bluebook) ? nil : .bluebook
+                Text(QuestionBankFilterLabels.practiceTestsHelp)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(questionLoader.bluebookTaggingExplanation)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Divider().padding(.vertical, 4)
+
+                FilterSubgroupLabel(text: QuestionBankFilterLabels.cbVerifiedPoolTitle)
+                LazyVGrid(columns: [GridItem(.flexible())], spacing: 6) {
+                    FilterChipButton(
+                        title: QuestionBankFilterLabels.cbVerifiedPoolAny,
+                        isSelected: selectedCbVerified == nil,
+                        accent: .purple,
+                        fillsGridCell: true
+                    ) {
+                        selectedCbVerified = nil
+                    }
+                    FilterChipButton(
+                        title: QuestionBankFilterLabels.cbVerifiedPoolOnly,
+                        isSelected: selectedCbVerified == .onlyVerifiedOffCBPracticeTests,
+                        accent: .purple,
+                        fillsGridCell: true
+                    ) {
+                        selectedCbVerified = (selectedCbVerified == .onlyVerifiedOffCBPracticeTests) ? nil : .onlyVerifiedOffCBPracticeTests
+                    }
                 }
-                FilterChipButton(title: "Other", isSelected: selectedBluebook == .notBluebook, accent: .purple, fillsGridCell: true) {
-                    selectedBluebook = (selectedBluebook == .notBluebook) ? nil : .notBluebook
-                }
+                Text(QuestionBankFilterLabels.cbVerifiedPoolHelp)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(questionLoader.cbVerifiedSidecarExplanation)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -401,6 +460,7 @@ struct FilterView: View {
         selectedDifficulty = nil
         selectedAnswerStatus = .all
         selectedBluebook = nil
+        selectedCbVerified = nil
         shuffled = true
         questionLimit = nil
         useQuestionLimit = false
@@ -415,6 +475,7 @@ struct FilterView: View {
             difficulty: selectedDifficulty,
             answerStatus: selectedAnswerStatus,
             isBluebook: selectedBluebook,
+            cbVerifiedInactive: selectedCbVerified,
             shuffled: shuffled,
             questionLimit: useQuestionLimit ? questionLimit : nil
         )

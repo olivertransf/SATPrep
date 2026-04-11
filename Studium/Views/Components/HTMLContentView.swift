@@ -2,391 +2,637 @@
 //  HTMLContentView.swift
 //  Studium
 //
-//  Created by Oliver Tran on 12/23/25.
+//  Renders HTML/LaTeX content via WKWebView with MathJax support.
+//  Supports iOS (UIViewRepresentable) and macOS (NSViewRepresentable).
 //
 
 import SwiftUI
 import WebKit
+#if os(macOS)
+import AppKit
+#endif
 
-struct HTMLContentView: UIViewRepresentable {
-    let htmlContent: String
-    let isScrollable: Bool
-    let allowInteraction: Bool
-    @Environment(\.colorScheme) var colorScheme
-    @Binding var contentHeight: CGFloat?
+// MARK: - Weak message-handler proxy
 
-    init(htmlContent: String, isScrollable: Bool = true, allowInteraction: Bool = false, contentHeight: Binding<CGFloat?> = .constant(nil)) {
-        self.htmlContent = htmlContent
-        self.isScrollable = isScrollable
-        self.allowInteraction = allowInteraction
-        self._contentHeight = contentHeight
+/// WKUserContentController retains message handlers strongly, so we pass this
+/// proxy instead — it holds only a weak reference back to the coordinator.
+private final class WeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
+    weak var delegate: (NSObject & WKScriptMessageHandler)?
+
+    init(_ delegate: NSObject & WKScriptMessageHandler) {
+        self.delegate = delegate
     }
 
-    func makeUIView(context: Context) -> WKWebView {
-        let configuration = WKWebViewConfiguration()
-        // Use a weak proxy so the message handler doesn't create a retain cycle
-        configuration.userContentController.add(
-            WeakScriptMessageHandler(context.coordinator),
-            name: "heightUpdate"
-        )
-        let webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.navigationDelegate = context.coordinator
-        webView.scrollView.isScrollEnabled = isScrollable
-        webView.isOpaque = false
-        webView.backgroundColor = .clear
-        webView.scrollView.backgroundColor = .clear
-        webView.scrollView.bounces = false
-        webView.scrollView.showsVerticalScrollIndicator = isScrollable
-        webView.scrollView.showsHorizontalScrollIndicator = false
-        // Always enable interaction so tables can scroll horizontally.
-        // Link navigation is blocked in the coordinator's decidePolicyFor method.
-        webView.isUserInteractionEnabled = true
-        return webView
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        delegate?.userContentController(userContentController, didReceive: message)
+    }
+}
+
+// MARK: - Coordinator (shared by iOS + macOS)
+
+final class HTMLCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+    var contentHeight: Binding<CGFloat?>
+    /// Last HTML string loaded — prevents the infinite re-render loop where
+    /// updating contentHeight triggers updateUIView/updateNSView → loadHTMLString
+    /// → JS height callback → contentHeight update → updateUIView/updateNSView…
+    var lastLoadedHTML: String = ""
+
+    init(contentHeight: Binding<CGFloat?>) {
+        self.contentHeight = contentHeight
     }
 
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        let htmlString = wrapHTML(htmlContent)
-        webView.loadHTMLString(htmlString, baseURL: nil)
+    // MARK: Height
+
+    /// Called by MathJax startup.ready → promise.then after typesetting.
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "heightUpdate" else { return }
+        if let num = message.body as? NSNumber {
+            applyHeight(CGFloat(num.doubleValue))
+        }
     }
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator(contentHeight: $contentHeight)
+    func applyHeight(_ height: CGFloat) {
+        guard height.isFinite && height > 0 && height < 10000 else { return }
+        DispatchQueue.main.async {
+            self.contentHeight.wrappedValue = height
+        }
     }
 
-    // MARK: - HTML Builder
+    // MARK: Navigation
 
-    private func wrapHTML(_ content: String) -> String {
-        let isDark = colorScheme == .dark
-        // Match iOS system grouped content (not pure black — better for PNG graphs & math bitmaps).
-        let backgroundColor = isDark ? "#1C1C1E" : "#FFFFFF"
-        let textColor = isDark ? "#EBEBF5" : "#000000"
-        let mutedText = isDark ? "#AEAEB2" : "#666666"
-        let tableBorder = isDark ? "#48484A" : "#D1D1D6"
-        let tableHeaderBg = isDark ? "#2C2C2E" : "#F2F2F7"
-        let tableRowAlt = isDark ? "#252528" : "#FAFAFA"
-        let bodyClass = isDark ? "studysat-dark" : "studysat-light"
+    /// Block link navigation so the webview stays on the rendered content.
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        decisionHandler(navigationAction.navigationType == .linkActivated ? .cancel : .allow)
+    }
 
-        // Replace blank placeholders
-        let processedContent = content
-            .replacingOccurrences(of: "<span class=\"sr-only\">blank</span>", with: "", options: .caseInsensitive)
-            .replacingOccurrences(of: "<span class=\"sr-only\">Blank</span>", with: "")
-            .replacingOccurrences(of: "<span class=\"sr-only\">BLANK</span>", with: "")
-            .replacingOccurrences(of: ">blank<", with: ">______<", options: .caseInsensitive)
-            .replacingOccurrences(of: " blank ", with: " ______ ", options: .caseInsensitive)
-            .replacingOccurrences(of: " blank.", with: " ______.", options: .caseInsensitive)
-            .replacingOccurrences(of: " blank,", with: " ______,", options: .caseInsensitive)
-            .replacingOccurrences(of: " blank:", with: " ______:", options: .caseInsensitive)
-            .replacingOccurrences(of: " blank;", with: " ______;", options: .caseInsensitive)
-
-        // ESCAPING NOTE:
-        // Swift \\\\( → HTML \\( → JS string '\\(' = \(  ← correct MathJax delimiter
-        // Swift \\(   → HTML \(  → JS string '\('  = (   ← WRONG (JS drops the backslash)
-        return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-            <meta name="color-scheme" content="light dark">
-            <script>
-                // MathJax config MUST be set before the async script loads.
-                window.MathJax = {
-                    tex: {
-                        inlineMath: [['\\\\(', '\\\\)']],
-                        displayMath: [['\\\\[', '\\\\]']],
-                        tags: 'none'
-                    },
-                    chtml: {
-                        scale: 1,
-                        matchFontHeight: true,
-                        mtextInheritFont: true
-                    },
-                    options: {
-                        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
-                        ignoreHtmlClass: 'tex2jax_ignore',
-                        processHtmlClass: 'tex2jax_process'
-                    },
-                    startup: {
-                        typeset: true,
-                        ready() {
-                            MathJax.startup.defaultReady();
-                            // Report height AFTER MathJax finishes typesetting
-                            MathJax.startup.promise.then(function() {
-                                if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.heightUpdate) {
-                                    window.webkit.messageHandlers.heightUpdate.postMessage(document.body.scrollHeight);
-                                }
-                            });
-                        }
+    /// Fallback height polling for content that does not trigger MathJax.
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        func poll(attempt: Int = 0) {
+            let delay: Double = [0.3, 0.8, 1.5][min(attempt, 2)]
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                webView.evaluateJavaScript("document.body.scrollHeight") { result, _ in
+                    let h = (result as? NSNumber).map { CGFloat($0.doubleValue) }
+                            ?? (result as? CGFloat)
+                    if let h, h.isFinite && h > 0 && h < 10000 {
+                        DispatchQueue.main.async { self.contentHeight.wrappedValue = h }
+                    } else if attempt < 2 {
+                        poll(attempt: attempt + 1)
                     }
-                };
-            </script>
-            <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-            <style>
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
                 }
-                html, body {
-                    width: 100%;
-                    margin: 0;
-                    padding: 0;
-                }
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    font-size: 16px;
-                    line-height: 1.6;
-                    color: \(textColor);
-                    background-color: \(backgroundColor);
-                    margin: 0;
-                    padding: 8px;
-                    word-wrap: break-word;
-                    overflow: visible;
-                }
-                /* Native MathML follows page text color */
-                math {
-                    color: inherit;
-                }
-                /* MathJax v3 CHTML + SVG output */
-                mjx-container {
-                    color: \(textColor) !important;
-                }
-                mjx-container svg {
-                    color: inherit;
-                }
-                img {
-                    max-width: 100%;
-                    height: auto;
-                    object-fit: contain;
-                    display: block;
-                    margin: 6px auto;
-                    border-radius: 4px;
-                }
-                /* College Board formula bitmaps: black ink on transparent — unreadable on dark background */
-                body.studysat-dark span.math-container,
-                body.studysat-dark .math-container {
-                    background-color: rgba(255, 255, 255, 0.96) !important;
-                    padding: 5px 10px !important;
-                    border-radius: 8px !important;
-                    display: inline-block !important;
-                    max-width: 100% !important;
-                    box-sizing: border-box !important;
-                    vertical-align: middle !important;
-                    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
-                }
-                body.studysat-dark span.math-container img,
-                body.studysat-dark .math-container img {
-                    margin: 0 auto;
-                }
-                /* Standalone graphs / large figures (often black on white PNG) */
-                body.studysat-dark figure > img,
-                body.studysat-dark p > img:only-child {
-                    background-color: rgba(255, 255, 255, 0.96);
-                    padding: 8px;
-                    border-radius: 10px;
-                    box-sizing: border-box;
-                    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
-                }
-                ul, ol {
-                    padding-left: 20px;
-                    margin: 8px 0;
-                }
-                li {
-                    margin: 4px 0;
-                }
-                blockquote {
-                    border-left: 3px solid \(isDark ? "#636366" : "#D1D1D6");
-                    padding-left: 12px;
-                    margin: 8px 0;
-                    color: \(mutedText);
-                }
-                sup, sub {
-                    font-size: 0.75em;
-                    line-height: 0;
-                }
-                p {
-                    margin: 8px 0;
-                }
-                figure {
-                    margin: 0;
-                    max-width: 100%;
-                }
-                figure.table {
-                    display: block;
-                    overflow-x: auto;
-                    -webkit-overflow-scrolling: touch;
-                }
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin: 6px 0;
-                    font-size: 14px;
-                    color: \(textColor);
-                }
-                table, th, td {
-                    border: 1px solid \(tableBorder);
-                }
-                table.table_Borderless,
-                table.table_Borderless th,
-                table.table_Borderless td {
-                    border: none !important;
-                }
-                th, td {
-                    padding: 6px 8px;
-                    text-align: left;
-                    vertical-align: middle;
-                    color: inherit;
-                }
-                th {
-                    background-color: \(tableHeaderBg);
-                    font-weight: 600;
-                }
-                tr:nth-child(even) {
-                    background-color: \(tableRowAlt);
-                }
-                tr:nth-child(odd) {
-                    background-color: transparent;
-                }
-                /* Math/bitmaps inside table cells */
-                td .math-container, th .math-container {
-                    vertical-align: middle;
-                }
-                /* Scrollable table wrapper (injected via JS) */
-                .table-scroll-wrapper {
-                    overflow-x: auto;
-                    -webkit-overflow-scrolling: touch;
-                    margin: 6px 0;
-                    max-width: 100%;
-                    -ms-overflow-style: none;
-                    scrollbar-width: thin;
-                }
-                .sr-only {
-                    position: absolute;
-                    width: 1px;
-                    height: 1px;
-                    padding: 0;
-                    margin: -1px;
-                    overflow: hidden;
-                    clip: rect(0, 0, 0, 0);
-                    white-space: nowrap;
-                    border-width: 0;
-                }
-                /* Let WebKit and MathJax handle math element styling natively —
-                   do NOT override math, mfrac, mi, mn, mo here as custom CSS
-                   fights the browser's MathML layout engine and causes distortion. */
-            </style>
-        </head>
-        <body class="\(bodyClass)">
-            \(processedContent)
-            <script>
-                (function() {
-                    // Scrollable wrappers for wide tables (nested <figure class="table"> safe)
-                    document.querySelectorAll('table').forEach(function(table) {
-                        var p = table.parentElement;
-                        if (p && p.classList.contains('table-scroll-wrapper')) return;
-                        var wrapper = document.createElement('div');
-                        wrapper.className = 'table-scroll-wrapper';
-                        table.parentNode.insertBefore(wrapper, table);
-                        wrapper.appendChild(table);
-                    });
-                    // Ping height after images (coordinate-plane PNGs) decode
-                    function reportHeight() {
+            }
+        }
+        poll()
+    }
+}
+
+// MARK: - WKWebView factory (shared)
+
+private func makeWebView(coordinator: HTMLCoordinator) -> WKWebView {
+    let config = WKWebViewConfiguration()
+    config.userContentController.add(WeakScriptMessageHandler(coordinator), name: "heightUpdate")
+    #if os(iOS) || os(visionOS)
+    config.allowsInlineMediaPlayback = true
+    let pagePrefs = WKWebpagePreferences()
+    pagePrefs.preferredContentMode = .recommended
+    config.defaultWebpagePreferences = pagePrefs
+    #elseif os(macOS)
+    // Sandboxed macOS: ensure auxiliary processes can load pages (matches default web behavior).
+    let pagePrefs = WKWebpagePreferences()
+    pagePrefs.allowsContentJavaScript = true
+    config.defaultWebpagePreferences = pagePrefs
+    #endif
+
+    let webView = WKWebView(frame: .zero, configuration: config)
+    webView.navigationDelegate = coordinator
+
+    #if os(iOS) || os(visionOS)
+    webView.isOpaque = false
+    webView.backgroundColor = .clear
+    webView.scrollView.backgroundColor = .clear
+    // Scrolling is controlled per-instance in updateUIView; start disabled.
+    webView.scrollView.isScrollEnabled = false
+    webView.scrollView.bounces = false
+    webView.scrollView.showsVerticalScrollIndicator = false
+    webView.scrollView.showsHorizontalScrollIndicator = false
+    webView.isUserInteractionEnabled = true
+    #elseif os(macOS)
+    // Avoid an opaque AppKit backing layer painting over document content (blank webview).
+    webView.setValue(false, forKey: "drawsBackground")
+    #endif
+
+    return webView
+}
+
+// MARK: - Load helper
+
+/// Load HTML only when the content actually changed.
+/// Calling loadHTMLString on every SwiftUI update would reset the webview on
+/// every contentHeight update, creating an infinite reload loop.
+///
+/// NOTE: do NOT mutate contentHeight here — this function is called from
+/// updateUIView/updateNSView (i.e. during a SwiftUI view-update pass) and any
+/// synchronous @State/@Binding write during that pass causes "undefined
+/// behavior", which in practice causes SwiftUI to tear down and recreate the
+/// WKWebView, leaving content permanently blank.
+/// Base URL for `loadHTMLString` so subresources (e.g. MathJax CDN) resolve consistently on macOS.
+private let htmlContentBaseURL = URL(string: "https://cdn.jsdelivr.net/")
+
+/// Layout + typography intent for HTML blocks (passages vs question media).
+enum HTMLContentProfile: String {
+    case standard = "studium-profile-standard"
+    case passage = "studium-profile-passage"
+    case quizFigures = "studium-profile-quizfig"
+}
+
+private func loadIfNeeded(_ html: String, into webView: WKWebView, coordinator: HTMLCoordinator) {
+    guard html != coordinator.lastLoadedHTML else { return }
+    coordinator.lastLoadedHTML = html
+    webView.loadHTMLString(html, baseURL: htmlContentBaseURL)
+}
+
+// MARK: - HTML builder
+
+func buildHTMLString(
+    _ content: String,
+    colorScheme: ColorScheme,
+    fontSize: CGFloat = 16,
+    compact: Bool = false,
+    profile: HTMLContentProfile = .standard
+) -> String {
+    let isDark = colorScheme == .dark
+    let bg          = isDark ? "#1C1C1E" : "#FFFFFF"
+    let fg          = isDark ? "#EBEBF5" : "#000000"
+    let border      = isDark ? "#48484A" : "#D1D1D6"
+    let headerBg    = isDark ? "#2C2C2E" : "#F2F2F7"
+    let rowAlt      = isDark ? "#252528" : "#FAFAFA"
+    let bodyClass   = isDark ? "studysat-dark" : "studysat-light"
+    let densityClass = compact ? "studium-html-compact" : "studium-html-comfortable"
+
+    let processed = content
+        .replacingOccurrences(of: "<span class=\"sr-only\">blank</span>", with: "", options: .caseInsensitive)
+        .replacingOccurrences(of: "<span class=\"sr-only\">Blank</span>", with: "")
+        .replacingOccurrences(of: "<span class=\"sr-only\">BLANK</span>", with: "")
+        .replacingOccurrences(of: ">blank<", with: ">______<", options: .caseInsensitive)
+        .replacingOccurrences(of: " blank ", with: " ______ ", options: .caseInsensitive)
+        .replacingOccurrences(of: " blank.", with: " ______.", options: .caseInsensitive)
+        .replacingOccurrences(of: " blank,", with: " ______,", options: .caseInsensitive)
+        .replacingOccurrences(of: " blank:", with: " ______:", options: .caseInsensitive)
+        .replacingOccurrences(of: " blank;", with: " ______;", options: .caseInsensitive)
+
+    // Swift \\\\( → HTML \\( → JS '\\(' = \(  ← correct MathJax inline delimiter
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no">
+        <meta name="color-scheme" content="light dark">
+        <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\\\(', '\\\\)']],
+                displayMath: [['\\\\[', '\\\\]']],
+                tags: 'none',
+                /* noerrors: bad TeX becomes a small inline error instead of aborting / corrupting later math on the page */
+                packages: {'[+]': ['ams', 'newcommand', 'configmacros', 'noerrors']}
+            },
+            /* CHTML output stays crisp on iPad for both inline and display/aligned math. */
+            chtml: {
+                scale: 1,
+                displayAlign: 'center',
+                matchFontHeight: false
+            },
+            options: {
+                skipHtmlTags: ['script','noscript','style','textarea','pre','code'],
+                ignoreHtmlClass: 'tex2jax_ignore',
+                processHtmlClass: 'tex2jax_process'
+            },
+            startup: {
+                typeset: true,
+                ready() {
+                    MathJax.startup.defaultReady();
+                    function postH() {
                         if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.heightUpdate) {
                             window.webkit.messageHandlers.heightUpdate.postMessage(document.body.scrollHeight);
                         }
                     }
-                    var imgs = document.querySelectorAll('img');
-                    var pending = imgs.length;
-                    if (pending === 0) return;
-                    imgs.forEach(function(img) {
-                        if (img.complete) {
-                            pending--;
-                        } else {
-                            img.addEventListener('load', function() {
-                                pending--;
-                                if (pending <= 0) reportHeight();
-                            });
-                            img.addEventListener('error', function() {
-                                pending--;
-                                if (pending <= 0) reportHeight();
-                            });
-                        }
-                    });
-                    if (pending <= 0) reportHeight();
-                })();
-            </script>
-        </body>
-        </html>
-        """
-    }
-
-    // MARK: - Weak Script Message Handler (prevents retain cycle)
-
-    /// WKUserContentController holds a strong reference to message handlers, so we
-    /// pass this proxy instead. It holds a weak reference back to the coordinator.
-    final class WeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
-        weak var delegate: (NSObject & WKScriptMessageHandler)?
-
-        init(_ delegate: NSObject & WKScriptMessageHandler) {
-            self.delegate = delegate
-        }
-
-        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            delegate?.userContentController(userContentController, didReceive: message)
-        }
-    }
-
-    // MARK: - Coordinator
-
-    class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
-        @Binding var contentHeight: CGFloat?
-
-        init(contentHeight: Binding<CGFloat?>) {
-            _contentHeight = contentHeight
-        }
-
-        // Called by the MathJax startup.ready → promise.then callback after typesetting
-        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            guard message.name == "heightUpdate" else { return }
-            // JS scrollHeight is an integer; bridge via NSNumber to be safe
-            if let num = message.body as? NSNumber {
-                applyHeight(CGFloat(num.doubleValue))
-            }
-        }
-
-        func applyHeight(_ height: CGFloat) {
-            guard height.isFinite && height > 0 && height < 10000 else { return }
-            DispatchQueue.main.async {
-                self.contentHeight = height
-            }
-        }
-
-        // Block link navigation so the web view stays on the rendered content
-        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            if navigationAction.navigationType == .linkActivated {
-                decisionHandler(.cancel)
-                return
-            }
-            decisionHandler(.allow)
-        }
-
-        // Fallback height polling for content that doesn't use MathJax
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            func pollHeight(attempt: Int = 0) {
-                let delay: Double = attempt == 0 ? 0.3 : (attempt == 1 ? 0.8 : 1.5)
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    webView.evaluateJavaScript("document.body.scrollHeight") { result, _ in
-                        if let h = result as? CGFloat, h.isFinite && h > 0 && h < 10000 {
-                            DispatchQueue.main.async { self.contentHeight = h }
-                        } else if let h = (result as? NSNumber).map({ CGFloat($0.doubleValue) }),
-                                  h.isFinite && h > 0 && h < 10000 {
-                            DispatchQueue.main.async { self.contentHeight = h }
-                        } else if attempt < 2 {
-                            pollHeight(attempt: attempt + 1)
-                        }
-                    }
+                    MathJax.startup.promise.then(function() {
+                        postH();
+                        requestAnimationFrame(function() { requestAnimationFrame(postH); });
+                        /* aligned / display blocks often finish layout after first paint; late heights avoid WKWebView stuck at wrong size (looks like “all math broke”) */
+                        [40, 120, 280, 600].forEach(function(ms) { setTimeout(postH, ms); });
+                    }).catch(function() { postH(); });
                 }
             }
-            pollHeight()
+        };
+        </script>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            font-size: \(fontSize)px;
+            line-height: 1.7;
+            color: \(fg);
+            background-color: \(bg);
+            padding: \(compact ? "3px 2px 6px" : "4px 2px 14px");
+            word-wrap: break-word;
+            overflow-x: hidden;
+            -webkit-text-size-adjust: 100%;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
         }
+        /* Let block math extend horizontally; clipping + scroll on mjx caused soft, scaled display on iPad. */
+        body.studium-profile-quizfig {
+            overflow-x: visible !important;
+        }
+        html:has(body.studium-profile-quizfig) {
+            overflow-x: visible;
+        }
+        /* Comfortable question / explanation HTML: match passage inset (compact rows stay tight via studium-html-compact). */
+        body.studium-html-comfortable.studium-profile-quizfig {
+            padding: 18px 22px 22px !important;
+            line-height: 1.74 !important;
+        }
+        /* Question-bank HTML frequently contains inline style="color:#000000" on spans/paragraphs.
+           Force all text to the correct colour so it's visible against the background.
+           We only override color (not background) to avoid wiping table/math backgrounds. */
+        * { color: \(fg) !important; }
+        body { background-color: \(bg); }
+        math { color: inherit; }
+        mjx-container { color: \(fg) !important; filter: none !important; opacity: 1 !important; }
+        mjx-container[jax="CHTML"] { font-size: 1em !important; }
+        mjx-container mjx-math { font-kerning: normal; }
+        img:not(.math-img):not([role="math"]) {
+            max-width: 100%; height: auto; object-fit: contain;
+            display: block; margin: 10px auto; border-radius: 6px;
+        }
+        /* Retina sharpness: PNG bitmaps from the CB bank are 1x assets.
+           JS sets a DPR-aware maxWidth so they never upscale on 2x/3x screens.
+           image-rendering hint reduces interpolation artifacts if any residual upsampling occurs. */
+        img[src^="data:image/png"] {
+            image-rendering: -webkit-optimize-contrast;
+        }
+        /* SAT bank inline equation images: keep inline; do not inherit diagram centering/block layout. */
+        .math-container .math-img,
+        .math-container img[role="math"],
+        .math_expression img[role="math"],
+        img.math-img[role="math"] {
+            display: inline-block !important;
+            vertical-align: middle !important;
+            margin: 0 0.08em !important;
+            max-width: none !important;
+            width: auto !important;
+            height: auto !important;
+            border-radius: 0 !important;
+            object-fit: contain;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+        /* Block diagrams: allow larger than body text column (still capped for very wide windows). */
+        figure > img:not(.math-img):not([role="math"]),
+        p > img:only-child:not(.math-img):not([role="math"]) {
+            max-width: min(100%, 760px) !important;
+            width: auto !important;
+            margin: 16px auto !important;
+        }
+        figure { max-width: min(100%, 800px); margin-inline: auto; }
+        /* White plate only for block diagrams in dark mode — not MathJax math. */
+        body.studysat-dark figure > img:not(.math-img):not([role="math"]),
+        body.studysat-dark p > img:only-child:not(.math-img):not([role="math"]),
+        body.studysat-dark .standalone_image img,
+        body.studysat-dark .choice_paragraph img[src^="data:image"] {
+            background-color: rgba(255,255,255,0.97) !important;
+            padding: 14px 16px !important;
+            border-radius: 12px !important;
+            box-sizing: border-box !important;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06) !important;
+        }
+        /* Standalone SVG diagrams in typical SAT wrappers; exclude MathJax below. */
+        body.studysat-dark figure > svg,
+        body.studysat-dark p > svg:only-child {
+            background-color: rgba(255,255,255,0.97) !important;
+            padding: 14px 16px !important;
+            border-radius: 12px !important;
+            box-sizing: border-box !important;
+            max-width: min(100%, 760px) !important;
+            width: auto !important;
+            height: auto !important;
+            display: block !important;
+            margin: 16px auto !important;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08) !important;
+        }
+        body.studysat-dark mjx-container svg {
+            background: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            max-width: none !important;
+            width: auto !important;
+            height: auto !important;
+            shape-rendering: geometricPrecision;
+        }
+        /* Light mode: same larger diagram sizing without white mat. */
+        body.studysat-light figure > svg,
+        body.studysat-light p > svg:only-child {
+            max-width: min(100%, 760px) !important;
+            display: block !important;
+            margin: 16px auto !important;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            font-weight: 600;
+            line-height: 1.3;
+            margin: 16px 0 8px;
+            letter-spacing: -0.01em;
+        }
+        h1 { font-size: 1.5em; }
+        h2 { font-size: 1.3em; }
+        h3 { font-size: 1.15em; }
+        h4, h5, h6 { font-size: 1em; }
+        p { margin: 0 0 \(compact ? "8px" : "12px"); }
+        p:last-child { margin-bottom: 0; }
+        ul, ol { padding-left: 22px; margin: 0 0 12px; }
+        li { margin: 5px 0; line-height: 1.6; }
+        li:last-child { margin-bottom: 0; }
+        ul ul, ol ol, ul ol, ol ul { margin: 4px 0; }
+        strong, b { font-weight: 600; }
+        em, i { font-style: italic; }
+        blockquote {
+            border-left: 3px solid \(isDark ? "#636366" : "#C7C7CC");
+            padding: 4px 0 4px 14px;
+            margin: 12px 0;
+            opacity: 0.85;
+        }
+        code {
+            font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
+            font-size: 0.875em;
+            background-color: \(isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)");
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        pre {
+            font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
+            font-size: 0.875em;
+            background-color: \(isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)");
+            border: 1px solid \(border);
+            padding: 12px 14px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 12px 0;
+            line-height: 1.5;
+            -webkit-overflow-scrolling: touch;
+        }
+        pre code { background: none; padding: 0; border-radius: 0; font-size: inherit; }
+        sup, sub { font-size: 0.75em; line-height: 0; }
+        figure { margin: 0; max-width: 100%; }
+        figure.table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table {
+            width: 100%; border-collapse: collapse;
+            margin: 4px 0; font-size: 14.5px; color: \(fg);
+            border-radius: 8px; overflow: hidden;
+        }
+        table, th, td { border: 1px solid \(border); }
+        table.table_Borderless,
+        table.table_Borderless th,
+        table.table_Borderless td { border: none !important; }
+        th, td { padding: 9px 12px; text-align: left; vertical-align: middle; color: inherit; }
+        th {
+            background-color: \(headerBg);
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.01em;
+        }
+        tr:nth-child(even) { background-color: \(rowAlt); }
+        tr:nth-child(odd)  { background-color: transparent; }
+        .table-scroll-wrapper {
+            overflow-x: auto; -webkit-overflow-scrolling: touch;
+            margin: 12px 0; max-width: 100%; scrollbar-width: thin;
+            border-radius: 8px;
+        }
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0;
+            margin: -1px; overflow: hidden; clip: rect(0,0,0,0);
+            white-space: nowrap; border-width: 0;
+        }
+        /* CHTML math blocks: keep display spacing stable and avoid clipping. */
+        mjx-container[jax="CHTML"][display="true"] {
+            margin: 14px 0 !important;
+            overflow: visible !important;
+            max-width: 100% !important;
+        }
+        /* Inline math: keep tight to surrounding text. */
+        mjx-container[jax="CHTML"][display="false"] {
+            overflow: visible !important;
+        }
+        /* Reading passages: roomier measure (font size comes from Swift `fontSize`). */
+        body.studium-profile-passage {
+            padding: 22px 28px 28px !important;
+            line-height: 1.82 !important;
+        }
+        body.studium-profile-passage p { margin-bottom: 14px !important; }
+        /* Stems, choices, explanations: larger diagram cap than reference / compact rows. */
+        body.studium-profile-quizfig figure > img:not(.math-img):not([role="math"]),
+        body.studium-profile-quizfig p > img:only-child:not(.math-img):not([role="math"]) {
+            max-width: min(100%, 940px) !important;
+            margin: 22px auto !important;
+        }
+        body.studium-profile-quizfig figure { max-width: min(100%, 980px); }
+        body.studium-profile-quizfig figure > svg,
+        body.studium-profile-quizfig p > svg:only-child {
+            max-width: min(100%, 940px) !important;
+            margin: 22px auto !important;
+        }
+        body.studysat-dark.studium-profile-quizfig figure > img:not(.math-img):not([role="math"]),
+        body.studysat-dark.studium-profile-quizfig p > img:only-child:not(.math-img):not([role="math"]) {
+            padding: 16px 18px !important;
+        }
+        body.studysat-dark.studium-profile-quizfig figure > svg,
+        body.studysat-dark.studium-profile-quizfig p > svg:only-child {
+            padding: 16px 18px !important;
+        }
+        </style>
+    </head>
+    <body class="\(bodyClass) \(profile.rawValue) \(densityClass)">
+        \(processed)
+        <script>
+        (function() {
+            // CB bank images are 1x PNG bitmaps (242–480px wide).
+            // On Retina (DPR=2/3) the browser upsamples them if CSS logical pixels > natural pixels.
+            // Fix: cap each image's CSS max-width at naturalWidth/DPR so it maps 1:1 to device pixels.
+            function scaleRasterImages() {
+                var dpr = window.devicePixelRatio || 1;
+                document.querySelectorAll('img[src^="data:image"]').forEach(function(img) {
+                    var apply = function() {
+                        if (!img.naturalWidth) return;
+                        // 1:1 device-pixel mapping = no GPU upsampling = crisp
+                        img.style.maxWidth = Math.round(img.naturalWidth / dpr) + 'px';
+                        img.style.width = '100%';
+                        img.style.height = 'auto';
+                    };
+                    if (img.complete && img.naturalWidth) apply();
+                    else img.addEventListener('load', apply, { once: true });
+                });
+            }
+
+            scaleRasterImages();
+            setTimeout(scaleRasterImages, 80);
+            setTimeout(scaleRasterImages, 220);
+
+            // Wrap tables in a scroll-safe container
+            document.querySelectorAll('table').forEach(function(t) {
+                var p = t.parentElement;
+                if (p && p.classList.contains('table-scroll-wrapper')) return;
+                var w = document.createElement('div');
+                w.className = 'table-scroll-wrapper';
+                t.parentNode.insertBefore(w, t);
+                w.appendChild(t);
+            });
+            // Report height after images load (for coordinate-plane PNGs)
+            function reportHeight() {
+                if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.heightUpdate) {
+                    window.webkit.messageHandlers.heightUpdate.postMessage(document.body.scrollHeight);
+                }
+            }
+            var imgs = document.querySelectorAll('img');
+            var pending = imgs.length;
+            if (pending === 0) return;
+            imgs.forEach(function(img) {
+                if (img.complete) { pending--; }
+                else {
+                    img.addEventListener('load',  function() { if (--pending <= 0) reportHeight(); });
+                    img.addEventListener('error', function() { if (--pending <= 0) reportHeight(); });
+                }
+            });
+            if (pending <= 0) reportHeight();
+        })();
+        </script>
+    </body>
+    </html>
+    """
+}
+
+// MARK: - iOS representable
+
+#if os(iOS)
+struct HTMLContentView: UIViewRepresentable {
+    let htmlContent: String
+    let isScrollable: Bool
+    let allowInteraction: Bool
+    let compact: Bool
+    let fontSizeOverride: CGFloat?
+    let contentProfile: HTMLContentProfile
+    @Environment(\.colorScheme) var colorScheme
+    @AppStorage("htmlFontSize") private var storedFontSize: Double = 16.0
+    @Binding var contentHeight: CGFloat?
+
+    init(
+        htmlContent: String,
+        isScrollable: Bool = true,
+        allowInteraction: Bool = false,
+        compact: Bool = false,
+        fontSizeOverride: CGFloat? = nil,
+        contentProfile: HTMLContentProfile = .standard,
+        contentHeight: Binding<CGFloat?> = .constant(nil)
+    ) {
+        self.htmlContent = htmlContent
+        self.isScrollable = isScrollable
+        self.allowInteraction = allowInteraction
+        self.compact = compact
+        self.fontSizeOverride = fontSizeOverride
+        self.contentProfile = contentProfile
+        self._contentHeight = contentHeight
+    }
+
+    func makeCoordinator() -> HTMLCoordinator { HTMLCoordinator(contentHeight: $contentHeight) }
+
+    func makeUIView(context: Context) -> WKWebView {
+        let webView = makeWebView(coordinator: context.coordinator)
+        // Scrollability is set at creation on iOS (scroll view can't be toggled after init).
+        webView.scrollView.isScrollEnabled = isScrollable
+        webView.scrollView.showsVerticalScrollIndicator = isScrollable
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        context.coordinator.contentHeight = $contentHeight
+        let fontPx = fontSizeOverride ?? CGFloat(storedFontSize)
+        loadIfNeeded(
+            buildHTMLString(htmlContent, colorScheme: colorScheme, fontSize: fontPx, compact: compact, profile: contentProfile),
+            into: webView, coordinator: context.coordinator
+        )
     }
 }
+
+// MARK: - macOS representable
+
+#elseif os(macOS)
+/// Pins `WKWebView` to the proposed SwiftUI size. A bare `WKWebView` often gets zero
+/// intrinsic width in `VStack(alignment: .leading)` / split columns, so nothing draws.
+final class WKWebViewContainer: NSView {
+    let webView: WKWebView
+
+    init(webView: WKWebView) {
+        self.webView = webView
+        super.init(frame: .zero)
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(webView)
+        NSLayoutConstraint.activate([
+            webView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            webView.topAnchor.constraint(equalTo: topAnchor),
+            webView.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) { nil }
+}
+
+struct HTMLContentView: NSViewRepresentable {
+    let htmlContent: String
+    let isScrollable: Bool
+    let allowInteraction: Bool
+    let compact: Bool
+    let fontSizeOverride: CGFloat?
+    let contentProfile: HTMLContentProfile
+    @Environment(\.colorScheme) var colorScheme
+    @AppStorage("htmlFontSize") private var storedFontSize: Double = 16.0
+    @Binding var contentHeight: CGFloat?
+
+    init(
+        htmlContent: String,
+        isScrollable: Bool = true,
+        allowInteraction: Bool = false,
+        compact: Bool = false,
+        fontSizeOverride: CGFloat? = nil,
+        contentProfile: HTMLContentProfile = .standard,
+        contentHeight: Binding<CGFloat?> = .constant(nil)
+    ) {
+        self.htmlContent = htmlContent
+        self.isScrollable = isScrollable
+        self.allowInteraction = allowInteraction
+        self.compact = compact
+        self.fontSizeOverride = fontSizeOverride
+        self.contentProfile = contentProfile
+        self._contentHeight = contentHeight
+    }
+
+    func makeCoordinator() -> HTMLCoordinator { HTMLCoordinator(contentHeight: $contentHeight) }
+
+    func makeNSView(context: Context) -> WKWebViewContainer {
+        WKWebViewContainer(webView: makeWebView(coordinator: context.coordinator))
+    }
+
+    func updateNSView(_ container: WKWebViewContainer, context: Context) {
+        context.coordinator.contentHeight = $contentHeight
+        let fontPx = fontSizeOverride ?? CGFloat(storedFontSize)
+        loadIfNeeded(
+            buildHTMLString(htmlContent, colorScheme: colorScheme, fontSize: fontPx, compact: compact, profile: contentProfile),
+            into: container.webView,
+            coordinator: context.coordinator
+        )
+    }
+}
+#endif

@@ -59,7 +59,7 @@ struct QuizState: Codable, Identifiable {
             parts.append(program)
         }
         if let module = filters.module {
-            parts.append(module.capitalized)
+            parts.append(QuestionBankFilterLabels.sectionNameForSummary(module: module))
         }
         if let difficulty = filters.difficulty {
             let diffDesc = difficulty == "E" ? "Easy" : (difficulty == "M" ? "Medium" : (difficulty == "H" ? "Hard" : difficulty))
@@ -73,6 +73,12 @@ struct QuizState: Codable, Identifiable {
         }
         if let skill = filters.skillDesc {
             parts.append(skill)
+        }
+        if let bb = filters.isBluebook {
+            parts.append(QuestionBankFilterLabels.displayTitle(for: bb))
+        }
+        if filters.cbVerifiedInactive == .onlyVerifiedOffCBPracticeTests {
+            parts.append(QuestionBankFilterLabels.cbVerifiedPoolOnly)
         }
         return parts.isEmpty ? "All Questions" : parts.joined(separator: " • ")
     }
@@ -119,13 +125,13 @@ class QuizStateManager: ObservableObject {
            let decoded = try? JSONDecoder().decode([String: Date].self, from: data) {
             deletedQuizTimestamps = decoded
         }
-        
-        loadAllQuizStates()
-        
-        // Enable iCloud sync if enabled
+
+        // Enable KVS before loading quizzes so `loadAllQuizStates` can merge from iCloud (otherwise `iCloudStore` is nil on first line).
         if isICloudSyncEnabled {
             enableICloudSync()
         }
+
+        loadAllQuizStates()
     }
     
     func loadAllQuizStates() {
@@ -233,13 +239,15 @@ class QuizStateManager: ObservableObject {
             print("iCloud sync is disabled")
             return
         }
-        
+
         if iCloudStore == nil {
             enableICloudSync()
-        } else {
-            syncFromICloud()
-            syncToICloud()
         }
+        guard let store = iCloudStore else { return }
+
+        _ = store.synchronize()
+        syncFromICloud()
+        syncToICloud()
     }
     
     private func enableICloudSync() {
@@ -253,13 +261,18 @@ class QuizStateManager: ObservableObject {
         }
         
         iCloudStore = NSUbiquitousKeyValueStore.default
-        
-        // Set up notification observer first
+        iCloudStore?.synchronize() // fetch latest from iCloud before reading
+
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: NSUbiquitousKeyValueStore.default
+        )
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(iCloudDidChange),
             name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: iCloudStore
+            object: NSUbiquitousKeyValueStore.default
         )
         
         // Sync from iCloud on enable
@@ -277,17 +290,33 @@ class QuizStateManager: ObservableObject {
         NotificationCenter.default.removeObserver(
             self,
             name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: iCloudStore
+            object: NSUbiquitousKeyValueStore.default
         )
         iCloudStore = nil
     }
     
     @objc private func iCloudDidChange(notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let keys = userInfo[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String],
-              keys.contains(iCloudKey) else {
+        guard let userInfo = notification.userInfo else {
+            DispatchQueue.main.async { [weak self] in self?.syncFromICloud() }
             return
         }
+        // quotaViolationChange == 2
+        if let reason = (userInfo[NSUbiquitousKeyValueStoreChangeReasonKey] as? NSNumber)?.intValue,
+           reason == 2 {
+            #if !targetEnvironment(simulator)
+            print("iCloud key-value store quota exceeded; saved quiz sync may be incomplete.")
+            #endif
+        }
+        let keys = userInfo[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String]
+        let shouldMerge: Bool
+        if let keys {
+            shouldMerge = keys.isEmpty
+                || keys.contains(iCloudKey)
+                || keys.contains(iCloudDeletedKey)
+        } else {
+            shouldMerge = true
+        }
+        guard shouldMerge else { return }
         DispatchQueue.main.async { [weak self] in
             self?.syncFromICloud()
         }
@@ -336,7 +365,8 @@ class QuizStateManager: ObservableObject {
         guard let store = iCloudStore else {
             return
         }
-        
+        _ = store.synchronize()
+
         // Get iCloud quizzes
         var iCloudQuizzes: [QuizState] = []
         if let data = store.data(forKey: iCloudKey),
@@ -351,12 +381,9 @@ class QuizStateManager: ObservableObject {
             iCloudDeletedTimestamps = decoded
         }
         
-        // If no iCloud data, push local data
-        if iCloudQuizzes.isEmpty && iCloudDeletedTimestamps.isEmpty {
-            syncToICloud()
-            return
-        }
-        
+        // Empty KVS can mean "nothing uploaded yet" or "still downloading". Run full merge so local
+        // quizzes seed correctly; avoid a standalone upload that bypasses merge.
+
         // Merge deleted timestamps - keep the most recent deletion
         var mergedDeletedTimestamps = deletedQuizTimestamps
         for (quizId, iCloudDeleteTime) in iCloudDeletedTimestamps {

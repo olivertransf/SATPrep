@@ -10,7 +10,8 @@ import SwiftUI
 // MARK: - Data Models
 
 struct ReferenceEntry: Identifiable {
-    let id = UUID()
+    /// Stable within a section (used for lists / webview identity).
+    var id: String { title }
     let title: String
     /// Plain-text fallback (shown when latex is nil, or used for accessibility / code readability)
     let formula: String?
@@ -36,7 +37,8 @@ struct ReferenceEntry: Identifiable {
 }
 
 struct ReferenceSection: Identifiable {
-    let id = UUID()
+    /// Stable across search rebuilds so expansion / selection don’t reset every keystroke.
+    var id: String { title }
     let title: String
     let icon: String
     let color: Color
@@ -58,7 +60,9 @@ struct MathFormulaView: View {
             allowInteraction: false,
             contentHeight: $height
         )
-        .frame(height: max(height ?? 56, 44))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: max(height ?? 64, 52))
+        .animation(nil, value: height)
         .background(accentColor.opacity(0.08))
         .cornerRadius(10)
     }
@@ -68,8 +72,8 @@ struct MathFormulaView: View {
 
 extension ReferenceSection {
 
-    static var mathSections:   [ReferenceSection] { [.providedFormulas, .linearEquations, .quadratics, .exponentsRadicals, .exponentialFunctions, .statisticsData, .geometry, .trigonometry] }
-    static var rwSections:     [ReferenceSection] { [.sentenceBoundaries, .commaRules, .apostrophes, .subjectVerbAgreement, .verbTense, .pronouns, .modifiers, .parallelStructure, .transitions, .wordsInContext] }
+    static var mathSections:   [ReferenceSection] { [.providedFormulas, .linearEquations, .quadratics, .exponentsRadicals, .exponentialFunctions, .functionsTransformations, .systemsInequalities, .statisticsData, .geometry, .trigonometry, .desmosPlaybook] }
+    static var rwSections:     [ReferenceSection] { [.sentenceBoundaries, .commaRules, .apostrophes, .subjectVerbAgreement, .verbTense, .pronouns, .modifiers, .parallelStructure, .transitions, .wordsInContext, .rhetoricalSynthesis, .readingStrategies] }
 
     // ─────────────────────────────────────────────────────────── MATH ─────
 
@@ -263,6 +267,52 @@ extension ReferenceSection {
             tag: .tip),
     ])
 
+    static let functionsTransformations = ReferenceSection(title: "Functions & Transformations", icon: "waveform.path.ecg", color: .mint, entries: [
+        ReferenceEntry("Function Notation",
+            formula: "f(x) = output for input x",
+            detail: "Evaluate by substituting the given input into x.",
+            tag: .memorize),
+        ReferenceEntry("Average Rate of Change",
+            formula: "(f(b) − f(a)) / (b − a)",
+            latex: "\\[ \\dfrac{f(b)-f(a)}{b-a} \\]",
+            detail: "Slope of the secant line from x = a to x = b.",
+            tag: .memorize),
+        ReferenceEntry("Vertical Shift",
+            formula: "f(x) + k (up k),  f(x) − k (down k)",
+            tag: .memorize),
+        ReferenceEntry("Horizontal Shift",
+            formula: "f(x − h) (right h),  f(x + h) (left h)",
+            tag: .memorize),
+        ReferenceEntry("Reflection",
+            formula: "−f(x): reflect over x-axis   |   f(−x): reflect over y-axis",
+            tag: .memorize),
+        ReferenceEntry("Percent Growth/Decay Form",
+            formula: "new = old(1 ± r)",
+            detail: "Use +r for growth and −r for decay.",
+            tag: .tip),
+    ])
+
+    static let systemsInequalities = ReferenceSection(title: "Systems & Inequalities", icon: "line.3.horizontal.decrease.circle", color: .indigo, entries: [
+        ReferenceEntry("System by Graphing",
+            formula: "Intersection point(s) are solution(s)",
+            tag: .memorize),
+        ReferenceEntry("Linear System Outcomes",
+            formula: "One solution (intersect)  |  No solution (parallel)  |  Infinite solutions (same line)",
+            tag: .memorize),
+        ReferenceEntry("Substitution Method",
+            formula: "Solve one equation for a variable, then substitute into the other",
+            tag: .rule),
+        ReferenceEntry("Elimination Method",
+            formula: "Add/subtract equations to remove one variable",
+            tag: .rule),
+        ReferenceEntry("Inequality Flip Rule",
+            formula: "Multiply or divide both sides by a negative → flip inequality sign",
+            tag: .rule),
+        ReferenceEntry("Interval Notation",
+            formula: "( ) excludes endpoint  |  [ ] includes endpoint",
+            tag: .memorize),
+    ])
+
     static let statisticsData = ReferenceSection(title: "Statistics & Data Analysis", icon: "chart.bar.fill", color: .cyan, entries: [
         ReferenceEntry("Mean (Average)",
             formula: "Sum ÷ Count",
@@ -299,6 +349,16 @@ extension ReferenceSection {
             latex: "\\[ \\text{sum} = (n-2) \\times 180^\\circ \\]",
             detail: "n = number of sides",
             tag: .memorize),
+        ReferenceEntry("Exterior Angle (Polygon)",
+            formula: "Each exterior angle in regular n-gon = 360°/n",
+            latex: "\\[ \\text{exterior angle} = \\dfrac{360^\\circ}{n} \\]",
+            tag: .memorize),
+        ReferenceEntry("Triangle Angle + Exterior Rule",
+            formula: "Interior sum = 180°; exterior angle = sum of two remote interior angles",
+            tag: .memorize),
+        ReferenceEntry("Triangle Inequality",
+            formula: "For sides a, b, c:  |a−b| < c < a+b",
+            tag: .memorize),
         ReferenceEntry("Arc Length",
             formula: "L = (θ/360) × 2πr",
             latex: "\\[ L = \\dfrac{\\theta}{360} \\times 2\\pi r \\]",
@@ -306,6 +366,12 @@ extension ReferenceSection {
         ReferenceEntry("Sector Area",
             formula: "A = (θ/360) × πr²",
             latex: "\\[ A = \\dfrac{\\theta}{360} \\times \\pi r^2 \\]",
+            tag: .memorize),
+        ReferenceEntry("Inscribed Angle Rule",
+            formula: "Inscribed angle = 1/2 of intercepted arc",
+            tag: .memorize),
+        ReferenceEntry("Tangent-Radius Rule",
+            formula: "Radius is perpendicular to tangent at point of tangency",
             tag: .memorize),
         ReferenceEntry("Equation of a Circle",
             formula: "(x − h)² + (y − k)² = r²",
@@ -320,13 +386,17 @@ extension ReferenceSection {
             formula: "M = ((x₁+x₂)/2, (y₁+y₂)/2)",
             latex: "\\[ M = \\left(\\dfrac{x_1+x_2}{2},\\;\\dfrac{y_1+y_2}{2}\\right) \\]",
             tag: .memorize),
-        ReferenceEntry("Trapezoid Area",
-            formula: "A = ½(b₁ + b₂)h",
-            latex: "\\[ A = \\tfrac{1}{2}(b_1+b_2)h \\]",
+        ReferenceEntry("Point-Slope + Perpendicular Slopes",
+            formula: "y−y₁=m(x−x₁);  perpendicular slopes are negative reciprocals",
             tag: .memorize),
-        ReferenceEntry("Sphere Surface Area",
-            formula: "SA = 4πr²",
-            latex: "\\[ SA = 4\\pi r^2 \\]",
+        ReferenceEntry("Area Formulas",
+            formula: "Triangle: 1/2bh  |  Trapezoid: 1/2(b₁+b₂)h  |  Parallelogram: bh",
+            tag: .memorize),
+        ReferenceEntry("Volume + Surface Area",
+            formula: "Prism: V=lwh, SA=2(lw+lh+wh)  |  Cylinder: V=πr²h, SA=2πr²+2πrh",
+            tag: .memorize),
+        ReferenceEntry("Sphere + Cone",
+            formula: "Sphere: V=4/3πr³, SA=4πr²  |  Cone: V=1/3πr²h",
             tag: .memorize),
         ReferenceEntry("Parallel Lines + Transversal",
             formula: "Corresponding = equal\nAlternate interior = equal\nCo-interior = supplementary",
@@ -365,6 +435,48 @@ extension ReferenceSection {
             formula: "π/6=30°  π/4=45°  π/3=60°  π/2=90°  π=180°",
             latex: "\\[ \\dfrac{\\pi}{6}=30^\\circ \\quad \\dfrac{\\pi}{4}=45^\\circ \\quad \\dfrac{\\pi}{3}=60^\\circ \\quad \\dfrac{\\pi}{2}=90^\\circ \\quad \\pi=180^\\circ \\]",
             tag: .memorize),
+    ])
+
+    static let desmosPlaybook = ReferenceSection(title: "Desmos SAT Playbook", icon: "chart.xyaxis.line", color: .blue, entries: [
+        ReferenceEntry("Equation Solve via Intersection",
+            formula: "Graph y = left side and y = right side; x-value(s) of intersections solve the equation.",
+            tag: .tip),
+        ReferenceEntry("System Solve",
+            formula: "Enter each equation on its own line and click intersection point(s).",
+            tag: .tip),
+        ReferenceEntry("Domain Restriction",
+            formula: "Use curly braces: y=x^2 {x>=0} to show only needed interval.",
+            detail: "Great for piecewise and geometry contexts.",
+            tag: .tip),
+        ReferenceEntry("Table + Regression",
+            formula: "Add table, fill x1/y1, then use y1~mx1+b (or y1~ax1^2+bx1+c).",
+            tag: .memorize),
+        ReferenceEntry("Unknown Constant (Tilde Trick)",
+            formula: "Use ~ with trial inputs to solve constants quickly.",
+            detail: "Example: y1 ~ a(x1−2)^2 + 5 to estimate parameter a.",
+            tag: .tip),
+        ReferenceEntry("Sliders for Parameters",
+            formula: "Type equation with a,b,k and use slider to match graph conditions fast.",
+            tag: .tip),
+        ReferenceEntry("Root / Intercepts / Vertex",
+            formula: "Click graph points directly to read coordinates.",
+            tag: .tip),
+        ReferenceEntry("Inequality Regions",
+            formula: "Enter y<..., y>=... and find overlap shading for solution set.",
+            tag: .tip),
+        ReferenceEntry("Statistics Helpers",
+            formula: "mean(list), median(list), stdev(list), and sum(list).",
+            tag: .memorize),
+        ReferenceEntry("Desmos Syntax Essentials",
+            formula: "abs(x), sqrt(x), nthroot(x,n), log(x), ln(x), pi, e, ^ for exponent.",
+            tag: .memorize),
+        ReferenceEntry("Angle Mode Check",
+            formula: "Use wrench settings: Degrees for most SAT trig unless radians are explicit.",
+            tag: .rule),
+        ReferenceEntry("When NOT to Use Desmos",
+            formula: "Skip Desmos for tiny arithmetic/algebra steps where mental math is faster.",
+            detail: "Use it when graphing/visualization reduces risk and saves time.",
+            tag: .tip),
     ])
 
     // ──────────────────────────────────────────────────────── R & W ────
@@ -480,6 +592,40 @@ extension ReferenceSection {
         ReferenceEntry("Inference Rule",       formula: "Most reasonable conclusion from the text. Not a leap. No outside knowledge.", tag: .tip),
         ReferenceEntry("Cross-Text",           formula: "Agree · Disagree · Support · Challenge · Qualify", detail: "Be specific — identify the exact claim that relates the two texts.", tag: .tip),
     ])
+
+    static let rhetoricalSynthesis = ReferenceSection(title: "Rhetorical Synthesis", icon: "square.and.pencil", color: .mint, entries: [
+        ReferenceEntry("Follow the Prompt Goal",
+            formula: "Choose the option that best accomplishes the stated task.",
+            detail: "Common goals: introduce, compare, support, qualify, conclude.",
+            tag: .rule),
+        ReferenceEntry("Use Relevant Notes Only",
+            formula: "Select facts directly tied to the purpose; ignore extras.",
+            tag: .rule),
+        ReferenceEntry("Prioritize Precision",
+            formula: "Prefer concise, direct wording over vague or flashy phrasing.",
+            tag: .tip),
+        ReferenceEntry("Maintain Formal Tone",
+            formula: "SAT favors objective, neutral academic style.",
+            tag: .rule),
+    ])
+
+    static let readingStrategies = ReferenceSection(title: "Reading Strategies", icon: "eyeglasses", color: .teal, entries: [
+        ReferenceEntry("Line-Reference Questions",
+            formula: "Read cited lines plus nearby context before choosing.",
+            tag: .tip),
+        ReferenceEntry("Best Evidence Pair",
+            formula: "Answer claim first, then confirm with exact support lines.",
+            tag: .tip),
+        ReferenceEntry("Main Purpose",
+            formula: "Identify what the author is doing: argue, explain, compare, qualify.",
+            tag: .tip),
+        ReferenceEntry("Eliminate Extreme Wording",
+            formula: "Be cautious with always / never / completely choices.",
+            tag: .tip),
+        ReferenceEntry("Data Questions",
+            formula: "Read title, axis labels, and units before evaluating claims.",
+            tag: .tip),
+    ])
 }
 
 // MARK: - Main View
@@ -487,7 +633,7 @@ extension ReferenceSection {
 struct ReferenceView: View {
     @State private var selectedSubject = 0
     @State private var searchText = ""
-    @State private var expandedSections: Set<UUID> = []
+    @State private var expandedSections: Set<String> = []
 
     private var currentSections: [ReferenceSection] {
         selectedSubject == 0 ? ReferenceSection.mathSections : ReferenceSection.rwSections
@@ -508,55 +654,242 @@ struct ReferenceView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                HStack(spacing: 8) {
-                    FilterChipButton(title: "Math", isSelected: selectedSubject == 0, accent: .blue, fillsGridCell: true) {
-                        selectedSubject = 0
-                    }
-                    FilterChipButton(title: "Reading & Writing", isSelected: selectedSubject == 1, accent: .blue, fillsGridCell: true) {
-                        selectedSubject = 1
-                    }
+            #if os(macOS)
+            referenceMacScrollLayout
+            #else
+            referenceIOSListLayout
+            #endif
+        }
+        .navigationTitle("Reference")
+        .navLargeTitle()
+        .onChange(of: searchText) { _, new in
+            if !new.isEmpty {
+                var t = Transaction()
+                t.animation = nil
+                withTransaction(t) {
+                    #if os(macOS)
+                    expandedSections = Set(filteredSections.map(\.id))
+                    #else
+                    expandedSections = Set(filteredSections.prefix(8).map(\.id))
+                    #endif
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 10)
-                .background(Color(.secondarySystemGroupedBackground))
-                .onChange(of: selectedSubject) { _, _ in expandedSections.removeAll() }
+            }
+        }
+    }
 
-                ScrollView {
-                    LazyVStack(spacing: 10) {
-                        ForEach(filteredSections) { section in
-                            ReferenceSectionCard(
-                                section: section,
-                                isExpanded: expandedSections.contains(section.id),
-                                onToggle: {
-                                    withAnimation(.easeOut(duration: 0.18)) {
-                                        if expandedSections.contains(section.id) {
-                                            expandedSections.remove(section.id)
-                                        } else {
+    /// In-column search (same width as list/cards). `.searchable` on the tab often pins to the sidebar on iPad.
+    private var referenceSearchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.body.weight(.medium))
+                .foregroundStyle(.secondary)
+            TextField("Search formulas and rules…", text: $searchText)
+                #if os(iOS)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                #endif
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.secondary.opacity(0.14))
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Search formulas and rules")
+    }
+
+    // MARK: - iOS / iPad: inset grouped list + disclosure (Settings-style)
+
+    #if !os(macOS)
+    private var referenceIOSListLayout: some View {
+        List {
+            Section {
+                referenceSearchBar
+                    .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+            Section {
+                Picker("Subject", selection: $selectedSubject) {
+                    Text("Math").tag(0)
+                    Text("Reading & Writing").tag(1)
+                }
+                .pickerStyle(.segmented)
+                .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
+                .onChange(of: selectedSubject) { _, _ in expandedSections.removeAll() }
+            }
+
+            if filteredSections.isEmpty {
+                Section {
+                    ContentUnavailableView {
+                        Label("No matches", systemImage: "magnifyingglass")
+                    } description: {
+                        Text("Nothing matches “\(searchText)”.")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                }
+            } else {
+                ForEach(filteredSections) { section in
+                    Section {
+                        DisclosureGroup(
+                            isExpanded: Binding(
+                                get: { expandedSections.contains(section.id) },
+                                set: { on in
+                                    var t = Transaction()
+                                    t.animation = nil
+                                    withTransaction(t) {
+                                        if on {
                                             expandedSections.insert(section.id)
+                                        } else {
+                                            expandedSections.remove(section.id)
                                         }
                                     }
                                 }
                             )
-                        }
-                        if filteredSections.isEmpty {
-                            Text("No results for \"\(searchText)\"")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .padding(.top, 48)
+                        ) {
+                            ForEach(section.entries) { entry in
+                                ReferenceEntryRow(entry: entry, accentColor: section.color)
+                                    .listRowInsets(EdgeInsets(top: 10, leading: 18, bottom: 10, trailing: 16))
+                            }
+                        } label: {
+                            referenceSectionListLabel(section)
                         }
                     }
-                    .padding()
                 }
-                .background(Color(.systemGroupedBackground))
             }
-            .navigationTitle("Reference")
-            .navigationBarTitleDisplayMode(.large)
-            .searchable(text: $searchText, prompt: "Search formulas and rules…")
-            .onChange(of: searchText) { _, new in
-                if !new.isEmpty {
-                    expandedSections = Set(filteredSections.map { $0.id })
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(Color.systemGroupedBackground)
+        .readableContentFrame(maxWidth: referenceContentMaxWidth, alignment: .leading)
+    }
+
+    private func referenceSectionListLabel(_ section: ReferenceSection) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: section.icon)
+                .font(.body.weight(.medium))
+                .foregroundStyle(section.color)
+                .frame(width: 32, height: 32)
+                .background(section.color.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(section.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("\(section.entries.count) entries")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+    #endif
+
+    /// macOS: chip strip + card accordion.
+    #if os(macOS)
+    private var referenceMacScrollLayout: some View {
+        VStack(spacing: 0) {
+            subjectChipStrip
+                .padding(.horizontal, referenceChipStripHorizontalPadding)
+                .padding(.vertical, referenceChipStripVerticalPadding)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.secondarySystemGroupedBackground)
+                .onChange(of: selectedSubject) { _, _ in expandedSections.removeAll() }
+
+            referenceSearchBar
+                .padding(.horizontal, referenceChipStripHorizontalPadding)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.secondarySystemGroupedBackground)
+
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    ForEach(filteredSections) { section in
+                        ReferenceSectionCard(
+                            section: section,
+                            isExpanded: expandedSections.contains(section.id),
+                            onToggle: {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    if expandedSections.contains(section.id) {
+                                        expandedSections.remove(section.id)
+                                    } else {
+                                        expandedSections.insert(section.id)
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    if filteredSections.isEmpty {
+                        ContentUnavailableView {
+                            Label("No matches", systemImage: "magnifyingglass")
+                        } description: {
+                            Text(searchText.isEmpty ? "Choose Math or Reading & Writing." : "Nothing matches “\(searchText)”.")
+                        }
+                        .padding(.top, 24)
+                    }
                 }
+                .padding(referenceListOuterPadding)
+                .readableContentFrame(maxWidth: referenceContentMaxWidth, alignment: .leading)
+            }
+            .background(Color.systemGroupedBackground)
+        }
+    }
+    #endif
+
+    private var referenceContentMaxWidth: CGFloat {
+        #if os(macOS)
+        LayoutMetrics.macReferenceMaxContentWidth
+        #else
+        LayoutMetrics.referenceMaxContentWidth
+        #endif
+    }
+
+    private var referenceChipStripHorizontalPadding: CGFloat {
+        #if os(macOS)
+        MacStudiumDesign.practiceMainPaddingH
+        #else
+        16
+        #endif
+    }
+
+    private var referenceChipStripVerticalPadding: CGFloat {
+        #if os(macOS)
+        12
+        #else
+        10
+        #endif
+    }
+
+    private var referenceListOuterPadding: CGFloat {
+        #if os(macOS)
+        MacStudiumDesign.practiceMainPaddingH
+        #else
+        16
+        #endif
+    }
+
+    private var subjectChipStrip: some View {
+        HStack(spacing: 8) {
+            FilterChipButton(title: "Math", isSelected: selectedSubject == 0, accent: .blue, fillsGridCell: true) {
+                selectedSubject = 0
+            }
+            FilterChipButton(title: "Reading & Writing", isSelected: selectedSubject == 1, accent: .blue, fillsGridCell: true) {
+                selectedSubject = 1
             }
         }
     }
@@ -590,7 +923,7 @@ struct ReferenceSectionCard: View {
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 3)
-                        .background(Color(.systemGray5))
+                        .background(Color.systemGray5)
                         .cornerRadius(8)
 
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
@@ -607,12 +940,12 @@ struct ReferenceSectionCard: View {
                 ForEach(section.entries) { entry in
                     ReferenceEntryRow(entry: entry, accentColor: section.color)
                     if entry.id != section.entries.last?.id {
-                        Divider().padding(.leading, 14)
+                        Divider().padding(.horizontal, 14)
                     }
                 }
             }
         }
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.secondarySystemGroupedBackground)
         .cornerRadius(14)
     }
 }
@@ -622,6 +955,19 @@ struct ReferenceSectionCard: View {
 struct ReferenceEntryRow: View {
     let entry: ReferenceEntry
     let accentColor: Color
+
+    @ViewBuilder
+    private func referencePlainFormula(_ formula: String, accentColor: Color) -> some View {
+        Text(formula)
+            .font(.system(.callout, design: .monospaced))
+            .foregroundColor(accentColor)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(accentColor.opacity(0.07))
+            .cornerRadius(10)
+    }
 
     private var tagColor: Color {
         switch entry.tag {
@@ -646,20 +992,20 @@ struct ReferenceEntryRow: View {
                 }
             }
 
-            // Prefer rendered LaTeX; fall back to monospaced plain text
+            // Apple platforms except macOS: prefer plain `formula` so Reference doesn’t spawn dozens of MathJax webviews.
+            #if os(macOS)
             if let latex = entry.latex {
                 MathFormulaView(latex: latex, accentColor: accentColor)
             } else if let formula = entry.formula {
-                Text(formula)
-                    .font(.system(.callout, design: .monospaced))
-                    .foregroundColor(accentColor)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(accentColor.opacity(0.07))
-                    .cornerRadius(10)
+                referencePlainFormula(formula, accentColor: accentColor)
             }
+            #else
+            if let latex = entry.latex, entry.formula == nil {
+                MathFormulaView(latex: latex, accentColor: accentColor)
+            } else if let formula = entry.formula {
+                referencePlainFormula(formula, accentColor: accentColor)
+            }
+            #endif
 
             if let detail = entry.detail {
                 Text(detail)

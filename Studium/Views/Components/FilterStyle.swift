@@ -14,14 +14,14 @@ enum FilterStyle {
         if selected {
             return accent.opacity(colorScheme == .dark ? 0.34 : 0.14)
         }
-        return Color(.tertiarySystemFill)
+        return Color.tertiarySystemFill
     }
 
     static func orderCardFill(selected: Bool, accent: Color, colorScheme: ColorScheme) -> Color {
         if selected {
             return accent.opacity(colorScheme == .dark ? 0.30 : 0.11)
         }
-        return Color(.tertiarySystemFill)
+        return Color.tertiarySystemFill
     }
 
     /// Visible in light and dark: accent when selected, subtle separator when not.

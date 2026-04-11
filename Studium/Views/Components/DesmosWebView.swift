@@ -48,7 +48,27 @@ struct DesmosCalculatorView: View {
     var body: some View {
         DesmosWebViewRepresentableMac()
             .background(Color(nsColor: .windowBackgroundColor))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
+
+final class DesmosWKContainer: NSView {
+    let webView: WKWebView
+
+    init(webView: WKWebView) {
+        self.webView = webView
+        super.init(frame: .zero)
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(webView)
+        NSLayoutConstraint.activate([
+            webView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            webView.topAnchor.constraint(equalTo: topAnchor),
+            webView.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) { nil }
 }
 
 struct DesmosWebViewRepresentableMac: NSViewRepresentable {
@@ -58,17 +78,22 @@ struct DesmosWebViewRepresentableMac: NSViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {}
 
-    func makeNSView(context: Context) -> WKWebView {
+    func makeNSView(context: Context) -> DesmosWKContainer {
         let config = WKWebViewConfiguration()
+        let pagePrefs = WKWebpagePreferences()
+        pagePrefs.allowsContentJavaScript = true
+        config.defaultWebpagePreferences = pagePrefs
+
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
+        webView.setValue(false, forKey: "drawsBackground")
         if let url = URL(string: "https://www.desmos.com/calculator") {
             webView.load(URLRequest(url: url))
         }
-        return webView
+        return DesmosWKContainer(webView: webView)
     }
 
-    func updateNSView(_ nsView: WKWebView, context: Context) {}
+    func updateNSView(_ container: DesmosWKContainer, context: Context) {}
 }
 
 #else

@@ -65,7 +65,7 @@ struct VocabFlashcardsView: View {
             }
         }
         .navigationTitle("Vocab")
-        .navigationBarTitleDisplayMode(.large)
+        .navLargeTitle()
         .onAppear {
             restorePosition()
             validateManualOrder()
@@ -111,6 +111,13 @@ struct VocabFlashcardsView: View {
                 }
                 .disabled(baseFilteredIndices.isEmpty)
             }
+        }
+        // Keyboard navigation: ← / → to flip through cards, Space to flip
+        .onKeyPress(.leftArrow)  { goToPrevious(); return .handled }
+        .onKeyPress(.rightArrow) { goToNext();     return .handled }
+        .onKeyPress(.space) {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { isFlipped.toggle() }
+            return .handled
         }
     }
 
@@ -183,7 +190,7 @@ struct VocabFlashcardsView: View {
                         .frame(maxWidth: .infinity)
                         .frame(minHeight: 220)
                         .padding(20)
-                        .background(Color(.secondarySystemGroupedBackground))
+                        .background(Color.secondarySystemGroupedBackground)
                         .clipShape(RoundedRectangle(cornerRadius: FilterStyle.cardCorner))
                         .overlay(
                             RoundedRectangle(cornerRadius: FilterStyle.cardCorner)
@@ -238,8 +245,15 @@ struct VocabFlashcardsView: View {
             }
             .padding(.horizontal)
             .padding(.bottom, 20)
+            .readableContentFrame(maxWidth: {
+                #if os(macOS)
+                LayoutMetrics.macVocabMaxContentWidth
+                #else
+                LayoutMetrics.vocabMaxContentWidth
+                #endif
+            }())
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.systemGroupedBackground)
     }
 
     private var progressLabel: String {

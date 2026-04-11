@@ -48,11 +48,10 @@ class ProgressManager: ObservableObject {
         if isICloudSyncEnabled {
             enableICloudSync()
         } else {
-            // Check if this is first launch - enable iCloud sync by default
+            // First launch: enable iCloud by default. `didSet` on `isICloudSyncEnabled` calls `enableICloudSync()` — do not call it twice (duplicate observers break sync).
             if !UserDefaults.standard.bool(forKey: "hasSetICloudSyncPreference") {
-                isICloudSyncEnabled = true
                 UserDefaults.standard.set(true, forKey: "hasSetICloudSyncPreference")
-                enableICloudSync()
+                isICloudSyncEnabled = true
             }
         }
     }
@@ -151,39 +150,33 @@ class ProgressManager: ObservableObject {
     }
     
     func getAccuracy(byModule module: String, questionLoader: QuestionLoader) -> Double {
-        let moduleQuestions = questionLoader.getQuestions(byModule: module)
-        let questionIds = Set(moduleQuestions.map { $0.questionId })
-        let answered = progress.filter { questionIds.contains($0.key) && $0.value.correct != nil }
-        guard !answered.isEmpty else { return 0 }
-        let correct = answered.filter { $0.value.correct == true }.count
-        return Double(correct) / Double(answered.count) * 100
+        accuracy(forQuestionIds: questionLoader.questionIdsByModule[module] ?? [])
     }
     
     func getAccuracy(byDifficulty difficulty: String, questionLoader: QuestionLoader) -> Double {
-        let difficultyQuestions = questionLoader.getQuestions(byDifficulty: difficulty)
-        let questionIds = Set(difficultyQuestions.map { $0.questionId })
-        let answered = progress.filter { questionIds.contains($0.key) && $0.value.correct != nil }
-        guard !answered.isEmpty else { return 0 }
-        let correct = answered.filter { $0.value.correct == true }.count
-        return Double(correct) / Double(answered.count) * 100
+        accuracy(forQuestionIds: questionLoader.questionIdsByDifficulty[difficulty] ?? [])
     }
     
     func getAccuracy(byPrimaryClass primaryClass: String, questionLoader: QuestionLoader) -> Double {
-        let primaryClassQuestions = questionLoader.getQuestions(byPrimaryClass: primaryClass)
-        let questionIds = Set(primaryClassQuestions.map { $0.questionId })
-        let answered = progress.filter { questionIds.contains($0.key) && $0.value.correct != nil }
-        guard !answered.isEmpty else { return 0 }
-        let correct = answered.filter { $0.value.correct == true }.count
-        return Double(correct) / Double(answered.count) * 100
+        accuracy(forQuestionIds: questionLoader.questionIdsByPrimaryClass[primaryClass] ?? [])
     }
     
     func getAccuracy(bySkillDesc skillDesc: String, questionLoader: QuestionLoader) -> Double {
-        let skillDescQuestions = questionLoader.getQuestions(bySkillDesc: skillDesc)
-        let questionIds = Set(skillDescQuestions.map { $0.questionId })
-        let answered = progress.filter { questionIds.contains($0.key) && $0.value.correct != nil }
-        guard !answered.isEmpty else { return 0 }
-        let correct = answered.filter { $0.value.correct == true }.count
-        return Double(correct) / Double(answered.count) * 100
+        accuracy(forQuestionIds: questionLoader.questionIdsBySkillDesc[skillDesc] ?? [])
+    }
+
+    /// Accuracy over the given question IDs (answered only), O(ids) not O(all progress).
+    private func accuracy(forQuestionIds ids: Set<String>) -> Double {
+        guard !ids.isEmpty else { return 0 }
+        var answered = 0
+        var correct = 0
+        for id in ids {
+            guard let c = progress[id]?.correct else { continue }
+            answered += 1
+            if c { correct += 1 }
+        }
+        guard answered > 0 else { return 0 }
+        return Double(correct) / Double(answered) * 100
     }
     
     // MARK: - Reset Operations
@@ -270,13 +263,15 @@ class ProgressManager: ObservableObject {
             print("iCloud sync is disabled")
             return
         }
-        
+
         if iCloudStore == nil {
             enableICloudSync()
-        } else {
-            syncFromICloud()
-            syncToICloud()
         }
+        guard let store = iCloudStore else { return }
+
+        _ = store.synchronize()
+        syncFromICloud()
+        syncToICloud()
     }
     
     private func enableICloudSync() {
@@ -290,13 +285,19 @@ class ProgressManager: ObservableObject {
         }
         
         iCloudStore = NSUbiquitousKeyValueStore.default
-        
-        // Set up notification observer first
+        iCloudStore?.synchronize() // fetch latest from iCloud before reading
+
+        // Idempotent: first launch could set sync on twice; duplicate observers drop remote updates.
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: NSUbiquitousKeyValueStore.default
+        )
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(iCloudDidChange),
             name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: iCloudStore
+            object: NSUbiquitousKeyValueStore.default
         )
         
         // Sync from iCloud on enable
@@ -314,17 +315,34 @@ class ProgressManager: ObservableObject {
         NotificationCenter.default.removeObserver(
             self,
             name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: iCloudStore
+            object: NSUbiquitousKeyValueStore.default
         )
         iCloudStore = nil
     }
     
     @objc private func iCloudDidChange(notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let keys = userInfo[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String],
-              keys.contains(iCloudKey) else {
+        guard let userInfo = notification.userInfo else {
+            DispatchQueue.main.async { [weak self] in self?.syncFromICloud() }
             return
         }
+        // NSUbiquitousKeyValueStoreChangeReason.quotaViolationChange == 2
+        if let reason = (userInfo[NSUbiquitousKeyValueStoreChangeReasonKey] as? NSNumber)?.intValue,
+           reason == 2 {
+            #if !targetEnvironment(simulator)
+            print("iCloud key-value store quota exceeded; progress sync may be incomplete (reduce data or contact support).")
+            #endif
+        }
+        let keys = userInfo[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String]
+        let shouldMerge: Bool
+        if let keys {
+            // Apple: if this key is absent, assume everything may have changed.
+            shouldMerge = keys.isEmpty
+                || keys.contains(iCloudKey)
+                || keys.contains(iCloudDeletedKey)
+        } else {
+            shouldMerge = true
+        }
+        guard shouldMerge else { return }
         DispatchQueue.main.async { [weak self] in
             self?.syncFromICloud()
         }
@@ -373,7 +391,8 @@ class ProgressManager: ObservableObject {
         guard let store = iCloudStore else {
             return
         }
-        
+        _ = store.synchronize()
+
         // Get iCloud progress
         var iCloudProgress: [String: QuestionProgress] = [:]
         if let data = store.data(forKey: iCloudKey),
@@ -388,12 +407,9 @@ class ProgressManager: ObservableObject {
             iCloudDeletedTimestamps = decoded
         }
         
-        // If no iCloud data, push local data
-        if iCloudProgress.isEmpty && iCloudDeletedTimestamps.isEmpty {
-            syncToICloud()
-            return
-        }
-        
+        // Empty KVS can mean "nothing uploaded yet" or "still downloading". Run full merge so local
+        // rows seed correctly; avoid a standalone upload that bypasses merge.
+
         // Merge deleted timestamps - keep the most recent deletion
         var mergedDeletedTimestamps = deletedProgressTimestamps
         for (questionId, iCloudDeleteTime) in iCloudDeletedTimestamps {

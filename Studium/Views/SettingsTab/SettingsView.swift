@@ -10,6 +10,7 @@ struct SettingsView: View {
     @ObservedObject var questionLoader: QuestionLoader
     @ObservedObject private var quizStateManager = QuizStateManager.shared
     @AppStorage("appearanceMode") private var appearanceMode = "system"
+    @AppStorage("htmlFontSize") private var htmlFontSize: Double = 16.0
 
     private let accent = Color.accentColor
 
@@ -18,13 +19,40 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     FilterStripSectionTitle(text: "Appearance")
-                    FilterFormCard {
-                        Picker("Theme", selection: $appearanceMode) {
-                            Text("System").tag("system")
-                            Text("Light").tag("light")
-                            Text("Dark").tag("dark")
+                    FilterFormCard(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Theme")
+                                .font(.subheadline.weight(.medium))
+                            Picker("Theme", selection: $appearanceMode) {
+                                Text("System").tag("system")
+                                Text("Light").tag("light")
+                                Text("Dark").tag("dark")
+                            }
+                            .pickerStyle(.segmented)
                         }
-                        .pickerStyle(.segmented)
+
+                        Divider()
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Question text size")
+                                    .font(.subheadline.weight(.medium))
+                                Spacer()
+                                Text("\(Int(htmlFontSize)) pt")
+                                    .font(.subheadline.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            HStack(spacing: 10) {
+                                Text("A")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(.secondary)
+                                Slider(value: $htmlFontSize, in: 13...22, step: 1)
+                                    .tint(accent)
+                                Text("A")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
 
                     FilterStripSectionTitle(text: "Practice")
@@ -105,10 +133,17 @@ struct SettingsView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 12)
+                .readableContentFrame(maxWidth: {
+                    #if os(macOS)
+                    LayoutMetrics.macSettingsMaxContentWidth
+                    #else
+                    LayoutMetrics.settingsStyleMaxContentWidth
+                    #endif
+                }())
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.systemGroupedBackground)
             .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.large)
+            .navLargeTitle()
         }
     }
 }

@@ -1,0 +1,11 @@
+---
+description: Studium iCloud Key-Value sync (progress + saved quizzes)
+globs: Studium/**/*.swift
+alwaysApply: false
+---
+
+- **Stores:** `ProgressManager` (`questionProgress`, `deletedQuestionProgress`) and `QuizStateManager` (`savedQuizStates`, `deletedQuizStates`) use `NSUbiquitousKeyValueStore`. Entitlements: `com.apple.developer.ubiquity-kvstore-identifier` in `Studium.entitlements`.
+- **Settings toggle:** A single UI toggle sets **both** `progressManager.isICloudSyncEnabled` and `quizStateManager.isICloudSyncEnabled` together.
+- **`manualSync()`:** After `enableICloudSync()` (when `iCloudStore` was nil), must still run `synchronize()` → `syncFromICloud()` → `syncToICloud()` so **Sync Now** and cold start are not delayed-only.
+- **Foreground / launch:** `ContentView` runs `syncIfNeeded()` on **onAppear** and when `scenePhase` becomes **active** (onChange alone misses cold start if already active).
+- **`syncFromICloud`:** Do not short-circuit on empty KVS with only `syncToICloud()`; use the full merge path so local data seeds through the same logic as remote updates.

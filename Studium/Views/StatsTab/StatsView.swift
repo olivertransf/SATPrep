@@ -36,10 +36,17 @@ struct StatsView: View {
                 resetProgressSection
             }
             .padding()
+            .readableContentFrame(maxWidth: {
+                #if os(macOS)
+                LayoutMetrics.macSettingsMaxContentWidth
+                #else
+                LayoutMetrics.settingsStyleMaxContentWidth
+                #endif
+            }())
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.systemGroupedBackground)
         .navigationTitle("Statistics")
-        .navigationBarTitleDisplayMode(.large)
+        .navLargeTitle()
         .alert("Reset Progress", isPresented: $showResetConfirmation) {
             Button("Cancel", role: .cancel) { resetType = nil }
             Button("Reset", role: .destructive) { performReset() }
@@ -99,9 +106,9 @@ struct StatsView: View {
                 }
             }
             .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
+            .navInlineTitle()
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navTrailing) {
                     Button("Cancel") {
                         isPresented.wrappedValue = false
                     }
@@ -125,7 +132,7 @@ struct StatsView: View {
             // Circular progress
             ZStack {
                 Circle()
-                    .stroke(Color(.systemGray5), lineWidth: 8)
+                    .stroke(Color.systemGray5, lineWidth: 8)
                 Circle()
                     .trim(from: 0, to: attempted > 0 ? CGFloat(accuracy / 100) : 0)
                     .stroke(accuracyColor(accuracy), style: StrokeStyle(lineWidth: 8, lineCap: .round))
@@ -154,7 +161,7 @@ struct StatsView: View {
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.secondarySystemGroupedBackground)
         .cornerRadius(16)
     }
 
@@ -245,7 +252,7 @@ struct StatsView: View {
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 Rectangle()
-                                    .fill(Color(.systemGray5))
+                                    .fill(Color.systemGray5)
                                     .cornerRadius(2)
                                 if item.accuracy > 0 {
                                     Rectangle()
@@ -265,7 +272,7 @@ struct StatsView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(Color.secondarySystemGroupedBackground)
         .cornerRadius(16)
     }
 
@@ -292,7 +299,7 @@ struct StatsView: View {
                 Divider().padding(.leading)
                 resetButton(title: "Reset by Difficulty", color: .orange) { showDifficultyPicker = true }
             }
-            .background(Color(.secondarySystemGroupedBackground))
+            .background(Color.secondarySystemGroupedBackground)
             .cornerRadius(16)
         }
     }

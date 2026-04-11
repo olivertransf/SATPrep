@@ -16,6 +16,8 @@ struct FilterOptions: Codable, Equatable, Hashable {
     var difficulty: String?
     var answerStatus: AnswerStatus
     var isBluebook: BluebookFilter?
+    /// IDs from Educator Question Bank HTML (exclude active) — see `cb-verified-not-on-practice-tests.json`.
+    var cbVerifiedInactive: CBVerifiedInactiveFilter?
     var shuffled: Bool
     var questionLimit: Int?
 
@@ -30,6 +32,12 @@ struct FilterOptions: Codable, Equatable, Hashable {
         case all = "All"
         case bluebook = "Bluebook"
         case notBluebook = "Not Bluebook"
+    }
+
+    /// Restrict to question IDs scraped from CB Educator Bank with “Exclude Active Questions”.
+    enum CBVerifiedInactiveFilter: String, Codable, CaseIterable {
+        case ignore = "Any"
+        case onlyVerifiedOffCBPracticeTests = "Verified off practice tests"
     }
 
     enum SortOrder: String, Codable, CaseIterable {
@@ -47,6 +55,7 @@ struct FilterOptions: Codable, Equatable, Hashable {
         difficulty: String? = nil,
         answerStatus: AnswerStatus = .all,
         isBluebook: BluebookFilter? = nil,
+        cbVerifiedInactive: CBVerifiedInactiveFilter? = nil,
         shuffled: Bool = true,
         questionLimit: Int? = nil
     ) {
@@ -57,11 +66,12 @@ struct FilterOptions: Codable, Equatable, Hashable {
         self.difficulty = difficulty
         self.answerStatus = answerStatus
         self.isBluebook = isBluebook
+        self.cbVerifiedInactive = cbVerifiedInactive
         self.shuffled = shuffled
         self.questionLimit = questionLimit
     }
     
-    func matches(_ question: Question) -> Bool {
+    nonisolated func matches(_ question: Question, cbVerifiedNotOnPracticeTestIds: Set<String>) -> Bool {
         if let program = program, question.program != program {
             return false
         }
@@ -78,9 +88,7 @@ struct FilterOptions: Codable, Equatable, Hashable {
             return false
         }
         if let isBluebook = isBluebook {
-            // Check if question is from bluebook - typically questions with "ibn" field are bluebook
-            // or we can check origin field if it exists
-            let questionIsBluebook = question.ibn != nil || question.content.origin?.lowercased().contains("bluebook") == true
+            let questionIsBluebook = question.isBluebookTagged
             switch isBluebook {
             case .bluebook:
                 if !questionIsBluebook {
@@ -94,7 +102,42 @@ struct FilterOptions: Codable, Equatable, Hashable {
                 break
             }
         }
+        if cbVerifiedInactive == .onlyVerifiedOffCBPracticeTests {
+            if !cbVerifiedNotOnPracticeTestIds.contains(question.questionId.lowercased()) {
+                return false
+            }
+        }
         return true
+    }
+
+    /// Pure filter for use off the main actor (pass a snapshot of `questions` and `progress`).
+    nonisolated func filteredQuestions(
+        from questions: [Question],
+        progress: [String: QuestionProgress],
+        cbVerifiedNotOnPracticeTestIds: Set<String>
+    ) -> [Question] {
+        var filtered = questions.filter { matches($0, cbVerifiedNotOnPracticeTestIds: cbVerifiedNotOnPracticeTestIds) }
+
+        switch answerStatus {
+        case .unanswered:
+            filtered = filtered.filter { progress[$0.questionId]?.correct == nil }
+        case .incorrect:
+            filtered = filtered.filter { progress[$0.questionId]?.correct == false }
+        case .correct:
+            filtered = filtered.filter { progress[$0.questionId]?.correct == true }
+        case .all:
+            break
+        }
+
+        if shuffled {
+            filtered.shuffle()
+        }
+
+        if let limit = questionLimit, limit > 0, limit < filtered.count {
+            filtered = Array(filtered.prefix(limit))
+        }
+
+        return filtered
     }
 }
 
