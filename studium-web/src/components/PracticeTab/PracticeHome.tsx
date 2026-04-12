@@ -1,15 +1,15 @@
 import { useState, useMemo } from 'react'
 import type {
   Question, QuestionProgress, FilterOptions, SavedQuiz, AnswerStatus,
+  BluebookFilter, CBVerifiedInactiveFilter,
 } from '../../types'
 import {
-  getFilteredQuestions, getAvailableModules,
+  getFilteredQuestions, getAvailableModules, getAvailablePrimaryClasses, getAvailableSkills,
 } from '../../utils/questions'
 import { deleteQuiz } from '../../store/quiz'
-import FilterPanel from './FilterPanel'
 import {
   Play, Trash2, ChevronDown, ChevronUp,
-  Shuffle, ArrowDownUp, SlidersHorizontal,
+  Shuffle, ArrowDownUp, RotateCcw,
 } from 'lucide-react'
 
 interface PracticeHomeProps {
@@ -48,8 +48,29 @@ function describeFilters(f: FilterOptions): string {
   if (f.skillDesc)          parts.push(f.skillDesc)
   if (f.difficulty)         parts.push(DIFFICULTY_LABELS[f.difficulty] ?? f.difficulty)
   if (f.answerStatus !== 'all') parts.push(f.answerStatus)
+  if (f.isBluebook === 'bluebook') parts.push('Practice tests only')
+  if (f.isBluebook === 'notBluebook') parts.push('Exclude active')
+  if (f.cbVerifiedInactive === 'onlyVerifiedOffCBPracticeTests') parts.push('CB verified pool')
+  if (f.questionLimit) parts.push(`Max ${f.questionLimit}`)
   return parts.length > 0 ? parts.join(' · ') : 'All Questions'
 }
+
+const PRACTICE_TESTS = {
+  group: 'Practice tests',
+  all: 'All',
+  only: 'Practice tests only',
+  excludeActive: 'Exclude active',
+  help:
+    '“Exclude active” matches the Question Bank option to hide questions already used on full-length practice tests (when this bank tags them).',
+} as const
+
+const CB_VERIFIED = {
+  group: 'CB verified pool',
+  any: 'Any',
+  only: 'Verified off practice tests',
+  help:
+    'Only IDs from an Educator Question Bank export with “Exclude Active Questions” (sidecar JSON).',
+} as const
 
 // ─── Small filter chip ────────────────────────────────────────────────────────
 
@@ -196,18 +217,37 @@ export default function PracticeHome({
   onStartQuiz, onResumeQuiz, onQuizzesChange,
 }: PracticeHomeProps) {
   const [module,       setModule]       = useState<string | undefined>()
+  const [primaryClass, setPrimaryClass] = useState<string | undefined>()
+  const [skillDesc,    setSkillDesc]    = useState<string | undefined>()
   const [difficulty,   setDifficulty]   = useState<string | undefined>()
   const [answerStatus, setAnswerStatus] = useState<AnswerStatus>('all')
+  const [isBluebook,   setIsBluebook]   = useState<BluebookFilter | undefined>()
+  const [cbVerifiedInactive, setCbVerifiedInactive] = useState<CBVerifiedInactiveFilter | undefined>()
   const [shuffled,     setShuffled]     = useState(true)
+  const [useLimit,     setUseLimit]     = useState(false)
+  const [questionLimit, setQuestionLimit] = useState<number | undefined>()
 
-  const [showAdvanced,       setShowAdvanced]       = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
   const modules = getAvailableModules(questions)
+  const classes = useMemo(() => getAvailablePrimaryClasses(questions, module), [questions, module])
+  const skills    = useMemo(() => getAvailableSkills(questions, module, primaryClass), [questions, module, primaryClass])
+  const verifiedInBank = useMemo(
+    () => questions.filter(q => cbVerifiedNotOnPracticeTestIds.has(q.questionId.toLowerCase())).length,
+    [questions, cbVerifiedNotOnPracticeTestIds],
+  )
 
   const currentFilters: FilterOptions = useMemo(() => ({
-    module, difficulty, answerStatus, shuffled: false,
-  }), [module, difficulty, answerStatus])
+    module,
+    difficulty,
+    primaryClassCdDesc: primaryClass,
+    skillDesc,
+    answerStatus,
+    isBluebook,
+    cbVerifiedInactive,
+    shuffled: false,
+    questionLimit: useLimit ? questionLimit : undefined,
+  }), [module, difficulty, primaryClass, skillDesc, answerStatus, isBluebook, cbVerifiedInactive, useLimit, questionLimit])
 
   const filteredQuestions = useMemo(
     () => getFilteredQuestions(questions, currentFilters, progress, cbVerifiedNotOnPracticeTestIds),
@@ -263,6 +303,25 @@ export default function PracticeHome({
     })
   }
 
+  function setModuleAndClearDomain(m: string | undefined) {
+    setModule(m)
+    setPrimaryClass(undefined)
+    setSkillDesc(undefined)
+  }
+
+  function resetAllFilters() {
+    setModule(undefined)
+    setPrimaryClass(undefined)
+    setSkillDesc(undefined)
+    setDifficulty(undefined)
+    setAnswerStatus('all')
+    setIsBluebook(undefined)
+    setCbVerifiedInactive(undefined)
+    setShuffled(true)
+    setUseLimit(false)
+    setQuestionLimit(undefined)
+  }
+
   // Accuracy color
   const accuracyColor = stats.accuracy === null ? 'var(--muted)'
     : stats.accuracy >= 75 ? 'var(--success)'
@@ -281,10 +340,10 @@ export default function PracticeHome({
           <div className="flex items-center gap-2 flex-wrap">
             {/* Section */}
             <div className="flex gap-1">
-              <Chip label="All" selected={!module} onClick={() => setModule(undefined)} />
+              <Chip label="All" selected={!module} onClick={() => setModuleAndClearDomain(undefined)} />
               {modules.map(m => (
                 <Chip key={m} label={sectionLabel(m)} selected={module === m}
-                  onClick={() => setModule(module === m ? undefined : m)} />
+                  onClick={() => setModuleAndClearDomain(module === m ? undefined : m)} />
               ))}
             </div>
 
@@ -330,16 +389,6 @@ export default function PracticeHome({
               {shuffled ? <Shuffle size={15} /> : <ArrowDownUp size={15} />}
             </button>
 
-            {/* Advanced */}
-            <button
-              onClick={() => setShowAdvanced(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-all"
-              style={{ background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--muted)' }}
-            >
-              <SlidersHorizontal size={14} />
-              <span className="hidden sm:inline">More</span>
-            </button>
-
             {/* Start quiz */}
             <button
               onClick={() => handleStart()}
@@ -353,8 +402,93 @@ export default function PracticeHome({
             </button>
           </div>
 
-          {/* Row 2: live stats strip */}
-          <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--muted)' }}>
+          {module && (
+            <div className="space-y-1.5 pt-1 border-t" style={{ borderColor: 'var(--border)' }}>
+              <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Domain</div>
+              <div className="flex flex-wrap gap-1">
+                <Chip label="All" selected={!primaryClass}
+                  onClick={() => { setPrimaryClass(undefined); setSkillDesc(undefined) }} />
+                {classes.map(c => (
+                  <Chip key={c} label={c} selected={primaryClass === c}
+                    onClick={() => {
+                      setPrimaryClass(primaryClass === c ? undefined : c)
+                      setSkillDesc(undefined)
+                    }} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {module && primaryClass && (
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Skill</div>
+              <div className="flex flex-wrap gap-1">
+                <Chip label="All" selected={!skillDesc} onClick={() => setSkillDesc(undefined)} />
+                {skills.map(s => (
+                  <Chip key={s} label={s} selected={skillDesc === s}
+                    onClick={() => setSkillDesc(skillDesc === s ? undefined : s)} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1.5 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>{PRACTICE_TESTS.group}</div>
+            <div className="flex flex-wrap gap-1">
+              <Chip label={PRACTICE_TESTS.all} selected={!isBluebook} onClick={() => setIsBluebook(undefined)} />
+              <Chip label={PRACTICE_TESTS.only} selected={isBluebook === 'bluebook'}
+                onClick={() => setIsBluebook(isBluebook === 'bluebook' ? undefined : 'bluebook')} />
+              <Chip label={PRACTICE_TESTS.excludeActive} selected={isBluebook === 'notBluebook'}
+                onClick={() => setIsBluebook(isBluebook === 'notBluebook' ? undefined : 'notBluebook')} />
+            </div>
+            <p className="text-[11px] leading-snug" style={{ color: 'var(--muted)' }}>{PRACTICE_TESTS.help}</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>{CB_VERIFIED.group}</div>
+            <div className="flex flex-wrap gap-1">
+              <Chip label={CB_VERIFIED.any} selected={!cbVerifiedInactive} onClick={() => setCbVerifiedInactive(undefined)} />
+              <Chip label={CB_VERIFIED.only} selected={cbVerifiedInactive === 'onlyVerifiedOffCBPracticeTests'}
+                onClick={() => setCbVerifiedInactive(
+                  cbVerifiedInactive === 'onlyVerifiedOffCBPracticeTests' ? undefined : 'onlyVerifiedOffCBPracticeTests',
+                )} />
+            </div>
+            <p className="text-[11px] leading-snug" style={{ color: 'var(--muted)' }}>{CB_VERIFIED.help}</p>
+            <p className="text-[11px] leading-snug" style={{ color: 'var(--muted)' }}>
+              Sidecar: {cbVerifiedNotOnPracticeTestIds.size} IDs · {verifiedInBank} in this bank
+            </p>
+          </div>
+
+          <div className="space-y-2 rounded-xl border p-3" style={{ background: 'var(--input)', borderColor: 'var(--border)' }}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold" style={{ color: 'var(--text)' }}>Limit question count</span>
+              <button type="button" onClick={() => setUseLimit(u => !u)}
+                className="relative w-11 h-6 rounded-full shrink-0 transition-colors"
+                style={{ background: useLimit ? 'var(--accent)' : 'var(--border)' }}
+                aria-pressed={useLimit}>
+                <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"
+                  style={{ transform: useLimit ? 'translateX(20px)' : 'translateX(0)' }} />
+              </button>
+            </div>
+            {useLimit && (
+              <div className="flex flex-wrap gap-1">
+                {[10, 20, 30, 50].map(n => (
+                  <Chip key={n} label={String(n)} selected={questionLimit === n}
+                    onClick={() => setQuestionLimit(questionLimit === n ? undefined : n)} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button type="button" onClick={resetAllFilters}
+            className="flex items-center justify-center gap-2 py-2 text-xs font-medium rounded-lg border transition-all w-full sm:w-auto"
+            style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
+            <RotateCcw size={13} />
+            Reset all filters
+          </button>
+
+          {/* Row: live stats strip */}
+          <div className="flex items-center gap-4 text-xs pt-1 border-t" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
             {stats.accuracy !== null && (
               <span>
                 Accuracy{' '}
@@ -477,16 +611,6 @@ export default function PracticeHome({
         </div>
       </div>
 
-      {/* Advanced filters modal */}
-      {showAdvanced && (
-        <FilterPanel
-          questions={questions}
-          progress={progress}
-          cbVerifiedNotOnPracticeTestIds={cbVerifiedNotOnPracticeTestIds}
-          onStart={filters => { setShowAdvanced(false); onStartQuiz(filters) }}
-          onClose={() => setShowAdvanced(false)}
-        />
-      )}
     </div>
   )
 }
