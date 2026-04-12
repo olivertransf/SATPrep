@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type {
   Question,
   QuestionProgress,
@@ -15,8 +15,23 @@ import {
 import { markSeen, markAnswered } from '../../store/progress'
 import { saveQuiz } from '../../store/quiz'
 import { checkAnswer } from '../../utils/questions'
-import { ArrowLeft, ArrowRight, X, CheckCircle, XCircle, ChevronLeft } from 'lucide-react'
+import { ArrowLeft, ArrowRight, X, CheckCircle, XCircle, ChevronLeft, GripVertical } from 'lucide-react'
 import { HtmlBlock } from '../HtmlBlock'
+
+const PASSAGE_SPLIT_STORAGE_KEY = 'studium-passage-split-pct'
+const PASSAGE_SPLIT_HANDLE_PX = 8
+const PASSAGE_SPLIT_MIN_PCT = 22
+const PASSAGE_SPLIT_MAX_PCT = 78
+
+function readInitialPassageSplitPct(): number {
+  try {
+    const n = Number(localStorage.getItem(PASSAGE_SPLIT_STORAGE_KEY))
+    if (Number.isFinite(n) && n >= PASSAGE_SPLIT_MIN_PCT && n <= PASSAGE_SPLIT_MAX_PCT) return n
+  } catch {
+    /* ignore */
+  }
+  return 50
+}
 
 interface QuizViewProps {
   quiz: SavedQuiz
@@ -36,6 +51,11 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [showExplanation, setShowExplanation] = useState(false)
   const [showJumper, setShowJumper] = useState(false)
+  const [passagePanePct, setPassagePanePct] = useState(readInitialPassageSplitPct)
+  const [splitDragging, setSplitDragging] = useState(false)
+  const splitContainerRef = useRef<HTMLDivElement>(null)
+  const passageSplitPctRef = useRef(passagePanePct)
+  passageSplitPctRef.current = passagePanePct
 
   const question = questions[currentIndex]
 
@@ -69,6 +89,38 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
     return () => window.removeEventListener('keydown', handler)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSubmitted, currentIndex])
+
+  useEffect(() => {
+    if (!splitDragging) return
+    function onMove(e: PointerEvent) {
+      const el = splitContainerRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const pct = ((e.clientX - rect.left) / rect.width) * 100
+      const clamped = Math.min(PASSAGE_SPLIT_MAX_PCT, Math.max(PASSAGE_SPLIT_MIN_PCT, pct))
+      setPassagePanePct(clamped)
+    }
+    function onUp() {
+      setSplitDragging(false)
+      try {
+        localStorage.setItem(PASSAGE_SPLIT_STORAGE_KEY, String(passageSplitPctRef.current))
+      } catch {
+        /* ignore */
+      }
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [splitDragging])
 
   function persistQuiz(newAnswerStates: Record<string, QuestionAnswerState>, idx: number) {
     saveQuiz({ ...quiz, currentIndex: idx, answerStates: newAnswerStates, lastSaved: Date.now() })
@@ -372,14 +424,58 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
             </div>
           </div>
 
-          <div className="hidden lg:flex flex-1 overflow-hidden">
-            <div className="flex-1 overflow-y-auto border-r px-6 py-6" style={{ borderColor: 'var(--border)' }}>
+          <div
+            ref={splitContainerRef}
+            className="hidden lg:flex flex-1 overflow-hidden min-h-0 min-w-0"
+          >
+            <div
+              className="overflow-y-auto min-h-0 min-w-0 border-r px-3 py-3"
+              style={{
+                borderColor: 'var(--border)',
+                flex: `0 0 ${passagePanePct}%`,
+              }}
+            >
               <div className="max-w-[680px] mx-auto">
                 <HtmlBlock html={stimulus} isDark={isDark} fontSize={fontSize} profile="passage" />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto">
-              <div className="max-w-[600px] mx-auto px-8 py-8 space-y-5">
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize passage and question columns"
+              aria-valuenow={Math.round(passagePanePct)}
+              aria-valuemin={PASSAGE_SPLIT_MIN_PCT}
+              aria-valuemax={PASSAGE_SPLIT_MAX_PCT}
+              tabIndex={0}
+              className="shrink-0 flex flex-col items-center justify-center cursor-col-resize touch-none select-none rounded-sm hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)]"
+              style={{
+                flex: `0 0 ${PASSAGE_SPLIT_HANDLE_PX}px`,
+                background: splitDragging ? 'color-mix(in srgb, var(--accent) 18%, transparent)' : 'var(--input)',
+              }}
+              onPointerDown={e => {
+                e.preventDefault()
+                setSplitDragging(true)
+              }}
+              onKeyDown={e => {
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                  e.preventDefault()
+                  const delta = e.key === 'ArrowLeft' ? -2 : 2
+                  setPassagePanePct(p => {
+                    const next = Math.min(PASSAGE_SPLIT_MAX_PCT, Math.max(PASSAGE_SPLIT_MIN_PCT, p + delta))
+                    try {
+                      localStorage.setItem(PASSAGE_SPLIT_STORAGE_KEY, String(next))
+                    } catch {
+                      /* ignore */
+                    }
+                    return next
+                  })
+                }
+              }}
+            >
+              <GripVertical size={14} style={{ color: 'var(--muted)' }} aria-hidden />
+            </div>
+            <div className="flex-1 min-h-0 min-w-0 overflow-y-auto">
+              <div className="max-w-[600px] mx-auto px-3 py-3 space-y-5">
                 {metaRow}
                 {stem && (
                   <HtmlBlock html={stem} isDark={isDark} fontSize={fontSize} profile="quizFigures" />

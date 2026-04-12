@@ -364,6 +364,22 @@ def process_img_match(m: re.Match) -> str:
 _JSON_INLINE_OPEN = '\\\\('
 _JSON_INLINE_CLOSE = '\\\\)'
 
+# "4 thirds" / "one half" style inside corrupted \\( … \\) spans
+_SPOKEN_FRAC_SUFFIX = {
+    'half': '2', 'halves': '2',
+    'third': '3', 'thirds': '3',
+    'fourth': '4', 'fourths': '4', 'quarter': '4', 'quarters': '4',
+    'fifth': '5', 'fifths': '5',
+    'sixth': '6', 'sixths': '6',
+    'seventh': '7', 'sevenths': '7',
+    'eighth': '8', 'eighths': '8',
+    'ninth': '9', 'ninths': '9',
+    'tenth': '10', 'tenths': '10',
+}
+_SPOKEN_FRAC_SUFFIX_PAT = '|'.join(
+    re.escape(k) for k in sorted(_SPOKEN_FRAC_SUFFIX, key=len, reverse=True)
+)
+
 
 def _extract_inline_tex_spans(s: str):
     """Yield (start, end_exclusive, inner) for each JSON-encoded \\\\( … \\\\) math span."""
@@ -409,6 +425,12 @@ def repair_broken_inline_tex(s: str) -> str:
         )
         # Corrupted "f of 3 x" → "f(3) x" in rationales; merge to f(3x)
         fixed = re.sub(r'\bf\((\d+)\)\s+x\b', r'f(\1x)', fixed)
+        fixed = re.sub(
+            rf'(\d+)\s+({_SPOKEN_FRAC_SUFFIX_PAT})\b',
+            lambda m: '\\frac{' + m.group(1) + '}{' + _SPOKEN_FRAC_SUFFIX[m.group(2).lower()] + '}',
+            fixed,
+            flags=re.I,
+        )
         pieces.append(_JSON_INLINE_OPEN + fixed + _JSON_INLINE_CLOSE)
         last = end
     pieces.append(s[last:])
@@ -463,6 +485,7 @@ def run_tests():
         (_JSON_INLINE_OPEN + 'f(open)parenthesis 3 x ) = x - 6' + _JSON_INLINE_CLOSE,
          _JSON_INLINE_OPEN + 'f(3x) = x - 6' + _JSON_INLINE_CLOSE),
         (_JSON_INLINE_OPEN + 'f(3) x = 0' + _JSON_INLINE_CLOSE, _JSON_INLINE_OPEN + 'f(3x) = 0' + _JSON_INLINE_CLOSE),
+        (_JSON_INLINE_OPEN + '4 thirds' + _JSON_INLINE_CLOSE, _JSON_INLINE_OPEN + '\\frac{4}{3}' + _JSON_INLINE_CLOSE),
     ]
     for a, b in _rep_cases:
         out = repair_broken_inline_tex(a)
