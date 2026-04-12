@@ -426,18 +426,16 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
 
           <div
             ref={splitContainerRef}
-            className="hidden lg:flex flex-1 overflow-hidden min-h-0 min-w-0"
+            className="hidden lg:flex flex-1 flex-row items-stretch overflow-hidden min-h-0 min-w-0"
           >
             <div
-              className="overflow-y-auto min-h-0 min-w-0 border-r px-3 py-3"
+              className="h-full min-h-0 min-w-0 w-full overflow-y-auto border-r px-3 py-3 box-border"
               style={{
                 borderColor: 'var(--border)',
                 flex: `0 0 ${passagePanePct}%`,
               }}
             >
-              <div className="max-w-[680px] mx-auto">
-                <HtmlBlock html={stimulus} isDark={isDark} fontSize={fontSize} profile="passage" />
-              </div>
+              <HtmlBlock html={stimulus} isDark={isDark} fontSize={fontSize} profile="passage" />
             </div>
             <div
               role="separator"
@@ -447,7 +445,7 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
               aria-valuemin={PASSAGE_SPLIT_MIN_PCT}
               aria-valuemax={PASSAGE_SPLIT_MAX_PCT}
               tabIndex={0}
-              className="shrink-0 flex flex-col items-center justify-center cursor-col-resize touch-none select-none rounded-sm hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)]"
+              className="shrink-0 self-stretch flex flex-col items-center justify-center cursor-col-resize touch-none select-none rounded-sm hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)]"
               style={{
                 flex: `0 0 ${PASSAGE_SPLIT_HANDLE_PX}px`,
                 background: splitDragging ? 'color-mix(in srgb, var(--accent) 18%, transparent)' : 'var(--input)',
@@ -474,8 +472,8 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
             >
               <GripVertical size={14} style={{ color: 'var(--muted)' }} aria-hidden />
             </div>
-            <div className="flex-1 min-h-0 min-w-0 overflow-y-auto">
-              <div className="max-w-[600px] mx-auto px-3 py-3 space-y-5">
+            <div className="h-full min-h-0 min-w-0 flex-1 w-full overflow-y-auto box-border">
+              <div className="w-full max-w-none px-3 py-3 space-y-5 box-border">
                 {metaRow}
                 {stem && (
                   <HtmlBlock html={stem} isDark={isDark} fontSize={fontSize} profile="quizFigures" />
