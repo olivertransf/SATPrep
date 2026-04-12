@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Convert CB spoken-math accessibility descriptions inside studium-bank-tex-text
-spans from \(\text{spoken description}\) to proper LaTeX math notation.
+spans from ``\\(`` ... ``\\text{spoken}`` ... ``\\)`` markup to proper LaTeX math notation.
 
 Usage:
     python3 scripts/fix_spoken_math.py
@@ -215,11 +215,7 @@ def _convert_expr(s: str) -> str:
     for word, sym in GREEK.items():
         s = _sub(rf'\b{word}\b', sym, s)
 
-    # Function notation: "f of x" → f(x)
-    s = re.sub(r'\b([fgFG])\s+of\s+(\S+)', lambda m: m.group(1) + '(' + m.group(2) + ')', s)
-    s = re.sub(r'\b(f)\s+of\s+(\d+)', lambda m: m.group(1) + '(' + m.group(2) + ')', s, flags=re.I)
-
-    # Parentheses / braces
+    # Spoken parentheses BEFORE "letter of …" so "f of open parenthesis 3 x" → f(3 x), not f(open)…
     s = _sub(r'\bopen outer parenthesis\b', '(', s)
     s = _sub(r'\bclose outer parenthesis\b', ')', s)
     s = _sub(r'\bopen inner parenthesis\b', '(', s)
@@ -230,6 +226,18 @@ def _convert_expr(s: str) -> str:
     s = _sub(r'\bclose bracket\b', ']', s)
     s = _sub(r'\bopen brace\b', '\\{', s)
     s = _sub(r'\bclose brace\b', '\\}', s)
+
+    # Function notation: "h of t" → h(t), "f of ( … )" → f( … )
+    s = re.sub(
+        r'\b([a-zA-Z])\s+of\s+(\([^()]*\))',
+        lambda m: m.group(1) + m.group(2),
+        s,
+    )
+    s = re.sub(
+        r'\b([a-zA-Z])\s+of\s+(\S+)',
+        lambda m: m.group(1) + '(' + m.group(2) + ')',
+        s,
+    )
 
     # Inequalities (longest match first)
     s = _sub(r'\bis\s+less\s+than\s+or\s+equal\s+to\b', '\\leq', s)
@@ -352,6 +360,60 @@ def process_img_match(m: re.Match) -> str:
     return '\\\\(' + _json_encode_str(latex) + '\\\\)'
 
 
+# JSON string values store each TeX delimiter backslash doubled (\\… in file → \( in HTML).
+_JSON_INLINE_OPEN = '\\\\('
+_JSON_INLINE_CLOSE = '\\\\)'
+
+
+def _extract_inline_tex_spans(s: str):
+    """Yield (start, end_exclusive, inner) for each JSON-encoded \\\\( … \\\\) math span."""
+    i = 0
+    n = len(s)
+    ol, cl = len(_JSON_INLINE_OPEN), len(_JSON_INLINE_CLOSE)
+    while i < n:
+        start = s.find(_JSON_INLINE_OPEN, i)
+        if start < 0:
+            return
+        body_start = start + ol
+        end = s.find(_JSON_INLINE_CLOSE, body_start)
+        if end < 0:
+            i = body_start
+            continue
+        yield start, end + cl, s[body_start:end]
+        i = end + cl
+
+
+def repair_broken_inline_tex(s: str) -> str:
+    """Fix bad \\( … \\) left by older passes (e.g. 'h of t', 'f(open) parenthesis')."""
+    pieces: list[str] = []
+    last = 0
+    for start, end, inner in _extract_inline_tex_spans(s):
+        pieces.append(s[last:start])
+        fixed = inner.rstrip().rstrip('\\')
+        fixed = re.sub(
+            r'([a-zA-Z])\(open\)\s+parenthesis\s+([^)]+?)\s*\)',
+            lambda m: m.group(1) + '(' + re.sub(r'\s+', '', m.group(2)) + ')',
+            fixed,
+            flags=re.I,
+        )
+        fixed = re.sub(
+            r'\b([a-zA-Z])\s+of\s+(\([^()]*\))',
+            lambda m: m.group(1) + m.group(2),
+            fixed,
+        )
+        fixed = re.sub(
+            r'\b([a-zA-Z])\s+of\s+([a-zA-Z0-9]+)\b',
+            lambda m: m.group(1) + '(' + m.group(2) + ')',
+            fixed,
+        )
+        # Corrupted "f of 3 x" → "f(3) x" in rationales; merge to f(3x)
+        fixed = re.sub(r'\bf\((\d+)\)\s+x\b', r'f(\1x)', fixed)
+        pieces.append(_JSON_INLINE_OPEN + fixed + _JSON_INLINE_CLOSE)
+        last = end
+    pieces.append(s[last:])
+    return ''.join(pieces)
+
+
 def process_json(raw: str) -> str:
     """Process raw JSON string, replacing spoken math with LaTeX."""
     # Handle \text{spoken} intermediate format (from a previous preprocessing step)
@@ -359,6 +421,7 @@ def process_json(raw: str) -> str:
     # Handle original <img role="math" alt="spoken"> format
     result = IMG_MATH_PATTERN.sub(process_img_match, result)
     result = IMG_MATH_PATTERN_ALT_FIRST.sub(process_img_match, result)
+    result = repair_broken_inline_tex(result)
     return result
 
 
@@ -389,6 +452,21 @@ def run_tests():
         print(f'   → {result}')
         if result != expected:
             print(f'   ≠ {expected}')
+    print()
+
+    print('--- Inline repair (JSON-encoded delimiters) ---')
+    _rep_cases = [
+        (_JSON_INLINE_OPEN + 'h of t = 1' + _JSON_INLINE_CLOSE, _JSON_INLINE_OPEN + 'h(t) = 1' + _JSON_INLINE_CLOSE),
+        (_JSON_INLINE_OPEN + 'f(open) parenthesis 3 x ) = x - 6' + _JSON_INLINE_CLOSE,
+         _JSON_INLINE_OPEN + 'f(3x) = x - 6' + _JSON_INLINE_CLOSE),
+        (_JSON_INLINE_OPEN + 'f(3) x = 0' + _JSON_INLINE_CLOSE, _JSON_INLINE_OPEN + 'f(3x) = 0' + _JSON_INLINE_CLOSE),
+    ]
+    for a, b in _rep_cases:
+        out = repair_broken_inline_tex(a)
+        ok = '✓' if out == b else '?'
+        print(f' {ok} {repr(a[:50])}…')
+        if out != b:
+            print(f'   → {out!r} ≠ {b!r}')
     print()
 
 
