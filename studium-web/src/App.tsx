@@ -1,0 +1,283 @@
+import { useState, useEffect } from 'react'
+import type {
+  Question, VocabWord, QuestionProgress, FilterOptions,
+  SavedQuiz, QuestionData, VocabData,
+} from './types'
+import { loadProgress, saveProgress } from './store/progress'
+import { loadAllQuizzes, saveQuiz, generateQuizId } from './store/quiz'
+import { getFilteredQuestions } from './utils/questions'
+import PracticeHome from './components/PracticeTab/PracticeHome'
+import QuizView from './components/PracticeTab/QuizView'
+import VocabFlashcards from './components/VocabTab/VocabFlashcards'
+import DesmosCalculator from './components/DesmosTab/DesmosCalculator'
+import StatsView from './components/StatsTab/StatsView'
+import SettingsView from './components/SettingsTab/SettingsView'
+import ReferenceView from './components/ReferenceTab/ReferenceView'
+import {
+  BookOpen, Layers, Calculator, BarChart2, Settings, Sun, Moon, BookMarked,
+} from 'lucide-react'
+
+type Tab = 'practice' | 'vocab' | 'reference' | 'desmos' | 'stats' | 'settings'
+
+const TABS: { id: Tab; label: string; Icon: React.ElementType }[] = [
+  { id: 'practice',  label: 'Practice',  Icon: BookOpen },
+  { id: 'vocab',     label: 'Vocab',     Icon: Layers },
+  { id: 'reference', label: 'Reference', Icon: BookMarked },
+  { id: 'desmos',    label: 'Desmos',    Icon: Calculator },
+  { id: 'stats',     label: 'Stats',     Icon: BarChart2 },
+  { id: 'settings',  label: 'Settings',  Icon: Settings },
+]
+
+function useDarkMode() {
+  const [dark, setDark] = useState<boolean>(() => {
+    const stored = localStorage.getItem('studium_theme')
+    if (stored) return stored === 'dark'
+    return true
+  })
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', !dark)
+    localStorage.setItem('studium_theme', dark ? 'dark' : 'light')
+  }, [dark])
+
+  return { dark, toggle: () => setDark(d => !d) }
+}
+
+export default function App() {
+  const [tab, setTab] = useState<Tab>('practice')
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [vocabWords, setVocabWords] = useState<VocabWord[]>([])
+  const [progress, setProgress] = useState<Record<string, QuestionProgress>>(loadProgress)
+  const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>(loadAllQuizzes)
+  const [activeQuiz, setActiveQuiz] = useState<SavedQuiz | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [cbVerifiedIds, setCbVerifiedIds] = useState<Set<string>>(() => new Set())
+  const [htmlFontSize, setHtmlFontSize] = useState<number>(() => {
+    const stored = localStorage.getItem('studium_html_font_size')
+    const parsed = stored ? parseFloat(stored) : NaN
+    return isNaN(parsed) ? 16 : parsed
+  })
+  const { dark, toggle } = useDarkMode()
+
+  function handleFontSizeChange(size: number) {
+    setHtmlFontSize(size)
+    localStorage.setItem('studium_html_font_size', String(size))
+  }
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/questions.json').then(r => r.json() as Promise<QuestionData>),
+      fetch('/vocab.json').then(r => r.json() as Promise<VocabData>),
+      fetch('/cb-verified-not-on-practice-tests.json')
+        .then(r => (r.ok ? r.json() : { questionIds: [] }) as Promise<{ questionIds?: string[] }>)
+        .catch(() => ({ questionIds: [] as string[] })),
+    ]).then(([qData, vData, verifiedManifest]) => {
+      setQuestions(qData.questions)
+      setVocabWords(vData.words)
+      const ids = verifiedManifest.questionIds ?? []
+      setCbVerifiedIds(new Set(ids.map(x => x.toLowerCase())))
+      setLoading(false)
+    })
+  }, [])
+
+  function handleProgressChange(p: Record<string, QuestionProgress>) {
+    setProgress(p)
+    saveProgress(p)
+  }
+
+  function handleStartQuiz(filters: FilterOptions) {
+    const qs = getFilteredQuestions(questions, filters, progress, cbVerifiedIds)
+    if (qs.length === 0) return
+    const quiz: SavedQuiz = {
+      id: generateQuizId(),
+      questionIds: qs.map(q => q.questionId),
+      currentIndex: 0,
+      filters,
+      answerStates: {},
+      lastSaved: Date.now(),
+    }
+    saveQuiz(quiz)
+    setSavedQuizzes(loadAllQuizzes())
+    setActiveQuiz(quiz)
+  }
+
+  function handleResumeQuiz(quiz: SavedQuiz) {
+    setActiveQuiz(quiz)
+  }
+
+  function handleExitQuiz() {
+    setSavedQuizzes(loadAllQuizzes())
+    setActiveQuiz(null)
+  }
+
+  const quizQuestions = activeQuiz
+    ? (() => {
+        const map = Object.fromEntries(questions.map(q => [q.questionId, q]))
+        return activeQuiz.questionIds.map(id => map[id]).filter(Boolean) as Question[]
+      })()
+    : []
+
+  if (loading) {
+    return (
+      <div
+        className="h-screen flex items-center justify-center"
+        style={{ background: 'var(--bg)' }}
+        role="status"
+        aria-live="polite"
+        aria-label="Loading Studium"
+      >
+        <div className="text-center space-y-4">
+          <div
+            className="w-10 h-10 border-2 rounded-full mx-auto animate-spin"
+            style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }}
+            aria-hidden="true"
+          />
+          <div className="text-sm font-medium" style={{ color: 'var(--muted)' }}>Loading Studium…</div>
+        </div>
+      </div>
+    )
+  }
+
+  const currentTabLabel = TABS.find(t => t.id === tab)?.label ?? ''
+
+  return (
+    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+
+      {/* ---- Desktop Sidebar (md+) ---- */}
+      {!activeQuiz && (
+        <aside
+          className="hidden md:flex flex-col w-[220px] shrink-0 border-r h-full"
+          style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
+          aria-label="Main navigation"
+        >
+          {/* App name */}
+          <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-lg font-bold tracking-tight" style={{ color: 'var(--text)' }}>Studium</div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>SAT Prep</div>
+          </div>
+
+          {/* Nav */}
+          <nav className="flex-1 py-3 space-y-0.5 px-2" aria-label="Tabs">
+            {TABS.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                aria-current={tab === id ? 'page' : undefined}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-1"
+                style={tab === id
+                  ? { background: 'var(--accent)', color: '#fff' }
+                  : { color: 'var(--muted)' }
+                }
+              >
+                <Icon size={17} aria-hidden="true" />
+                <span>{label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* Theme toggle */}
+          <div className="px-4 py-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            <button
+              onClick={toggle}
+              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              style={{ color: 'var(--muted)' }}
+            >
+              {dark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+              <span>{dark ? 'Light mode' : 'Dark mode'}</span>
+            </button>
+          </div>
+        </aside>
+      )}
+
+      {/* ---- Main content area ---- */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+
+        {/* Mobile top header */}
+        {!activeQuiz && (
+          <header
+            className="md:hidden flex items-center justify-between px-4 py-3 border-b shrink-0"
+            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
+          >
+            <h1 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{currentTabLabel}</h1>
+            <button
+              onClick={toggle}
+              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="p-2 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              style={{ color: 'var(--muted)' }}
+            >
+              {dark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+            </button>
+          </header>
+        )}
+
+        {/* Content */}
+        <main className="flex-1 overflow-hidden flex flex-col min-h-0">
+          <div className="tab-content flex-1 overflow-hidden flex flex-col min-h-0">
+            {activeQuiz ? (
+              <QuizView
+                quiz={activeQuiz}
+                questions={quizQuestions}
+                progress={progress}
+                onProgressChange={handleProgressChange}
+                onExit={handleExitQuiz}
+                isDark={dark}
+                fontSize={htmlFontSize}
+              />
+            ) : tab === 'practice' ? (
+              <PracticeHome
+                questions={questions}
+                progress={progress}
+                savedQuizzes={savedQuizzes}
+                cbVerifiedNotOnPracticeTestIds={cbVerifiedIds}
+                onStartQuiz={handleStartQuiz}
+                onResumeQuiz={handleResumeQuiz}
+                onQuizzesChange={setSavedQuizzes}
+              />
+            ) : tab === 'vocab' ? (
+              <VocabFlashcards words={vocabWords} />
+            ) : tab === 'reference' ? (
+              <ReferenceView />
+            ) : tab === 'desmos' ? (
+              <DesmosCalculator />
+            ) : tab === 'stats' ? (
+              <StatsView questions={questions} progress={progress} />
+            ) : (
+              <SettingsView
+                progress={progress}
+                onProgressChange={handleProgressChange}
+                onToggleTheme={toggle}
+                isDark={dark}
+                fontSize={htmlFontSize}
+                onFontSizeChange={handleFontSizeChange}
+              />
+            )}
+          </div>
+        </main>
+
+        {/* Mobile bottom tab bar */}
+        {!activeQuiz && (
+          <nav
+            className="md:hidden flex shrink-0 border-t"
+            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
+            aria-label="Tabs"
+          >
+            {TABS.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                aria-current={tab === id ? 'page' : undefined}
+                aria-label={label}
+                className="flex-1 flex flex-col items-center gap-1 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+                style={tab === id ? { color: 'var(--accent)' } : { color: 'var(--muted)' }}
+              >
+                <Icon size={20} aria-hidden="true" />
+                <span className="text-[10px] font-medium mobile-tab-label">{label}</span>
+              </button>
+            ))}
+          </nav>
+        )}
+      </div>
+    </div>
+  )
+}
