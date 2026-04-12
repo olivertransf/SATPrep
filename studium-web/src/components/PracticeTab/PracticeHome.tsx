@@ -76,12 +76,17 @@ const CB_VERIFIED = {
 // ─── Small filter chip ────────────────────────────────────────────────────────
 
 const FILTER_CHIP_GRID_STYLE: CSSProperties = {
-  gridTemplateColumns: 'repeat(auto-fill, minmax(5rem, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(4.5rem, 1fr))',
+}
+
+const FILTER_COLUMNS_STYLE: CSSProperties = {
+  columnGap: '1.25rem',
+  columnFill: 'balance',
 }
 
 function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5 w-full min-w-0">
+    <div className="break-inside-avoid space-y-1.5 w-full min-w-0">
       <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
         {label}
       </div>
@@ -354,73 +359,43 @@ export default function PracticeHome({
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: 'var(--bg)' }}>
 
-      {/* ═══ FILTER BAR ═══ */}
-      <div className="sticky top-0 z-10 border-b"
-        style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-        <div className="px-4 lg:px-6 py-3 space-y-3 w-full max-w-full min-w-0">
+      {/* Filters — in document flow (scrolls with content) */}
+      <div className="border-b" style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
+        <div className="px-4 lg:px-6 py-4 space-y-4 w-full max-w-full min-w-0">
 
-          <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 w-full min-w-0 lg:items-start">
-            <div className="flex-1 min-w-0 space-y-3">
-              <FilterGroup label="Section">
-                <Chip dense label="All" selected={!module} onClick={() => setModuleAndClearDomain(undefined)} />
-                {modules.map(m => (
-                  <Chip key={m} dense label={sectionLabel(m)} selected={module === m}
-                    onClick={() => setModuleAndClearDomain(module === m ? undefined : m)} />
-                ))}
-              </FilterGroup>
+          <div
+            className="columns-1 sm:columns-2 2xl:columns-3 w-full [&>*]:mb-4 [&>*:last-child]:mb-0"
+            style={FILTER_COLUMNS_STYLE}
+          >
+            <FilterGroup label="Section">
+              <Chip dense label="All" selected={!module} onClick={() => setModuleAndClearDomain(undefined)} />
+              {modules.map(m => (
+                <Chip key={m} dense label={sectionLabel(m)} selected={module === m}
+                  onClick={() => setModuleAndClearDomain(module === m ? undefined : m)} />
+              ))}
+            </FilterGroup>
 
-              <FilterGroup label="Difficulty">
-                <Chip dense label="All" selected={!difficulty} onClick={() => setDifficulty(undefined)} />
-                {Object.entries(DIFFICULTY_LABELS).map(([k, label]) => (
-                  <Chip key={k} dense label={label} selected={difficulty === k} color={DIFFICULTY_COLORS[k]}
-                    onClick={() => setDifficulty(difficulty === k ? undefined : k)} />
-                ))}
-              </FilterGroup>
+            <FilterGroup label="Difficulty">
+              <Chip dense label="All" selected={!difficulty} onClick={() => setDifficulty(undefined)} />
+              {Object.entries(DIFFICULTY_LABELS).map(([k, label]) => (
+                <Chip key={k} dense label={label} selected={difficulty === k} color={DIFFICULTY_COLORS[k]}
+                  onClick={() => setDifficulty(difficulty === k ? undefined : k)} />
+              ))}
+            </FilterGroup>
 
-              <FilterGroup label="Status">
-                {([
-                  { value: 'all',        label: 'All'     },
-                  { value: 'unanswered', label: 'New'     },
-                  { value: 'incorrect',  label: 'Wrong'   },
-                  { value: 'correct',    label: 'Correct' },
-                ] as const).map(opt => (
-                  <Chip key={opt.value} dense label={opt.label} selected={answerStatus === opt.value}
-                    onClick={() => setAnswerStatus(opt.value)} />
-                ))}
-              </FilterGroup>
-            </div>
+            <FilterGroup label="Status">
+              {([
+                { value: 'all',        label: 'All'     },
+                { value: 'unanswered', label: 'New'     },
+                { value: 'incorrect',  label: 'Wrong'   },
+                { value: 'correct',    label: 'Correct' },
+              ] as const).map(opt => (
+                <Chip key={opt.value} dense label={opt.label} selected={answerStatus === opt.value}
+                  onClick={() => setAnswerStatus(opt.value)} />
+              ))}
+            </FilterGroup>
 
-            <div className="flex flex-row lg:flex-col gap-2 shrink-0 w-full lg:w-[9rem]">
-              <button
-                type="button"
-                onClick={() => setShuffled(s => !s)}
-                title={shuffled ? 'Random order (click for sequential)' : 'Sequential order (click for random)'}
-                className="flex-1 lg:flex-none flex items-center justify-center gap-2 min-h-[2.5rem] px-3 rounded-lg border transition-all"
-                style={shuffled
-                  ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' }
-                  : { background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--muted)' }
-                }
-              >
-                {shuffled ? <Shuffle size={15} /> : <ArrowDownUp size={15} />}
-                <span className="text-xs font-semibold lg:hidden">Order</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleStart()}
-                disabled={matchingCount === 0}
-                className="flex-1 lg:flex-none flex items-center justify-center gap-2 min-h-[2.5rem] px-4 rounded-lg text-sm font-semibold transition-all disabled:opacity-40"
-                style={{ background: 'var(--accent)', color: '#fff' }}
-              >
-                <Play size={14} aria-hidden="true" />
-                Start
-                <span className="tabular-nums opacity-80 text-xs">({matchingCount})</span>
-              </button>
-            </div>
-          </div>
-
-          {module && (
-            <div className="pt-1 border-t" style={{ borderColor: 'var(--border)' }}>
+            {module && (
               <FilterGroup label="Domain">
                 <Chip dense label="All" selected={!primaryClass}
                   onClick={() => { setPrimaryClass(undefined); setSkillDesc(undefined) }} />
@@ -432,45 +407,45 @@ export default function PracticeHome({
                     }} />
                 ))}
               </FilterGroup>
+            )}
+
+            {module && primaryClass && (
+              <FilterGroup label="Skill">
+                <Chip dense label="All" selected={!skillDesc} onClick={() => setSkillDesc(undefined)} />
+                {skills.map(s => (
+                  <Chip key={s} dense label={s} selected={skillDesc === s}
+                    onClick={() => setSkillDesc(skillDesc === s ? undefined : s)} />
+                ))}
+              </FilterGroup>
+            )}
+
+            <div className="break-inside-avoid space-y-1.5">
+              <FilterGroup label={PRACTICE_TESTS.group}>
+                <Chip dense label={PRACTICE_TESTS.all} selected={!isBluebook} onClick={() => setIsBluebook(undefined)} />
+                <Chip dense label={PRACTICE_TESTS.only} selected={isBluebook === 'bluebook'}
+                  onClick={() => setIsBluebook(isBluebook === 'bluebook' ? undefined : 'bluebook')} />
+                <Chip dense label={PRACTICE_TESTS.excludeActive} selected={isBluebook === 'notBluebook'}
+                  onClick={() => setIsBluebook(isBluebook === 'notBluebook' ? undefined : 'notBluebook')} />
+              </FilterGroup>
+              <p className="text-[11px] leading-snug" style={{ color: 'var(--muted)' }}>{PRACTICE_TESTS.help}</p>
             </div>
-          )}
 
-          {module && primaryClass && (
-            <FilterGroup label="Skill">
-              <Chip dense label="All" selected={!skillDesc} onClick={() => setSkillDesc(undefined)} />
-              {skills.map(s => (
-                <Chip key={s} dense label={s} selected={skillDesc === s}
-                  onClick={() => setSkillDesc(skillDesc === s ? undefined : s)} />
-              ))}
-            </FilterGroup>
-          )}
-
-          <div className="space-y-1.5 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-            <FilterGroup label={PRACTICE_TESTS.group}>
-              <Chip dense label={PRACTICE_TESTS.all} selected={!isBluebook} onClick={() => setIsBluebook(undefined)} />
-              <Chip dense label={PRACTICE_TESTS.only} selected={isBluebook === 'bluebook'}
-                onClick={() => setIsBluebook(isBluebook === 'bluebook' ? undefined : 'bluebook')} />
-              <Chip dense label={PRACTICE_TESTS.excludeActive} selected={isBluebook === 'notBluebook'}
-                onClick={() => setIsBluebook(isBluebook === 'notBluebook' ? undefined : 'notBluebook')} />
-            </FilterGroup>
-            <p className="text-[11px] leading-snug" style={{ color: 'var(--muted)' }}>{PRACTICE_TESTS.help}</p>
+            <div className="break-inside-avoid space-y-1.5">
+              <FilterGroup label={CB_VERIFIED.group}>
+                <Chip dense label={CB_VERIFIED.any} selected={!cbVerifiedInactive} onClick={() => setCbVerifiedInactive(undefined)} />
+                <Chip dense label={CB_VERIFIED.only} selected={cbVerifiedInactive === 'onlyVerifiedOffCBPracticeTests'}
+                  onClick={() => setCbVerifiedInactive(
+                    cbVerifiedInactive === 'onlyVerifiedOffCBPracticeTests' ? undefined : 'onlyVerifiedOffCBPracticeTests',
+                  )} />
+              </FilterGroup>
+              <p className="text-[11px] leading-snug" style={{ color: 'var(--muted)' }}>{CB_VERIFIED.help}</p>
+              <p className="text-[11px] leading-snug" style={{ color: 'var(--muted)' }}>
+                Sidecar: {cbVerifiedNotOnPracticeTestIds.size} IDs · {verifiedInBank} in this bank
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <FilterGroup label={CB_VERIFIED.group}>
-              <Chip dense label={CB_VERIFIED.any} selected={!cbVerifiedInactive} onClick={() => setCbVerifiedInactive(undefined)} />
-              <Chip dense label={CB_VERIFIED.only} selected={cbVerifiedInactive === 'onlyVerifiedOffCBPracticeTests'}
-                onClick={() => setCbVerifiedInactive(
-                  cbVerifiedInactive === 'onlyVerifiedOffCBPracticeTests' ? undefined : 'onlyVerifiedOffCBPracticeTests',
-                )} />
-            </FilterGroup>
-            <p className="text-[11px] leading-snug" style={{ color: 'var(--muted)' }}>{CB_VERIFIED.help}</p>
-            <p className="text-[11px] leading-snug" style={{ color: 'var(--muted)' }}>
-              Sidecar: {cbVerifiedNotOnPracticeTestIds.size} IDs · {verifiedInBank} in this bank
-            </p>
-          </div>
-
-          <div className="space-y-2 rounded-xl border p-3" style={{ background: 'var(--input)', borderColor: 'var(--border)' }}>
+          <div className="break-inside-avoid space-y-2 rounded-xl border p-3" style={{ background: 'var(--input)', borderColor: 'var(--border)' }}>
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-semibold" style={{ color: 'var(--text)' }}>Limit question count</span>
               <button type="button" onClick={() => setUseLimit(u => !u)}
@@ -491,15 +466,43 @@ export default function PracticeHome({
             )}
           </div>
 
+          <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xl">
+            <button
+              type="button"
+              onClick={() => setShuffled(s => !s)}
+              title={shuffled ? 'Random order (click for sequential)' : 'Sequential order (click for random)'}
+              className="flex flex-1 items-center justify-center gap-2 min-h-[2.75rem] px-4 rounded-lg border transition-all"
+              style={shuffled
+                ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' }
+                : { background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--muted)' }
+              }
+            >
+              {shuffled ? <Shuffle size={15} /> : <ArrowDownUp size={15} />}
+              <span className="text-xs font-semibold">Order</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleStart()}
+              disabled={matchingCount === 0}
+              className="flex flex-1 items-center justify-center gap-2 min-h-[2.75rem] px-5 rounded-lg text-sm font-semibold transition-all disabled:opacity-40"
+              style={{ background: 'var(--accent)', color: '#fff' }}
+            >
+              <Play size={14} aria-hidden="true" />
+              Start
+              <span className="tabular-nums opacity-80 text-xs">({matchingCount})</span>
+            </button>
+          </div>
+
           <button type="button" onClick={resetAllFilters}
-            className="flex items-center justify-center gap-2 py-2 text-xs font-medium rounded-lg border transition-all w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 py-3.5 px-6 text-sm font-medium rounded-xl border transition-all w-full sm:w-auto min-h-[3rem]"
             style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
-            <RotateCcw size={13} />
+            <RotateCcw size={15} />
             Reset all filters
           </button>
 
           {/* Row: live stats strip */}
-          <div className="flex items-center gap-4 text-xs pt-1 border-t" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs pt-2 border-t" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
             {stats.accuracy !== null && (
               <span>
                 Accuracy{' '}

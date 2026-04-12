@@ -390,8 +390,9 @@ def repair_broken_inline_tex(s: str) -> str:
     for start, end, inner in _extract_inline_tex_spans(s):
         pieces.append(s[last:start])
         fixed = inner.rstrip().rstrip('\\')
+        # "f(open) parenthesis …" or "f(open)parenthesis …" (CB sometimes omits space)
         fixed = re.sub(
-            r'([a-zA-Z])\(open\)\s+parenthesis\s+([^)]+?)\s*\)',
+            r'([a-zA-Z])\s*\(\s*open\s*\)\s*parenthesis\s+([^)]+?)\s*\)',
             lambda m: m.group(1) + '(' + re.sub(r'\s+', '', m.group(2)) + ')',
             fixed,
             flags=re.I,
@@ -458,6 +459,8 @@ def run_tests():
     _rep_cases = [
         (_JSON_INLINE_OPEN + 'h of t = 1' + _JSON_INLINE_CLOSE, _JSON_INLINE_OPEN + 'h(t) = 1' + _JSON_INLINE_CLOSE),
         (_JSON_INLINE_OPEN + 'f(open) parenthesis 3 x ) = x - 6' + _JSON_INLINE_CLOSE,
+         _JSON_INLINE_OPEN + 'f(3x) = x - 6' + _JSON_INLINE_CLOSE),
+        (_JSON_INLINE_OPEN + 'f(open)parenthesis 3 x ) = x - 6' + _JSON_INLINE_CLOSE,
          _JSON_INLINE_OPEN + 'f(3x) = x - 6' + _JSON_INLINE_CLOSE),
         (_JSON_INLINE_OPEN + 'f(3) x = 0' + _JSON_INLINE_CLOSE, _JSON_INLINE_OPEN + 'f(3x) = 0' + _JSON_INLINE_CLOSE),
     ]

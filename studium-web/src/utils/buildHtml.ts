@@ -1,3 +1,5 @@
+import { repairInlineMathTex } from './repairInlineMathTex'
+
 export type HtmlProfile = 'standard' | 'passage' | 'quizFigures'
 
 /**
@@ -28,7 +30,8 @@ export function buildHtml(
   const padding = compact ? '3px 2px 6px' : '4px 2px 14px'
 
   // Blank replacement — mirrors the Swift replacingOccurrences chain
-  const processed = content
+  const processed = repairInlineMathTex(
+    content
     .replace(/<span class="sr-only">blank<\/span>/gi, '______')
     .replace(/<span class="sr-only">Blank<\/span>/g, '______')
     .replace(/<span class="sr-only">BLANK<\/span>/g, '______')
@@ -37,7 +40,8 @@ export function buildHtml(
     .replace(/ blank\./gi, ' ______.')
     .replace(/ blank,/gi, ' ______,')
     .replace(/ blank:/gi, ' ______:')
-    .replace(/ blank;/gi, ' ______;')
+    .replace(/ blank;/gi, ' ______;'),
+  )
 
   // postH helper string used in both MathJax startup and inline script
   const postH = `function postH() {
