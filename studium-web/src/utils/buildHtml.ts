@@ -14,6 +14,7 @@ export function buildHtml(
   compact: boolean = false,
   profile: HtmlProfile = 'standard',
   frameId: string = '',
+  fillViewport: boolean = false,
 ): string {
   const bg       = isDark ? '#1C1C1E' : '#FFFFFF'
   const fg       = isDark ? '#EBEBF5' : '#000000'
@@ -28,6 +29,8 @@ export function buildHtml(
       : 'studium-profile-standard'
   const densityClass = compact ? 'studium-html-compact' : 'studium-html-comfortable'
   const padding = compact ? '3px 2px 6px' : '4px 2px 14px'
+  const fillRootClass = fillViewport ? 'studium-fill-root' : ''
+  const fillBodyClass = fillViewport ? 'studium-fill-viewport' : ''
 
   // Blank replacement — mirrors the Swift replacingOccurrences chain
   const processed = repairInlineMathTex(
@@ -49,7 +52,7 @@ export function buildHtml(
                 }`
 
   return `<!DOCTYPE html>
-<html>
+<html class="${fillRootClass}">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="color-scheme" content="${isDark ? 'dark' : 'light'}">
@@ -89,6 +92,17 @@ export function buildHtml(
     <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; }
+    html.studium-fill-root {
+        height: 100%;
+        overflow: hidden;
+    }
+    body.studium-fill-viewport {
+        min-height: 100%;
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
     body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
         font-size: ${fontSize}px;
@@ -300,7 +314,7 @@ export function buildHtml(
     }
     </style>
 </head>
-<body class="${bodyClass} ${profileClass} ${densityClass}">
+<body class="${bodyClass} ${profileClass} ${densityClass} ${fillBodyClass}">
     ${processed}
     <script>
     (function() {

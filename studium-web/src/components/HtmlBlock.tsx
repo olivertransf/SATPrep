@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useId } from 'react'
+import { useRef, useState, useEffect, useId, useMemo } from 'react'
 import { buildHtml, type HtmlProfile } from '../utils/buildHtml'
 
 interface HtmlBlockProps {
@@ -10,6 +10,11 @@ interface HtmlBlockProps {
   /** When false, pointer events are disabled so clicks pass through to a parent button/div */
   interactive?: boolean
   className?: string
+  /**
+   * Iframe fills the parent height; passage scrolls inside the document.
+   * Use only when the parent has a definite height (e.g. split-pane passage column).
+   */
+  fillViewport?: boolean
 }
 
 /**
@@ -27,6 +32,7 @@ export function HtmlBlock({
   compact = false,
   interactive = true,
   className,
+  fillViewport = false,
 }: HtmlBlockProps) {
   const rawId = useId()
   // useId produces ":r0:" — strip colons so it's safe as a JS string key
@@ -35,9 +41,13 @@ export function HtmlBlock({
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [height, setHeight] = useState(60)
 
-  const srcDoc = buildHtml(html, isDark, fontSize, compact, profile, frameId)
+  const srcDoc = useMemo(
+    () => buildHtml(html, isDark, fontSize, compact, profile, frameId, fillViewport),
+    [html, isDark, fontSize, compact, profile, frameId, fillViewport],
+  )
 
   useEffect(() => {
+    if (fillViewport) return
     function handleMessage(event: MessageEvent) {
       if (
         event.data?.type === 'studium-height' &&
@@ -50,10 +60,10 @@ export function HtmlBlock({
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [frameId])
+  }, [frameId, fillViewport])
 
   function handleLoad() {
-    // Fallback: read scrollHeight directly if postMessage hasn't fired yet
+    if (fillViewport) return
     try {
       const doc = iframeRef.current?.contentDocument
       if (doc) {
@@ -61,8 +71,31 @@ export function HtmlBlock({
         if (h > 0) setHeight(h + 4)
       }
     } catch {
-      // cross-origin — postMessage path handles it
+      /* cross-origin — postMessage path handles it */
     }
+  }
+
+  if (fillViewport) {
+    return (
+      <div className={`flex flex-1 flex-col min-h-0 w-full ${className ?? ''}`.trim()}>
+        <iframe
+          ref={iframeRef}
+          srcDoc={srcDoc}
+          onLoad={handleLoad}
+          sandbox="allow-scripts"
+          title="Question content"
+          style={{
+            width: '100%',
+            flex: '1 1 0',
+            minHeight: 0,
+            border: 'none',
+            display: 'block',
+            overflow: 'hidden',
+            pointerEvents: interactive ? 'auto' : 'none',
+          }}
+        />
+      </div>
+    )
   }
 
   return (

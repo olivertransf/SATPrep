@@ -429,13 +429,21 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
             className="hidden lg:flex flex-1 flex-row items-stretch overflow-hidden min-h-0 min-w-0"
           >
             <div
-              className="h-full min-h-0 min-w-0 w-full overflow-y-auto border-r px-3 py-3 box-border"
+              className="flex flex-col h-full min-h-0 min-w-0 w-full overflow-hidden border-r box-border"
               style={{
                 borderColor: 'var(--border)',
                 flex: `0 0 ${passagePanePct}%`,
               }}
             >
-              <HtmlBlock html={stimulus} isDark={isDark} fontSize={fontSize} profile="passage" />
+              <div className="flex-1 min-h-0 min-w-0 flex flex-col px-3 py-3 box-border">
+                <HtmlBlock
+                  fillViewport
+                  html={stimulus}
+                  isDark={isDark}
+                  fontSize={fontSize}
+                  profile="passage"
+                />
+              </div>
             </div>
             <div
               role="separator"
