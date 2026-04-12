@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import type {
   Question,
   QuestionProgress,
@@ -15,13 +15,31 @@ import {
 import { markSeen, markAnswered } from '../../store/progress'
 import { saveQuiz } from '../../store/quiz'
 import { checkAnswer } from '../../utils/questions'
-import { ArrowLeft, ArrowRight, X, CheckCircle, XCircle, ChevronLeft, GripVertical } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  X,
+  CheckCircle,
+  XCircle,
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+} from 'lucide-react'
 import { HtmlBlock } from '../HtmlBlock'
 
 const PASSAGE_SPLIT_STORAGE_KEY = 'studium-passage-split-pct'
-const PASSAGE_SPLIT_HANDLE_PX = 8
+/** Hit target width; must match flex-basis on the handle and `clientXToPct` track math */
+const PASSAGE_SPLIT_HANDLE_PX = 16
 const PASSAGE_SPLIT_MIN_PCT = 22
 const PASSAGE_SPLIT_MAX_PCT = 78
+
+function passagePointerXToPct(clientX: number, container: HTMLElement): number {
+  const rect = container.getBoundingClientRect()
+  const track = Math.max(1, rect.width - PASSAGE_SPLIT_HANDLE_PX)
+  const leftPx = clientX - rect.left - PASSAGE_SPLIT_HANDLE_PX / 2
+  const pct = (leftPx / track) * 100
+  return Math.min(PASSAGE_SPLIT_MAX_PCT, Math.max(PASSAGE_SPLIT_MIN_PCT, pct))
+}
 
 function readInitialPassageSplitPct(): number {
   try {
@@ -90,38 +108,6 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSubmitted, currentIndex])
 
-  useEffect(() => {
-    if (!splitDragging) return
-    function onMove(e: PointerEvent) {
-      const el = splitContainerRef.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      const pct = ((e.clientX - rect.left) / rect.width) * 100
-      const clamped = Math.min(PASSAGE_SPLIT_MAX_PCT, Math.max(PASSAGE_SPLIT_MIN_PCT, pct))
-      setPassagePanePct(clamped)
-    }
-    function onUp() {
-      setSplitDragging(false)
-      try {
-        localStorage.setItem(PASSAGE_SPLIT_STORAGE_KEY, String(passageSplitPctRef.current))
-      } catch {
-        /* ignore */
-      }
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-    window.addEventListener('pointercancel', onUp)
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-    return () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', onUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-  }, [splitDragging])
-
   function persistQuiz(newAnswerStates: Record<string, QuestionAnswerState>, idx: number) {
     saveQuiz({ ...quiz, currentIndex: idx, answerStates: newAnswerStates, lastSaved: Date.now() })
   }
@@ -165,6 +151,55 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
     if (nextStates !== answerStates) setAnswerStates(nextStates)
     persistQuiz(nextStates, currentIndex)
     onExit()
+  }
+
+  /** Drag uses CSS var updates only (no React re-render per frame); commit on pointerup. */
+  function handleSplitPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (e.button !== 0) return
+    e.preventDefault()
+    const handle = e.currentTarget
+    if (!splitContainerRef.current) return
+
+    handle.setPointerCapture(e.pointerId)
+    setSplitDragging(true)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    function apply(clientX: number) {
+      const root = splitContainerRef.current
+      if (!root) return
+      const pct = passagePointerXToPct(clientX, root)
+      passageSplitPctRef.current = pct
+      root.style.setProperty('--passage-split-pct', `${pct}%`)
+    }
+    apply(e.clientX)
+
+    function onMove(ev: PointerEvent) {
+      apply(ev.clientX)
+    }
+    function onEnd(ev: PointerEvent) {
+      handle.removeEventListener('pointermove', onMove)
+      handle.removeEventListener('pointerup', onEnd)
+      handle.removeEventListener('pointercancel', onEnd)
+      try {
+        if (handle.hasPointerCapture(ev.pointerId)) handle.releasePointerCapture(ev.pointerId)
+      } catch {
+        /* ignore */
+      }
+      setSplitDragging(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      const finalPct = passageSplitPctRef.current
+      setPassagePanePct(finalPct)
+      try {
+        localStorage.setItem(PASSAGE_SPLIT_STORAGE_KEY, String(finalPct))
+      } catch {
+        /* ignore */
+      }
+    }
+    handle.addEventListener('pointermove', onMove)
+    handle.addEventListener('pointerup', onEnd)
+    handle.addEventListener('pointercancel', onEnd)
   }
 
   const answeredCount = Object.values(answerStates).filter(s => s.hasSubmitted).length
@@ -427,12 +462,15 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
           <div
             ref={splitContainerRef}
             className="hidden lg:flex flex-1 flex-row items-stretch overflow-hidden min-h-0 min-w-0"
+            style={{ '--passage-split-pct': `${passagePanePct}%` } as CSSProperties}
           >
             <div
-              className="flex flex-col h-full min-h-0 min-w-0 w-full overflow-hidden border-r box-border"
+              className="flex flex-col h-full min-h-0 min-w-0 w-full overflow-hidden border-r box-border min-w-0"
               style={{
                 borderColor: 'var(--border)',
-                flex: `0 0 ${passagePanePct}%`,
+                flexGrow: 0,
+                flexShrink: 0,
+                flexBasis: 'var(--passage-split-pct)',
               }}
             >
               <div className="flex-1 min-h-0 min-w-0 flex flex-col px-3 py-3 box-border">
@@ -453,32 +491,54 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
               aria-valuemin={PASSAGE_SPLIT_MIN_PCT}
               aria-valuemax={PASSAGE_SPLIT_MAX_PCT}
               tabIndex={0}
-              className="shrink-0 self-stretch flex flex-col items-center justify-center cursor-col-resize touch-none select-none rounded-sm hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)]"
+              className="shrink-0 self-stretch z-10 flex flex-col items-center justify-center cursor-col-resize touch-none select-none border-x rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)]"
               style={{
                 flex: `0 0 ${PASSAGE_SPLIT_HANDLE_PX}px`,
-                background: splitDragging ? 'color-mix(in srgb, var(--accent) 18%, transparent)' : 'var(--input)',
+                width: PASSAGE_SPLIT_HANDLE_PX,
+                touchAction: 'none',
+                borderColor: 'var(--border)',
+                background: splitDragging
+                  ? 'color-mix(in srgb, var(--accent) 22%, var(--input))'
+                  : 'var(--input)',
               }}
-              onPointerDown={e => {
-                e.preventDefault()
-                setSplitDragging(true)
-              }}
+              onPointerDown={handleSplitPointerDown}
               onKeyDown={e => {
-                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                  e.preventDefault()
-                  const delta = e.key === 'ArrowLeft' ? -2 : 2
-                  setPassagePanePct(p => {
-                    const next = Math.min(PASSAGE_SPLIT_MAX_PCT, Math.max(PASSAGE_SPLIT_MIN_PCT, p + delta))
-                    try {
-                      localStorage.setItem(PASSAGE_SPLIT_STORAGE_KEY, String(next))
-                    } catch {
-                      /* ignore */
-                    }
-                    return next
-                  })
-                }
+                if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+                e.preventDefault()
+                const delta = e.key === 'ArrowLeft' ? -2 : 2
+                setPassagePanePct(p => {
+                  const next = Math.min(PASSAGE_SPLIT_MAX_PCT, Math.max(PASSAGE_SPLIT_MIN_PCT, p + delta))
+                  passageSplitPctRef.current = next
+                  splitContainerRef.current?.style.setProperty('--passage-split-pct', `${next}%`)
+                  try {
+                    localStorage.setItem(PASSAGE_SPLIT_STORAGE_KEY, String(next))
+                  } catch {
+                    /* ignore */
+                  }
+                  return next
+                })
               }}
             >
-              <GripVertical size={14} style={{ color: 'var(--muted)' }} aria-hidden />
+              <span className="pointer-events-none flex flex-col items-center justify-center gap-0.5 py-1">
+                <ChevronLeft
+                  size={12}
+                  strokeWidth={2.5}
+                  aria-hidden
+                  style={{ color: 'var(--muted)', opacity: 0.85 }}
+                />
+                <GripVertical
+                  size={16}
+                  strokeWidth={2.25}
+                  aria-hidden
+                  style={{ color: splitDragging ? 'var(--accent)' : 'var(--muted)' }}
+                />
+                <ChevronRight
+                  size={12}
+                  strokeWidth={2.5}
+                  aria-hidden
+                  style={{ color: 'var(--muted)', opacity: 0.85 }}
+                />
+              </span>
             </div>
             <div className="h-full min-h-0 min-w-0 flex-1 w-full overflow-y-auto box-border">
               <div className="w-full max-w-none px-3 py-3 space-y-5 box-border">
