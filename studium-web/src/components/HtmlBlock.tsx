@@ -39,12 +39,19 @@ export function HtmlBlock({
   const frameId = rawId.replace(/:/g, '')
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const [height, setHeight] = useState(60)
+  const heightPad = compact ? 2 : 4
+  const initialHeight = compact ? 22 : 60
+  const [height, setHeight] = useState(initialHeight)
 
   const srcDoc = useMemo(
     () => buildHtml(html, isDark, fontSize, compact, profile, frameId, fillViewport),
     [html, isDark, fontSize, compact, profile, frameId, fillViewport],
   )
+
+  useEffect(() => {
+    if (fillViewport) return
+    setHeight(initialHeight)
+  }, [srcDoc, fillViewport, initialHeight])
 
   useEffect(() => {
     if (fillViewport) return
@@ -55,12 +62,12 @@ export function HtmlBlock({
         typeof event.data.value === 'number'
       ) {
         const h = event.data.value as number
-        if (h > 0 && h < 10000) setHeight(h + 4)
+        if (h > 0 && h < 10000) setHeight(h + heightPad)
       }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [frameId, fillViewport])
+  }, [frameId, fillViewport, heightPad])
 
   function handleLoad() {
     if (fillViewport) return
@@ -68,7 +75,7 @@ export function HtmlBlock({
       const doc = iframeRef.current?.contentDocument
       if (doc) {
         const h = doc.body.scrollHeight
-        if (h > 0) setHeight(h + 4)
+        if (h > 0) setHeight(h + heightPad)
       }
     } catch {
       /* cross-origin — postMessage path handles it */

@@ -28,7 +28,7 @@ export function buildHtml(
       ? 'studium-profile-quizfig'
       : 'studium-profile-standard'
   const densityClass = compact ? 'studium-html-compact' : 'studium-html-comfortable'
-  const padding = compact ? '3px 2px 6px' : '4px 2px 14px'
+  const padding = compact ? '2px 4px 4px' : '4px 2px 14px'
   const fillRootClass = fillViewport ? 'studium-fill-root' : ''
   const fillBodyClass = fillViewport ? 'studium-fill-viewport' : ''
 
@@ -216,7 +216,7 @@ export function buildHtml(
     h2 { font-size: 1.3em; }
     h3 { font-size: 1.15em; }
     h4, h5, h6 { font-size: 1em; }
-    p { margin: 0 0 ${compact ? '8px' : '12px'}; }
+    p { margin: 0 0 ${compact ? '6px' : '12px'}; }
     p:last-child { margin-bottom: 0; }
     ul, ol { padding-left: 22px; margin: 0 0 12px; }
     li { margin: 5px 0; line-height: 1.6; }

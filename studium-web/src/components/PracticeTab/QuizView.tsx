@@ -284,7 +284,7 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
       )}
     </div>
   ) : (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       {answerOptions.map(opt => {
         const isSelected  = selectedId === opt.id
         const isCorrectOpt = hasSubmitted && correctAnswer.some(c => c.trim().toUpperCase() === opt.label?.toUpperCase())
@@ -309,14 +309,14 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
             aria-disabled={hasSubmitted}
             tabIndex={hasSubmitted ? -1 : 0}
             onKeyDown={e => { if (!hasSubmitted && (e.key === 'Enter' || e.key === ' ')) setSelectedId(opt.id) }}
-            className="w-full text-left border rounded-xl p-4 transition-all cursor-pointer select-none"
+            className="w-full text-left border rounded-lg px-3 py-2 transition-all cursor-pointer select-none"
             style={{ borderColor, background: bgColor, color: textColor }}
           >
-            <div className="flex gap-3 items-start">
-              <span className="font-bold text-sm mt-0.5 shrink-0 w-5 text-center" style={{ color: labelColor }}>
+            <div className="flex gap-2 items-start">
+              <span className="font-bold text-sm leading-snug mt-px shrink-0 w-5 text-center" style={{ color: labelColor }}>
                 {opt.label}
               </span>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 min-h-0">
                 <HtmlBlock
                   html={opt.content}
                   isDark={isDark}
