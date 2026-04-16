@@ -4,8 +4,9 @@ Native **iOS / iPadOS / macOS** SAT practice app (Swift, SwiftUI) plus a **brows
 
 ## Links
 
+- **Live web app (PWA):** https://studium-prep.vercel.app  
 - **Repository:** https://github.com/olivertransf/Studium  
-- **Web app (source):** [`studium-web/`](studium-web/) — build with `npm run build` and host the `dist/` output on any static host (PWA).
+- **Web app source:** [`studium-web/`](studium-web/) — `npm run build`, then serve `dist/` (or use the deployed site above).
 
 ## Features
 
