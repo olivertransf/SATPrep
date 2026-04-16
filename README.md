@@ -1,39 +1,60 @@
 # Studium
 
-An iOS/iPadOS/macOS app for studying SAT questions with comprehensive filtering, progress tracking, reference material, vocab flashcards, and iCloud sync.
+Native **iOS / iPadOS / macOS** SAT practice app (Swift, SwiftUI) plus a **browser PWA** in [`studium-web/`](studium-web/) (React, TypeScript, Vite) for the same question bank, flashcards, reference material, stats, and offline-friendly assets.
+
+## Links
+
+- **Repository:** https://github.com/olivertransf/Studium  
+- **Web app (source):** [`studium-web/`](studium-web/) — build with `npm run build` and host the `dist/` output on any static host (PWA).
 
 ## Features
 
-- **Smart Filtering**: Filter questions by program, module, primary class, skill description, difficulty, seen status, and Bluebook source
-- **Progress Tracking**: Track which questions you've seen and answered correctly/incorrectly
-- **Statistics**: View overall accuracy and breakdowns by category (module, difficulty, primary class, skill) — open from Settings
-- **iCloud Sync**: Sync your progress across all your devices
-- **Full Content Display**: View complete passages, questions, answer choices, and explanations
-- **Math rendering**: Proper display of mathematical notation
-- **Dark Mode**: Full dark mode support
-- **iPad Optimized**: Responsive layout for iPhone and iPad
+- **Smart filtering**: Program, module, primary class, skill, difficulty, seen status, and Bluebook source
+- **Progress**: Track seen questions and correct / incorrect attempts
+- **Statistics**: Accuracy overall and by module, difficulty, class, and skill (Settings → Statistics on Apple; Stats tab on web)
+- **iCloud sync** (Apple app): Progress across your signed-in devices
+- **Full content**: Passages, stems, choices, and explanations; math notation rendered correctly
+- **Reference & vocab**: Reference sheets and vocab flashcards
+- **Dark mode** and layouts tuned for iPhone and iPad
 
-## Requirements
+## Requirements (native app)
 
-- iOS 17.0+ / iPadOS 17.0+
+- iOS 17.0+ / iPadOS 17.0+ / macOS (see Xcode target)
 - Xcode 15.0+
 - Swift 5.0+
 
-## Setup
+## Setup (native app)
 
 1. Clone the repository
 2. Open `Studium.xcodeproj` in Xcode
-3. Enable iCloud capability in Xcode (Signing & Capabilities tab)
-4. Build and run on your device or simulator
+3. Enable the **iCloud** capability (Signing & Capabilities)
+4. Build and run on a device or simulator
 
-## Usage
+## Setup (web PWA)
 
-1. **Start a Quiz**: Select filters to customize your quiz, then start the quiz from Practice
-2. **Answer Questions**: Select an answer choice and submit to see the explanation
-3. **Navigate**: Use Back and Next to move between questions
-4. **View Stats**: Open **Settings → Statistics**
-5. **Sync Progress**: Enable iCloud sync in Settings to keep your progress across devices
+```bash
+cd studium-web
+npm install
+npm run dev
+```
+
+Production build:
+
+```bash
+cd studium-web
+npm run build
+```
+
+Serve the `studium-web/dist` directory from your host.
+
+## Usage (native)
+
+1. **Practice**: Set filters, then start a quiz from Practice
+2. **Answer**: Choose an option and submit to see the explanation
+3. **Navigate**: Back / Next between items
+4. **Stats**: **Settings → Statistics**
+5. **Sync**: Turn on iCloud in Settings to sync progress across devices
 
 ## License
 
-MIT License — see LICENSE file for details
+MIT License — see [LICENSE](LICENSE).
