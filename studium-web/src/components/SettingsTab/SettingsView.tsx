@@ -15,7 +15,7 @@ interface SettingsViewProps {
 
 function SettingRow({ label, sub, right }: { label: string; sub?: string; right: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3.5 border-b last:border-0"
+    <div className="flex items-center justify-between px-4 py-2.5 border-b last:border-0"
       style={{ borderColor: 'var(--border)' }}>
       <div>
         <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>{label}</div>
@@ -43,12 +43,12 @@ export default function SettingsView({ progress, onProgressChange, onToggleTheme
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: 'var(--bg)' }}>
-      <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-3xl mx-auto px-3 sm:px-4 lg:px-5 py-3.5 space-y-3.5">
 
         {/* App info */}
-        <div className="rounded-xl border overflow-hidden"
+        <div className="rounded-sm border overflow-hidden"
           style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-          <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
             <div className="font-semibold" style={{ color: 'var(--text)' }}>Studium</div>
             <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>SAT Prep Practice App</div>
           </div>
@@ -64,9 +64,9 @@ export default function SettingsView({ progress, onProgressChange, onToggleTheme
         </div>
 
         {/* Appearance */}
-        <div className="rounded-xl border overflow-hidden"
+        <div className="rounded-sm border overflow-hidden"
           style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-          <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+          <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--border)' }}>
             <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Appearance</div>
           </div>
           <SettingRow
@@ -74,14 +74,14 @@ export default function SettingsView({ progress, onProgressChange, onToggleTheme
             sub="Toggle between light and dark"
             right={
               <button onClick={onToggleTheme}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-sm border text-sm font-medium transition-all"
                 style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--input)' }}>
                 {isDark ? <Sun size={15} /> : <Moon size={15} />}
                 {isDark ? 'Light' : 'Dark'}
               </button>
             }
           />
-          <div className="flex items-center justify-between px-4 py-3.5 border-b last:border-0"
+          <div className="flex items-center justify-between px-4 py-3 border-b last:border-0"
             style={{ borderColor: 'var(--border)' }}>
             <div>
               <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>Question Font Size</div>
@@ -108,15 +108,15 @@ export default function SettingsView({ progress, onProgressChange, onToggleTheme
         </div>
 
         {/* Data */}
-        <div className="rounded-xl border overflow-hidden"
+        <div className="rounded-sm border overflow-hidden"
           style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-          <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+          <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--border)' }}>
             <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Data</div>
           </div>
-          <div className="px-4 py-3 border-b text-sm" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
+          <div className="px-4 py-2 border-b text-sm" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
             Progress is saved locally in your browser. Nothing is synced to the cloud.
           </div>
-          <div className="px-4 py-3">
+          <div className="px-4 py-2">
             <button
               onClick={() => setShowConfirm(true)}
               className="text-sm font-medium transition-colors"
@@ -144,12 +144,12 @@ export default function SettingsView({ progress, onProgressChange, onToggleTheme
             </div>
             <div className="flex gap-3">
               <button onClick={() => setShowConfirm(false)}
-                className="flex-1 py-2.5 border rounded-xl text-sm font-medium transition-all"
+                className="flex-1 py-2.5 border rounded-sm text-sm font-medium transition-all"
                 style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
                 Cancel
               </button>
               <button onClick={handleReset}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                className="flex-1 py-2.5 rounded-sm text-sm font-semibold transition-all"
                 style={{ background: 'var(--error)', color: '#fff' }}>
                 Reset
               </button>

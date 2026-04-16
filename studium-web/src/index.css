@@ -5,42 +5,58 @@
 }
 
 :root {
-  --bg: #0f0f11;
-  --card: #1a1a1f;
-  --border: #2a2a32;
-  --text: #e8e8f0;
-  --muted: #6b6b7e;
-  --accent: #6366f1;
-  --accent-hover: #4f52d8;
-  --surface: #14141a;
-  --input: #22222a;
+  --bg: #0a0a0a;
+  --card: #111111;
+  --border: #242424;
+  --text: #f5f5f7;
+  --muted: #8a8a8a;
+  --accent: #007aff;
+  --accent-hover: #0066d6;
+  --surface: #171717;
+  --input: #1a1a1a;
   --success: #22c55e;
   --error: #ef4444;
   --warning: #f97316;
 }
 
 .light {
-  --bg: #f5f5f7;
+  --bg: #f6f8fc;
   --card: #ffffff;
-  --border: #e5e5ea;
-  --text: #1c1c1e;
-  --muted: #6b6b7e;
-  --accent: #6366f1;
-  --accent-hover: #4f52d8;
-  --surface: #ebebed;
-  --input: #f0f0f2;
+  --border: #e6e6e6;
+  --text: #0a0a0a;
+  --muted: #666666;
+  --accent: #007aff;
+  --accent-hover: #0066d6;
+  --surface: #f0f3f9;
+  --input: #f5f7fc;
   --success: #16a34a;
   --error: #dc2626;
   --warning: #ea580c;
 }
 
+html {
+  background: var(--bg);
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', Menlo, Consolas, monospace;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background: var(--bg);
   color: var(--text);
   transition: background 0.2s, color 0.2s;
+  letter-spacing: 0.01em;
+}
+
+#root {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+::selection {
+  background: var(--accent);
+  color: #0a0a0a;
 }
 
 /* Math/HTML content from questions */

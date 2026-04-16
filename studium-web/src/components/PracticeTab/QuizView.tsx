@@ -468,6 +468,7 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
               className="flex flex-col h-full min-h-0 min-w-0 w-full overflow-hidden border-r box-border min-w-0"
               style={{
                 borderColor: 'var(--border)',
+                background: 'var(--card)',
                 flexGrow: 0,
                 flexShrink: 0,
                 flexBasis: 'var(--passage-split-pct)',
@@ -540,7 +541,10 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
                 />
               </span>
             </div>
-            <div className="h-full min-h-0 min-w-0 flex-1 w-full overflow-y-auto box-border">
+            <div
+              className="h-full min-h-0 min-w-0 flex-1 w-full overflow-y-auto box-border"
+              style={{ background: 'var(--card)' }}
+            >
               <div className="w-full max-w-none px-3 py-3 space-y-5 box-border">
                 {metaRow}
                 {stem && (

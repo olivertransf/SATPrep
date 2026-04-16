@@ -8,10 +8,10 @@ interface StatsViewProps {
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
   return (
-    <div className="rounded-xl p-4 border"
+    <div className="rounded-sm p-3.5 border"
       style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-      <div className="text-2xl font-bold" style={{ color: accent ?? 'var(--text)' }}>{value}</div>
-      <div className="text-sm font-medium mt-0.5" style={{ color: 'var(--text)' }}>{label}</div>
+      <div className="text-xl font-semibold" style={{ color: accent ?? 'var(--text)' }}>{value}</div>
+      <div className="text-sm mt-0.5" style={{ color: 'var(--text)' }}>{label}</div>
       {sub && <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{sub}</div>}
     </div>
   )
@@ -21,7 +21,7 @@ function ProgressBar({ value, max, accent }: { value: number; max: number; accen
   const pct = max > 0 ? Math.round((value / max) * 100) : 0
   return (
     <div className="flex items-center gap-3">
-      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+      <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: accent }} />
       </div>
       <span className="text-xs w-9 text-right tabular-nums" style={{ color: 'var(--muted)' }}>{pct}%</span>
@@ -78,10 +78,10 @@ export default function StatsView({ questions, progress }: StatsViewProps) {
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: 'var(--bg)' }}>
-      <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 lg:px-5 py-3.5 space-y-3.5">
 
         {/* Overview grid */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
           <StatCard label="Accuracy" value={`${stats.accuracy}%`}
             accent={accuracyAccent}
             sub={`${stats.correct} correct`} />
@@ -91,33 +91,35 @@ export default function StatsView({ questions, progress }: StatsViewProps) {
         </div>
 
         {/* By Module */}
-        <div className="rounded-xl border p-5 space-y-4"
-          style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-          <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>By Module</div>
-          {stats.byModule.map(m => (
-            <div key={m.module} className="space-y-1.5">
-              <div className="flex justify-between text-sm">
-                <span className="font-medium capitalize" style={{ color: 'var(--text)' }}>{m.module}</span>
-                <span style={{ color: 'var(--muted)' }}>{m.answered}/{m.total} · {m.accuracy}%</span>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-2.5">
+          <div className="rounded-sm border p-3.5 space-y-2.5"
+            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
+            <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>By Module</div>
+            {stats.byModule.map(m => (
+              <div key={m.module} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium capitalize" style={{ color: 'var(--text)' }}>{m.module}</span>
+                  <span style={{ color: 'var(--muted)' }}>{m.answered}/{m.total} · {m.accuracy}%</span>
+                </div>
+                <ProgressBar value={m.correct} max={m.answered || 1} accent="var(--accent)" />
               </div>
-              <ProgressBar value={m.correct} max={m.answered || 1} accent="var(--accent)" />
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        {/* By Difficulty */}
-        <div className="rounded-xl border p-5 space-y-4"
-          style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-          <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>By Difficulty</div>
-          {stats.byDifficulty.map(d => (
-            <div key={d.difficulty} className="space-y-1.5">
-              <div className="flex justify-between text-sm">
-                <span className="font-medium" style={{ color: d.accent }}>{d.label}</span>
-                <span style={{ color: 'var(--muted)' }}>{d.answered}/{d.total} · {d.accuracy}%</span>
+          {/* By Difficulty */}
+          <div className="rounded-sm border p-3.5 space-y-2.5"
+            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
+            <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>By Difficulty</div>
+            {stats.byDifficulty.map(d => (
+              <div key={d.difficulty} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium" style={{ color: d.accent }}>{d.label}</span>
+                  <span style={{ color: 'var(--muted)' }}>{d.answered}/{d.total} · {d.accuracy}%</span>
+                </div>
+                <ProgressBar value={d.correct} max={d.answered || 1} accent={d.accent} />
               </div>
-              <ProgressBar value={d.correct} max={d.answered || 1} accent={d.accent} />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         {stats.answered === 0 && (

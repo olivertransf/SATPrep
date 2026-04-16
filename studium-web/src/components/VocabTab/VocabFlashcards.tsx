@@ -86,10 +86,10 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: 'var(--bg)' }}>
-      <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-3xl mx-auto px-3 sm:px-4 lg:px-5 py-3.5 space-y-3.5">
 
         {/* Bucket tabs */}
-        <div className="flex gap-1 p-1 rounded-xl border" style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
+        <div className="flex gap-1 p-1 rounded-sm border" style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
           {BUCKET_OPTIONS.map(opt => {
             const count = words.filter(w =>
               (buckets[w.id] ?? 'learn') === opt.value &&
@@ -98,7 +98,7 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
             const active = bucketFilter === opt.value
             return (
               <button key={opt.value} onClick={() => updateBucketFilter(opt.value)}
-                className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
+                className="flex-1 py-1.5 rounded-sm text-xs font-semibold uppercase tracking-wide transition-all"
                 style={active
                   ? { background: opt.bg, color: opt.accent }
                   : { color: 'var(--muted)' }
@@ -110,13 +110,13 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
         </div>
 
         {/* POS filter chips */}
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 sm:-mx-4 lg:mx-0 px-3 sm:px-4 lg:px-0">
           {POS_OPTIONS.map(opt => (
             <button key={opt.value} onClick={() => updateFilter(opt.value)}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium shrink-0 transition-all border"
+              className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all border"
               style={posFilter === opt.value
                 ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
-                : { background: 'var(--card)', color: 'var(--muted)', borderColor: 'var(--border)' }
+                : { background: 'transparent', color: 'var(--muted)', borderColor: 'var(--border)' }
               }>
               {opt.label}
             </button>
@@ -125,7 +125,7 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
 
         {/* Card or empty state */}
         {filtered.length === 0 ? (
-          <div className="rounded-2xl p-10 text-center border"
+          <div className="rounded-sm p-8 text-center border"
             style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
             <div className="text-4xl mb-3">📭</div>
             <div className="text-base font-semibold" style={{ color: 'var(--text)' }}>No cards here</div>
@@ -140,15 +140,22 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
 
             {/* Card — crossfade approach, no 3D transforms */}
             <div
-              className="relative rounded-2xl border overflow-hidden cursor-pointer select-none"
-              style={{ minHeight: '260px' }}
+              className="relative rounded-sm border overflow-hidden cursor-pointer select-none"
+              style={{ minHeight: '220px' }}
               onClick={() => setFlipped(f => !f)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setFlipped(f => !f)
+                }
+              }}
+              tabIndex={0}
               role="button"
               aria-label={flipped ? 'Tap to see word' : 'Tap to reveal definition'}
             >
               {/* Front */}
               <div
-                className={`flip-card-side absolute inset-0 flex flex-col items-center justify-center p-8 rounded-2xl ${flipped ? 'hidden-side' : 'visible-side'}`}
+                className={`flip-card-side absolute inset-0 flex flex-col items-center justify-center p-6 rounded-sm ${flipped ? 'hidden-side' : 'visible-side'}`}
                 style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
               >
                 <div className="text-3xl font-bold text-center" style={{ color: 'var(--text)' }}>
@@ -165,8 +172,8 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
 
               {/* Back */}
               <div
-                className={`flip-card-side absolute inset-0 flex flex-col items-center justify-center p-8 rounded-2xl ${flipped ? 'visible-side' : 'hidden-side'}`}
-                style={{ background: currentBucket.bg, border: `1.5px solid ${currentBucket.accent}` }}
+                className={`flip-card-side absolute inset-0 flex flex-col items-center justify-center p-6 rounded-sm ${flipped ? 'visible-side' : 'hidden-side'}`}
+                style={{ background: currentBucket.bg, border: `1px solid ${currentBucket.accent}` }}
               >
                 <div className="text-xl font-semibold text-center leading-snug" style={{ color: 'var(--text)' }}>
                   {card.definition}
@@ -174,7 +181,7 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
                 <div className="mt-3 text-sm italic font-medium" style={{ color: currentBucket.accent }}>
                   {card.word}
                 </div>
-                <div className="mt-4 text-xs flex items-center gap-1.5" style={{ color: currentBucket.accent, opacity: 0.7 }}>
+                <div className="mt-4 text-xs flex items-center gap-1.5" style={{ color: currentBucket.accent, opacity: 0.8 }}>
                   <RotateCcw size={12} aria-hidden="true" />
                   <span>tap to flip back</span>
                 </div>
@@ -182,18 +189,18 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
             </div>
 
             {/* Prev / Next */}
-            <div className="flex gap-3">
+            <div className="flex gap-2.5">
               <button
                 onClick={goPrev}
                 disabled={index === 0}
-                className="flex items-center justify-center gap-2 flex-1 py-3 rounded-xl border text-sm font-medium transition-all disabled:opacity-30"
+                className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-sm border text-sm font-medium transition-all disabled:opacity-30"
                 style={{ background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--text)' }}>
                 <ChevronLeft size={16} /> Prev
               </button>
               <button
                 onClick={goNext}
                 disabled={index === filtered.length - 1}
-                className="flex items-center justify-center gap-2 flex-1 py-3 rounded-xl border text-sm font-medium transition-all disabled:opacity-30"
+                className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-sm border text-sm font-medium transition-all disabled:opacity-30"
                 style={{ background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--text)' }}>
                 Next <ChevronRight size={16} />
               </button>
@@ -204,10 +211,10 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
               {BUCKET_OPTIONS.map(opt => (
                 <button key={opt.value}
                   onClick={() => moveBucket(opt.value)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                  className="flex-1 py-2.5 rounded-sm text-sm font-semibold transition-all"
                   style={bucketFilter === opt.value
                     ? { background: opt.bg, color: opt.accent, border: `1px solid ${opt.accent}` }
-                    : { background: 'var(--input)', color: 'var(--muted)', border: '1px solid var(--border)' }
+                    : { background: 'transparent', color: 'var(--muted)', border: '1px solid var(--border)' }
                   }>
                   {opt.label}
                 </button>

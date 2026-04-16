@@ -17,7 +17,7 @@ function TagBadge({ tag }: { tag: EntryTag }) {
   const s = TAG_STYLES[tag]
   return (
     <span
-      className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wide shrink-0"
+      className="inline-block px-1.5 py-0.5 rounded-sm text-[10px] font-semibold tracking-wide shrink-0"
       style={{ background: s.bg, color: s.color }}
     >
       {s.label}
@@ -47,7 +47,7 @@ function KaTeXBlock({ src }: { src: string }) {
 
 function EntryRow({ entry }: { entry: ReferenceEntry }) {
   return (
-    <div className="rounded-lg p-3 space-y-1.5" style={{ background: 'var(--surface)' }}>
+    <div className="rounded-sm p-3 space-y-1.5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
       <div className="flex items-start justify-between gap-2 flex-wrap">
         <span className="text-sm font-semibold leading-snug" style={{ color: 'var(--text)' }}>
           {entry.title}
@@ -81,7 +81,7 @@ function SectionAccordion({ section, defaultOpen }: { section: ReferenceSection;
 
   return (
     <div
-      className="rounded-xl overflow-hidden border"
+      className="rounded-sm overflow-hidden border"
       style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
     >
       <button
@@ -89,7 +89,7 @@ function SectionAccordion({ section, defaultOpen }: { section: ReferenceSection;
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+      className="w-full flex items-center justify-between px-4 py-2.5 text-left transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
       >
         <div className="flex items-center gap-3">
           <div
@@ -101,8 +101,8 @@ function SectionAccordion({ section, defaultOpen }: { section: ReferenceSection;
             {section.title}
           </span>
           <span
-            className="text-xs font-medium px-1.5 py-0.5 rounded-full"
-            style={{ background: 'var(--surface)', color: 'var(--muted)' }}
+            className="text-xs font-medium px-1.5 py-0.5 rounded-sm border"
+            style={{ background: 'transparent', color: 'var(--muted)', borderColor: 'var(--border)' }}
           >
             {section.entries.length}
           </span>
@@ -118,7 +118,7 @@ function SectionAccordion({ section, defaultOpen }: { section: ReferenceSection;
           id={panelId}
           role="region"
           aria-labelledby={headingId}
-          className="px-4 pb-4 space-y-2"
+          className="px-4 pb-4 space-y-1.5"
         >
           {section.entries.map(entry => (
             <EntryRow key={entry.title} entry={entry} />
@@ -168,14 +168,14 @@ export default function ReferenceView() {
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: 'var(--bg)' }}>
-      <div className="px-4 lg:px-6 py-4 lg:py-5 space-y-4">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-5 py-3 space-y-3">
 
         {/* Controls row */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-2">
           {/* Subject toggle */}
           <div
-            className="flex gap-1 p-1 rounded-xl shrink-0"
-            style={{ background: 'var(--card)' }}
+            className="flex gap-1 p-1 rounded-sm shrink-0 border"
+            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
             role="tablist"
             aria-label="Subject"
           >
@@ -185,9 +185,9 @@ export default function ReferenceView() {
                 role="tab"
                 aria-selected={subject === s}
                 onClick={() => { setSubject(s); setSearch('') }}
-                className="px-5 py-2 text-sm font-semibold rounded-lg transition-all"
+                className="px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide rounded-sm transition-all"
                 style={subject === s
-                  ? { background: 'var(--accent)', color: '#fff' }
+                  ? { background: 'rgba(0,122,255,0.14)', color: 'var(--text)' }
                   : { color: 'var(--muted)' }
                 }
               >
@@ -211,7 +211,7 @@ export default function ReferenceView() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search formulas, rules…"
-              className="w-full pl-8 pr-3 py-2 rounded-xl text-sm border outline-none"
+              className="w-full pl-8 pr-3 py-2 rounded-sm text-sm border outline-none"
               style={{
                 background: 'var(--card)',
                 borderColor: 'var(--border)',
@@ -223,22 +223,22 @@ export default function ReferenceView() {
 
         {/* Sections */}
         {filteredSections.length === 0 ? (
-          <p className="text-center py-16 text-sm" style={{ color: 'var(--muted)' }}>
+          <p className="text-center py-12 text-sm" style={{ color: 'var(--muted)' }}>
             No results for "{search}"
           </p>
         ) : (
           <>
             {/* Single-column (mobile) */}
-            <div className="lg:hidden space-y-3">
+            <div className="lg:hidden space-y-2.5">
               {filteredSections.map((section, i) => renderSection(section, i))}
             </div>
 
             {/* Two-column (lg+) */}
-            <div className="hidden lg:flex gap-4 items-start">
-              <div className="flex-1 space-y-3 min-w-0">
+            <div className="hidden lg:flex gap-3 items-start">
+              <div className="flex-1 space-y-2.5 min-w-0">
                 {col1.map((section, i) => renderSection(section, i))}
               </div>
-              <div className="flex-1 space-y-3 min-w-0">
+              <div className="flex-1 space-y-2.5 min-w-0">
                 {col2.map((section, i) => renderSection(section, i + mid))}
               </div>
             </div>

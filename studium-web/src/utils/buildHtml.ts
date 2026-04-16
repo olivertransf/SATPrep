@@ -16,7 +16,7 @@ export function buildHtml(
   frameId: string = '',
   fillViewport: boolean = false,
 ): string {
-  const bg       = isDark ? '#1C1C1E' : '#FFFFFF'
+  const bg       = isDark ? '#111111' : '#FFFFFF'
   const fg       = isDark ? '#EBEBF5' : '#000000'
   const border   = isDark ? '#48484A' : '#D1D1D6'
   const headerBg = isDark ? '#2C2C2E' : '#F2F2F7'
@@ -319,6 +319,14 @@ export function buildHtml(
     <script>
     (function() {
         ${postH}
+        var resizeRaf = null;
+        function schedulePostH() {
+            if (resizeRaf !== null) return;
+            resizeRaf = requestAnimationFrame(function() {
+                resizeRaf = null;
+                postH();
+            });
+        }
 
         // DPR-aware scaling for CB bitmap PNGs (1x assets shown on 2x/3x screens)
         function scaleRasterImages() {
@@ -337,6 +345,15 @@ export function buildHtml(
         scaleRasterImages();
         setTimeout(scaleRasterImages, 80);
         setTimeout(scaleRasterImages, 220);
+
+        // Keep iframe height in sync when parent width changes (e.g. split-pane drag)
+        window.addEventListener('resize', schedulePostH);
+        if ('ResizeObserver' in window) {
+            var ro = new ResizeObserver(function() { schedulePostH(); });
+            ro.observe(document.documentElement);
+            ro.observe(document.body);
+        }
+        setTimeout(schedulePostH, 0);
 
         // Wrap bare tables in a scroll container
         document.querySelectorAll('table').forEach(function(t) {

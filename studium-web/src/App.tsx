@@ -151,37 +151,37 @@ export default function App() {
           aria-label="Main navigation"
         >
           {/* App name */}
-          <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
-            <div className="text-lg font-bold tracking-tight" style={{ color: 'var(--text)' }}>Studium</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>SAT Prep</div>
+          <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-sm font-semibold tracking-tight uppercase" style={{ color: 'var(--text)' }}>Studium</div>
+            <div className="text-[11px] mt-0.5" style={{ color: 'var(--muted)' }}>SAT Prep</div>
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 py-3 space-y-0.5 px-2" aria-label="Tabs">
+          <nav className="flex-1 py-2.5 space-y-1 px-2" aria-label="Tabs">
             {TABS.map(({ id, label, Icon }) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
                 aria-current={tab === id ? 'page' : undefined}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-1"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-sm text-xs font-medium uppercase tracking-wide transition-all border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-1"
                 style={tab === id
-                  ? { background: 'var(--accent)', color: '#fff' }
-                  : { color: 'var(--muted)' }
+                  ? { background: 'rgba(0,122,255,0.14)', color: 'var(--text)', borderColor: 'rgba(0,122,255,0.45)' }
+                  : { color: 'var(--muted)', borderColor: 'transparent' }
                 }
               >
-                <Icon size={17} aria-hidden="true" />
+                <Icon size={16} aria-hidden="true" />
                 <span>{label}</span>
               </button>
             ))}
           </nav>
 
           {/* Theme toggle */}
-          <div className="px-4 py-4 border-t" style={{ borderColor: 'var(--border)' }}>
+          <div className="px-3 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
             <button
               onClick={toggle}
               aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-              style={{ color: 'var(--muted)' }}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-semibold border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}
             >
               {dark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
               <span>{dark ? 'Light mode' : 'Dark mode'}</span>
@@ -196,10 +196,10 @@ export default function App() {
         {/* Mobile top header */}
         {!activeQuiz && (
           <header
-            className="md:hidden flex items-center justify-between px-4 py-3 border-b shrink-0"
+            className="md:hidden flex items-center justify-between px-3 py-2.5 border-b shrink-0"
             style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
           >
-            <h1 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{currentTabLabel}</h1>
+              <h1 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text)' }}>{currentTabLabel}</h1>
             <button
               onClick={toggle}
               aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -268,7 +268,7 @@ export default function App() {
                 onClick={() => setTab(id)}
                 aria-current={tab === id ? 'page' : undefined}
                 aria-label={label}
-                className="flex-1 flex flex-col items-center gap-1 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+                className="flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
                 style={tab === id ? { color: 'var(--accent)' } : { color: 'var(--muted)' }}
               >
                 <Icon size={20} aria-hidden="true" />

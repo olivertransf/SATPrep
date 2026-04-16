@@ -1,0 +1,12 @@
+# UI Density and Proportion Preferences
+
+When working on web UI in this project:
+
+- Prefer compact, efficient layouts over spacious ones.
+- Avoid large empty regions, especially in top sections and headers.
+- Use balanced multi-column composition on desktop so space is actively used.
+- Keep controls dense but readable: smaller paddings, tighter gaps, clear hierarchy.
+- Avoid oversized "card on card" wrappers for filter/tool areas unless requested.
+- Keep metric/status rows clean and compact with strong alignment.
+- Prioritize practical utility and visual proportion over decorative styling.
+
