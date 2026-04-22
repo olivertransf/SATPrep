@@ -28,6 +28,7 @@ import {
 import { HtmlBlock } from '../HtmlBlock'
 
 const PASSAGE_SPLIT_STORAGE_KEY = 'studium-passage-split-pct'
+const MATH_DESMOS_SPLIT_STORAGE_KEY = 'studium-math-desmos-split-pct'
 /** Hit target width; must match flex-basis on the handle and `clientXToPct` track math */
 const PASSAGE_SPLIT_HANDLE_PX = 16
 const PASSAGE_SPLIT_MIN_PCT = 22
@@ -49,6 +50,16 @@ function readInitialPassageSplitPct(): number {
     /* ignore */
   }
   return 50
+}
+
+function readInitialMathDesmosSplitPct(): number {
+  try {
+    const n = Number(localStorage.getItem(MATH_DESMOS_SPLIT_STORAGE_KEY))
+    if (Number.isFinite(n) && n >= PASSAGE_SPLIT_MIN_PCT && n <= PASSAGE_SPLIT_MAX_PCT) return n
+  } catch {
+    /* ignore */
+  }
+  return 40
 }
 
 interface QuizViewProps {
@@ -74,6 +85,12 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
   const splitContainerRef = useRef<HTMLDivElement>(null)
   const passageSplitPctRef = useRef(passagePanePct)
   passageSplitPctRef.current = passagePanePct
+
+  const [desmosPanePct, setDesmosPanePct] = useState(readInitialMathDesmosSplitPct)
+  const [desmosSplitDragging, setDesmosSplitDragging] = useState(false)
+  const desmosSplitContainerRef = useRef<HTMLDivElement>(null)
+  const desmosSplitPctRef = useRef(desmosPanePct)
+  desmosSplitPctRef.current = desmosPanePct
 
   const question = questions[currentIndex]
 
@@ -202,6 +219,55 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
     handle.addEventListener('pointercancel', onEnd)
   }
 
+  /** Math: drag handle between Desmos and question column (lg+ only). */
+  function handleDesmosSplitPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (e.button !== 0) return
+    e.preventDefault()
+    const handle = e.currentTarget
+    if (!desmosSplitContainerRef.current) return
+
+    handle.setPointerCapture(e.pointerId)
+    setDesmosSplitDragging(true)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    function apply(clientX: number) {
+      const root = desmosSplitContainerRef.current
+      if (!root) return
+      const pct = passagePointerXToPct(clientX, root)
+      desmosSplitPctRef.current = pct
+      root.style.setProperty('--desmos-split-pct', `${pct}%`)
+    }
+    apply(e.clientX)
+
+    function onMove(ev: PointerEvent) {
+      apply(ev.clientX)
+    }
+    function onEnd(ev: PointerEvent) {
+      handle.removeEventListener('pointermove', onMove)
+      handle.removeEventListener('pointerup', onEnd)
+      handle.removeEventListener('pointercancel', onEnd)
+      try {
+        if (handle.hasPointerCapture(ev.pointerId)) handle.releasePointerCapture(ev.pointerId)
+      } catch {
+        /* ignore */
+      }
+      setDesmosSplitDragging(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      const finalPct = desmosSplitPctRef.current
+      setDesmosPanePct(finalPct)
+      try {
+        localStorage.setItem(MATH_DESMOS_SPLIT_STORAGE_KEY, String(finalPct))
+      } catch {
+        /* ignore */
+      }
+    }
+    handle.addEventListener('pointermove', onMove)
+    handle.addEventListener('pointerup', onEnd)
+    handle.addEventListener('pointercancel', onEnd)
+  }
+
   const answeredCount = Object.values(answerStates).filter(s => s.hasSubmitted).length
   const correctCount  = Object.values(answerStates).filter(s => s.isCorrect).length
   const isCorrect     = hasSubmitted && question ? answerStates[question.questionId]?.isCorrect : undefined
@@ -213,8 +279,10 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
   const progressPct   = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0
   const hasStimulus   = stimulus.trim().length > 0
   const isMathModule  = question?.module.toLowerCase() === 'math'
-  /** English/R&W: split pane on large screens when there is a passage. Math: always single column. */
+  /** English/R&W: split pane on large screens when there is a passage. */
   const useSplitPassageLayout = hasStimulus && !isMathModule
+  /** Math: split Desmos | question on large screens (same interaction model as English passage split). */
+  const useMathDesmosSplitLayout = isMathModule
 
   if (!question) {
     return (
@@ -441,7 +509,7 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
     <div className="flex flex-col h-full" style={{ background: 'var(--bg)' }}>
       {header}
 
-      {/* ── Passage + question: English uses split on lg+; math always stacked ── */}
+      {/* ── English: passage | question split on lg+. Math: Desmos | question split on lg+. ── */}
       {useSplitPassageLayout ? (
         <>
           <div className="lg:hidden flex-1 overflow-y-auto">
@@ -547,6 +615,133 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
             >
               <div className="w-full max-w-none px-3 py-3 space-y-5 box-border">
                 {metaRow}
+                {stem && (
+                  <HtmlBlock html={stem} isDark={isDark} fontSize={fontSize} profile="quizFigures" />
+                )}
+                {answerArea}
+                {actionArea}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : useMathDesmosSplitLayout ? (
+        <>
+          <div className="lg:hidden flex-1 overflow-y-auto">
+            <div className="max-w-[720px] mx-auto px-4 py-6 space-y-5">
+              {metaRow}
+              {hasStimulus && (
+                <div className="rounded-xl overflow-hidden border-l-[3px]"
+                  style={{ background: 'var(--card)', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)' }}>
+                  <HtmlBlock html={stimulus} isDark={isDark} fontSize={fontSize} profile="passage" />
+                </div>
+              )}
+              {stem && (
+                <HtmlBlock html={stem} isDark={isDark} fontSize={fontSize} profile="quizFigures" />
+              )}
+              {answerArea}
+              {actionArea}
+              <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)', height: 300 }}>
+                <iframe
+                  src="https://www.desmos.com/calculator"
+                  className="w-full h-full border-0"
+                  title="Desmos Graphing Calculator"
+                  allow="fullscreen"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div
+            ref={desmosSplitContainerRef}
+            className="hidden lg:flex flex-1 flex-row items-stretch overflow-hidden min-h-0 min-w-0"
+            style={{ '--desmos-split-pct': `${desmosPanePct}%` } as CSSProperties}
+          >
+            <div
+              className="flex flex-col h-full min-h-0 min-w-0 w-full overflow-hidden border-r box-border min-w-0"
+              style={{
+                borderColor: 'var(--border)',
+                background: 'var(--bg)',
+                flexGrow: 0,
+                flexShrink: 0,
+                flexBasis: 'var(--desmos-split-pct)',
+              }}
+            >
+              <iframe
+                src="https://www.desmos.com/calculator"
+                className="flex-1 min-h-0 w-full border-0"
+                title="Desmos Graphing Calculator"
+                allow="fullscreen"
+              />
+            </div>
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize calculator and question columns"
+              aria-valuenow={Math.round(desmosPanePct)}
+              aria-valuemin={PASSAGE_SPLIT_MIN_PCT}
+              aria-valuemax={PASSAGE_SPLIT_MAX_PCT}
+              tabIndex={0}
+              className="shrink-0 self-stretch z-10 flex flex-col items-center justify-center cursor-col-resize touch-none select-none border-x rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)]"
+              style={{
+                flex: `0 0 ${PASSAGE_SPLIT_HANDLE_PX}px`,
+                width: PASSAGE_SPLIT_HANDLE_PX,
+                touchAction: 'none',
+                borderColor: 'var(--border)',
+                background: desmosSplitDragging
+                  ? 'color-mix(in srgb, var(--accent) 22%, var(--input))'
+                  : 'var(--input)',
+              }}
+              onPointerDown={handleDesmosSplitPointerDown}
+              onKeyDown={e => {
+                if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+                e.preventDefault()
+                const delta = e.key === 'ArrowLeft' ? -2 : 2
+                setDesmosPanePct(p => {
+                  const next = Math.min(PASSAGE_SPLIT_MAX_PCT, Math.max(PASSAGE_SPLIT_MIN_PCT, p + delta))
+                  desmosSplitPctRef.current = next
+                  desmosSplitContainerRef.current?.style.setProperty('--desmos-split-pct', `${next}%`)
+                  try {
+                    localStorage.setItem(MATH_DESMOS_SPLIT_STORAGE_KEY, String(next))
+                  } catch {
+                    /* ignore */
+                  }
+                  return next
+                })
+              }}
+            >
+              <span className="pointer-events-none flex flex-col items-center justify-center gap-0.5 py-1">
+                <ChevronLeft
+                  size={12}
+                  strokeWidth={2.5}
+                  aria-hidden
+                  style={{ color: 'var(--muted)', opacity: 0.85 }}
+                />
+                <GripVertical
+                  size={16}
+                  strokeWidth={2.25}
+                  aria-hidden
+                  style={{ color: desmosSplitDragging ? 'var(--accent)' : 'var(--muted)' }}
+                />
+                <ChevronRight
+                  size={12}
+                  strokeWidth={2.5}
+                  aria-hidden
+                  style={{ color: 'var(--muted)', opacity: 0.85 }}
+                />
+              </span>
+            </div>
+            <div
+              className="h-full min-h-0 min-w-0 flex-1 w-full overflow-y-auto box-border"
+              style={{ background: 'var(--card)' }}
+            >
+              <div className="w-full max-w-none px-3 py-3 space-y-5 box-border">
+                {metaRow}
+                {hasStimulus && (
+                  <div className="rounded-xl overflow-hidden border-l-[3px]"
+                    style={{ background: 'var(--input)', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)' }}>
+                    <HtmlBlock html={stimulus} isDark={isDark} fontSize={fontSize} profile="passage" />
+                  </div>
+                )}
                 {stem && (
                   <HtmlBlock html={stem} isDark={isDark} fontSize={fontSize} profile="quizFigures" />
                 )}

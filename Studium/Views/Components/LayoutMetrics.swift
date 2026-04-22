@@ -8,20 +8,16 @@
 import SwiftUI
 
 enum LayoutMetrics {
-    /// Below this width on macOS, Practice uses the compact (iPhone-style) layout.
+    /// Below this width, Practice and Quiz use the compact shell (iPhone-style). Same threshold on iOS, iPad, and macOS.
     static let macWideBreakpoint: CGFloat = 900
     /// Extra-wide practice grid adds a third concept column.
     static let macTripleColumnBreakpoint: CGFloat = 1320
-    /// Centered reading width for settings-style scroll content on large windows.
-    static let settingsStyleMaxContentWidth: CGFloat = 640
-    /// Centered column for settings on macOS (slightly wider than iOS-only default above).
-    static let macSettingsMaxContentWidth: CGFloat = 680
-    /// Reference / long-form content can use a bit more than settings.
-    static let referenceMaxContentWidth: CGFloat = 820
-    static let macReferenceMaxContentWidth: CGFloat = 860
-    /// Vocab flashcard column on very wide mac windows.
-    static let vocabMaxContentWidth: CGFloat = 720
-    static let macVocabMaxContentWidth: CGFloat = 760
+    /// Centered reading column for settings / stats on every platform.
+    static let settingsReadableMaxWidth: CGFloat = 680
+    /// Centered column for reference scroll content.
+    static let referenceReadableMaxWidth: CGFloat = 860
+    /// Centered column for vocab flashcards.
+    static let vocabReadableMaxWidth: CGFloat = 760
 
     // Practice sidebar / quiz pane spacing on macOS: see `MacStudiumDesign`.
 

@@ -51,18 +51,14 @@ struct ReferenceSection: Identifiable {
 struct MathFormulaView: View {
     let latex: String       // e.g. "\\[ A = \\pi r^2 \\]"
     let accentColor: Color
-    @State private var height: CGFloat?
 
     var body: some View {
         HTMLContentView(
             htmlContent: latex,
             isScrollable: false,
-            allowInteraction: false,
-            contentHeight: $height
+            allowInteraction: false
         )
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: max(height ?? 64, 52))
-        .animation(nil, value: height)
         .background(accentColor.opacity(0.08))
         .cornerRadius(10)
     }
@@ -634,14 +630,17 @@ struct ReferenceView: View {
     @State private var selectedSubject = 0
     @State private var searchText = ""
     @State private var expandedSections: Set<String> = []
+    @State private var viewportWidth: CGFloat = 0
+
+    private var isTwoColumn: Bool { viewportWidth >= 700 }
 
     private var currentSections: [ReferenceSection] {
         selectedSubject == 0 ? ReferenceSection.mathSections : ReferenceSection.rwSections
     }
 
-    private var filteredSections: [ReferenceSection] {
-        guard !searchText.isEmpty else { return currentSections }
-        return currentSections.compactMap { section in
+    private func filtered(_ sections: [ReferenceSection]) -> [ReferenceSection] {
+        guard !searchText.isEmpty else { return sections }
+        return sections.compactMap { section in
             let hits = section.entries.filter { entry in
                 entry.title.localizedCaseInsensitiveContains(searchText)
                 || (entry.formula?.localizedCaseInsensitiveContains(searchText) ?? false)
@@ -652,26 +651,29 @@ struct ReferenceView: View {
         }
     }
 
+    private var filteredSections: [ReferenceSection] { filtered(currentSections) }
+    private var filteredMathSections: [ReferenceSection] { filtered(ReferenceSection.mathSections) }
+    private var filteredRWSections: [ReferenceSection] { filtered(ReferenceSection.rwSections) }
+
     var body: some View {
         NavigationStack {
-            #if os(macOS)
-            referenceMacScrollLayout
-            #else
-            referenceIOSListLayout
-            #endif
+            referenceMainScrollLayout
         }
         .navigationTitle("Reference")
         .navLargeTitle()
+        .trackViewportWidth($viewportWidth)
         .onChange(of: searchText) { _, new in
             if !new.isEmpty {
                 var t = Transaction()
                 t.animation = nil
                 withTransaction(t) {
-                    #if os(macOS)
-                    expandedSections = Set(filteredSections.map(\.id))
-                    #else
-                    expandedSections = Set(filteredSections.prefix(8).map(\.id))
-                    #endif
+                    if isTwoColumn {
+                        expandedSections = Set(
+                            (filteredMathSections + filteredRWSections).map(\.id)
+                        )
+                    } else {
+                        expandedSections = Set(filteredSections.map(\.id))
+                    }
                 }
             }
         }
@@ -709,107 +711,17 @@ struct ReferenceView: View {
         .accessibilityLabel("Search formulas and rules")
     }
 
-    // MARK: - iOS / iPad: inset grouped list + disclosure (Settings-style)
-
-    #if !os(macOS)
-    private var referenceIOSListLayout: some View {
-        List {
-            Section {
-                referenceSearchBar
-                    .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-            }
-            Section {
-                Picker("Subject", selection: $selectedSubject) {
-                    Text("Math").tag(0)
-                    Text("Reading & Writing").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
-                .onChange(of: selectedSubject) { _, _ in expandedSections.removeAll() }
-            }
-
-            if filteredSections.isEmpty {
-                Section {
-                    ContentUnavailableView {
-                        Label("No matches", systemImage: "magnifyingglass")
-                    } description: {
-                        Text("Nothing matches “\(searchText)”.")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 24)
-                }
-            } else {
-                ForEach(filteredSections) { section in
-                    Section {
-                        DisclosureGroup(
-                            isExpanded: Binding(
-                                get: { expandedSections.contains(section.id) },
-                                set: { on in
-                                    var t = Transaction()
-                                    t.animation = nil
-                                    withTransaction(t) {
-                                        if on {
-                                            expandedSections.insert(section.id)
-                                        } else {
-                                            expandedSections.remove(section.id)
-                                        }
-                                    }
-                                }
-                            )
-                        ) {
-                            ForEach(section.entries) { entry in
-                                ReferenceEntryRow(entry: entry, accentColor: section.color)
-                                    .listRowInsets(EdgeInsets(top: 10, leading: 18, bottom: 10, trailing: 16))
-                            }
-                        } label: {
-                            referenceSectionListLabel(section)
-                        }
-                    }
-                }
-            }
-        }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .background(Color.systemGroupedBackground)
-        .readableContentFrame(maxWidth: referenceContentMaxWidth, alignment: .leading)
-    }
-
-    private func referenceSectionListLabel(_ section: ReferenceSection) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: section.icon)
-                .font(.body.weight(.medium))
-                .foregroundStyle(section.color)
-                .frame(width: 32, height: 32)
-                .background(section.color.opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(section.title)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                Text("\(section.entries.count) entries")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 2)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-    }
-    #endif
-
-    /// macOS: chip strip + card accordion.
-    #if os(macOS)
-    private var referenceMacScrollLayout: some View {
+    /// Chip strip + search + card accordion (shared on iOS, iPad, and macOS).
+    private var referenceMainScrollLayout: some View {
         VStack(spacing: 0) {
-            subjectChipStrip
-                .padding(.horizontal, referenceChipStripHorizontalPadding)
-                .padding(.vertical, referenceChipStripVerticalPadding)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.secondarySystemGroupedBackground)
-                .onChange(of: selectedSubject) { _, _ in expandedSections.removeAll() }
+            if !isTwoColumn {
+                subjectChipStrip
+                    .padding(.horizontal, referenceChipStripHorizontalPadding)
+                    .padding(.vertical, referenceChipStripVerticalPadding)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.secondarySystemGroupedBackground)
+                    .onChange(of: selectedSubject) { _, _ in expandedSections.removeAll() }
+            }
 
             referenceSearchBar
                 .padding(.horizontal, referenceChipStripHorizontalPadding)
@@ -817,70 +729,100 @@ struct ReferenceView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.secondarySystemGroupedBackground)
 
-            ScrollView {
-                LazyVStack(spacing: 10) {
-                    ForEach(filteredSections) { section in
-                        ReferenceSectionCard(
-                            section: section,
-                            isExpanded: expandedSections.contains(section.id),
-                            onToggle: {
-                                withAnimation(.easeOut(duration: 0.2)) {
-                                    if expandedSections.contains(section.id) {
-                                        expandedSections.remove(section.id)
-                                    } else {
-                                        expandedSections.insert(section.id)
-                                    }
-                                }
-                            }
-                        )
-                    }
-                    if filteredSections.isEmpty {
-                        ContentUnavailableView {
-                            Label("No matches", systemImage: "magnifyingglass")
-                        } description: {
-                            Text(searchText.isEmpty ? "Choose Math or Reading & Writing." : "Nothing matches “\(searchText)”.")
-                        }
-                        .padding(.top, 24)
-                    }
-                }
-                .padding(referenceListOuterPadding)
-                .readableContentFrame(maxWidth: referenceContentMaxWidth, alignment: .leading)
+            if isTwoColumn {
+                twoColumnScrollLayout
+            } else {
+                singleColumnScrollLayout
             }
-            .background(Color.systemGroupedBackground)
         }
     }
-    #endif
 
-    private var referenceContentMaxWidth: CGFloat {
-        #if os(macOS)
-        LayoutMetrics.macReferenceMaxContentWidth
-        #else
-        LayoutMetrics.referenceMaxContentWidth
-        #endif
+    private var singleColumnScrollLayout: some View {
+        ScrollView {
+            LazyVStack(spacing: 10) {
+                ForEach(filteredSections) { section in
+                    sectionCard(section)
+                }
+                if filteredSections.isEmpty {
+                    ContentUnavailableView {
+                        Label("No matches", systemImage: "magnifyingglass")
+                    } description: {
+                        Text(searchText.isEmpty ? "Choose Math or Reading & Writing." : "Nothing matches \"\(searchText)\".")
+                    }
+                    .padding(.top, 24)
+                }
+            }
+            .padding(referenceListOuterPadding)
+            .readableContentFrame(maxWidth: LayoutMetrics.referenceReadableMaxWidth, alignment: .leading)
+        }
+        .background(Color.systemGroupedBackground)
+    }
+
+    private var twoColumnScrollLayout: some View {
+        ScrollView {
+            HStack(alignment: .top, spacing: referenceListOuterPadding) {
+                referenceColumn(
+                    title: "Math",
+                    icon: "function",
+                    sections: filteredMathSections
+                )
+                referenceColumn(
+                    title: "Reading & Writing",
+                    icon: "text.alignleft",
+                    sections: filteredRWSections
+                )
+            }
+            .padding(referenceListOuterPadding)
+        }
+        .background(Color.systemGroupedBackground)
+    }
+
+    private func referenceColumn(title: String, icon: String, sections: [ReferenceSection]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(title, systemImage: icon)
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .padding(.bottom, 2)
+            if sections.isEmpty {
+                ContentUnavailableView {
+                    Label("No matches", systemImage: "magnifyingglass")
+                } description: {
+                    Text("Nothing matches \"\(searchText)\".")
+                }
+                .padding(.top, 24)
+            } else {
+                ForEach(sections) { section in
+                    sectionCard(section)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    private func sectionCard(_ section: ReferenceSection) -> some View {
+        ReferenceSectionCard(
+            section: section,
+            isExpanded: expandedSections.contains(section.id),
+            onToggle: {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    if expandedSections.contains(section.id) {
+                        expandedSections.remove(section.id)
+                    } else {
+                        expandedSections.insert(section.id)
+                    }
+                }
+            }
+        )
     }
 
     private var referenceChipStripHorizontalPadding: CGFloat {
-        #if os(macOS)
         MacStudiumDesign.practiceMainPaddingH
-        #else
-        16
-        #endif
     }
 
-    private var referenceChipStripVerticalPadding: CGFloat {
-        #if os(macOS)
-        12
-        #else
-        10
-        #endif
-    }
+    private var referenceChipStripVerticalPadding: CGFloat { 12 }
 
     private var referenceListOuterPadding: CGFloat {
-        #if os(macOS)
         MacStudiumDesign.practiceMainPaddingH
-        #else
-        16
-        #endif
     }
 
     private var subjectChipStrip: some View {

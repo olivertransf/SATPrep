@@ -28,22 +28,15 @@ enum QuestionBankFilterLabels {
     static let domainSubgroup = "Domain"
     static let skillSubgroup = "Skill"
 
-    /// CB calls this "Exclude Active Questions" (questions on full-length practice tests).
-    static let practiceTestsGroupTitle = "Practice tests"
+    /// Practice / filter sheet — bundled sidecar IDs only (`cb-verified-not-on-practice-tests`).
+    static let cbVerifiedPoolGroupTitle = "Verified pool"
+    static let cbVerifiedChipAll = "All"
+    static let cbVerifiedChipOnly = "Verified only"
 
+    // Legacy bluebook filter labels (saved quizzes may still reference `isBluebook`).
     static let practiceTestsAll = "All"
     static let practiceTestsOnly = "Practice tests only"
     static let excludeActiveShort = "Exclude active"
-
-    /// Educator Bank scrape (exclude active) — only IDs in bundled sidecar.
-    static let cbVerifiedPoolTitle = "CB verified pool"
-    static let cbVerifiedPoolAny = "Any"
-    static let cbVerifiedPoolOnly = "Verified off practice tests"
-    static let cbVerifiedPoolHelp =
-        "Only questions whose ID appeared in an Educator Question Bank HTML export with “Exclude Active Questions” on (sidecar JSON in the app bundle)."
-
-    static let practiceTestsHelp =
-        "“Exclude active” matches the Question Bank checkbox: hide questions already used on full-length practice tests, when this bank tags them (item booklet id)."
 
     static func displayTitle(for filter: FilterOptions.BluebookFilter?) -> String {
         guard let filter else { return practiceTestsAll }

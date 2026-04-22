@@ -36,6 +36,7 @@ private enum WordSetFilter: String, CaseIterable, Identifiable {
 struct VocabFlashcardsView: View {
     @ObservedObject private var store = VocabFlashcardStore.shared
     @ObservedObject private var buckets = VocabBucketStore.shared
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var deckKind: VocabDeckKind = .words
     @State private var studyBucket: VocabMemoryBucket = .learn
@@ -46,22 +47,28 @@ struct VocabFlashcardsView: View {
 
     private let accent = Color.accentColor
 
+    private var isWide: Bool {
+        #if os(macOS)
+        true
+        #else
+        horizontalSizeClass == .regular
+        #endif
+    }
+
     var body: some View {
         Group {
             if let err = store.loadError {
                 ContentUnavailableView(
-                    "Couldn’t load flashcards",
+                    "Couldn't load flashcards",
                     systemImage: "exclamationmark.triangle",
                     description: Text(err.localizedDescription)
                 )
-            } else if rowIndices.isEmpty {
-                ContentUnavailableView(
-                    "No cards here",
-                    systemImage: "rectangle.on.rectangle",
-                    description: Text(emptyDeckHint)
-                )
             } else {
-                flashcardContent
+                if isWide {
+                    wideLayout
+                } else {
+                    narrowLayout
+                }
             }
         }
         .navigationTitle("Vocab")
@@ -102,23 +109,227 @@ struct VocabFlashcardsView: View {
             validateManualOrder()
             clampPosition()
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    shuffleDeck()
-                } label: {
-                    Label("Shuffle", systemImage: "shuffle")
-                }
-                .disabled(baseFilteredIndices.isEmpty)
-            }
-        }
-        // Keyboard navigation: ← / → to flip through cards, Space to flip
         .onKeyPress(.leftArrow)  { goToPrevious(); return .handled }
         .onKeyPress(.rightArrow) { goToNext();     return .handled }
         .onKeyPress(.space) {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { isFlipped.toggle() }
             return .handled
         }
+    }
+
+    // MARK: - Wide layout (iPad regular / macOS)
+
+    private var wideLayout: some View {
+        HStack(alignment: .top, spacing: 0) {
+            // Left sidebar: deck controls + filters
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    deckPickerSection
+                    studyPileSection
+                    if deckKind == .words { wordTypeSection }
+                    shuffleButton
+                }
+                .padding(20)
+            }
+            .frame(width: 240)
+            .background(Color.secondarySystemGroupedBackground)
+
+            Divider()
+
+            // Right main: card + sort + nav
+            if rowIndices.isEmpty {
+                emptyDeckView
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        progressAndCardSection
+                        sortSection
+                        navButtons
+                    }
+                    .padding(24)
+                    .readableContentFrame(maxWidth: 680)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.systemGroupedBackground)
+            }
+        }
+        .background(Color.systemGroupedBackground)
+    }
+
+    // MARK: - Narrow layout (iPhone)
+
+    private var narrowLayout: some View {
+        Group {
+            if rowIndices.isEmpty {
+                emptyDeckView
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        deckPickerSection
+                        studyPileSection
+                        if deckKind == .words { wordTypeSection }
+                        progressAndCardSection
+                        sortSection
+                        navButtons
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 20)
+                    .readableContentFrame(maxWidth: LayoutMetrics.vocabReadableMaxWidth)
+                }
+                .background(Color.systemGroupedBackground)
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button { shuffleDeck() } label: {
+                            Label("Shuffle", systemImage: "shuffle")
+                        }
+                        .disabled(baseFilteredIndices.isEmpty)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Section components
+
+    private var deckPickerSection: some View {
+        Picker("Deck", selection: $deckKind) {
+            ForEach(VocabDeckKind.allCases, id: \.self) { k in
+                Text(k.rawValue).tag(k)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    private var studyPileSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            FilterStripSectionTitle(text: "Study pile")
+            FilterFormCard {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 8)], spacing: 8) {
+                    ForEach(VocabMemoryBucket.allCases) { b in
+                        FilterChipButton(
+                            title: b.title,
+                            isSelected: studyBucket == b,
+                            accent: accent,
+                            fillsGridCell: true
+                        ) { studyBucket = b }
+                    }
+                }
+            }
+        }
+    }
+
+    private var wordTypeSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            FilterStripSectionTitle(text: "Word type")
+            FilterFormCard {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 80), spacing: 8)], spacing: 8) {
+                    ForEach(WordSetFilter.allCases) { f in
+                        FilterChipButton(
+                            title: f.rawValue,
+                            isSelected: wordSetFilter == f,
+                            accent: accent,
+                            fillsGridCell: true
+                        ) { wordSetFilter = f }
+                    }
+                }
+            }
+        }
+    }
+
+    private var shuffleButton: some View {
+        Button { shuffleDeck() } label: {
+            Label("Shuffle", systemImage: "shuffle")
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .disabled(baseFilteredIndices.isEmpty)
+    }
+
+    private var progressAndCardSection: some View {
+        VStack(spacing: 10) {
+            HStack {
+                Text(progressLabel)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("Space or tap to flip")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Button {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
+                    isFlipped.toggle()
+                }
+            } label: {
+                currentCardFace
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: isWide ? 380 : 280)
+                    .padding(24)
+                    .background(Color.secondarySystemGroupedBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: FilterStyle.cardCorner))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: FilterStyle.cardCorner)
+                            .strokeBorder(FilterStyle.chipBorder(selected: false, accent: accent), lineWidth: FilterStyle.chipStrokeWidth)
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var sortSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            FilterStripSectionTitle(text: "Sort this card")
+            FilterFormCard {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 8)], spacing: 10) {
+                    ForEach(VocabMemoryBucket.allCases) { b in
+                        FilterChipButton(
+                            title: b.title,
+                            isSelected: currentCardBucket == b,
+                            accent: accent,
+                            fillsGridCell: true
+                        ) { moveCurrentCard(to: b) }
+                    }
+                }
+            }
+        }
+    }
+
+    private var navButtons: some View {
+        HStack(spacing: 12) {
+            Button { goToPrevious() } label: {
+                Label("Previous", systemImage: "chevron.left")
+                    .labelStyle(.titleAndIcon)
+                    .font(.body.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .disabled(!canGoBack)
+
+            Button { goToNext() } label: {
+                Label("Next", systemImage: "chevron.right")
+                    .labelStyle(.titleAndIcon)
+                    .font(.body.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(accent)
+            .disabled(!canGoForward)
+        }
+    }
+
+    private var emptyDeckView: some View {
+        ContentUnavailableView(
+            "No cards here",
+            systemImage: "rectangle.on.rectangle",
+            description: Text(emptyDeckHint)
+        )
     }
 
     private var emptyDeckHint: String {
@@ -130,131 +341,7 @@ struct VocabFlashcardsView: View {
         }
     }
 
-    private var flashcardContent: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                Picker("Deck", selection: $deckKind) {
-                    ForEach(VocabDeckKind.allCases, id: \.self) { k in
-                        Text(k.rawValue).tag(k)
-                    }
-                }
-                .pickerStyle(.segmented)
-
-                FilterStripSectionTitle(text: "Study pile")
-                FilterFormCard {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8)], spacing: 8) {
-                        ForEach(VocabMemoryBucket.allCases) { b in
-                            FilterChipButton(
-                                title: b.title,
-                                isSelected: studyBucket == b,
-                                accent: accent,
-                                fillsGridCell: true
-                            ) {
-                                studyBucket = b
-                            }
-                        }
-                    }
-                }
-
-                if deckKind == .words {
-                    FilterStripSectionTitle(text: "Word type")
-                    FilterFormCard {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 8)], spacing: 8) {
-                            ForEach(WordSetFilter.allCases) { f in
-                                FilterChipButton(
-                                    title: f.rawValue,
-                                    isSelected: wordSetFilter == f,
-                                    accent: accent,
-                                    fillsGridCell: true
-                                ) {
-                                    wordSetFilter = f
-                                }
-                            }
-                        }
-                    }
-                }
-
-                HStack {
-                    Text(progressLabel)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-
-                Button {
-                    withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
-                        isFlipped.toggle()
-                    }
-                } label: {
-                    currentCardFace
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 220)
-                        .padding(20)
-                        .background(Color.secondarySystemGroupedBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: FilterStyle.cardCorner))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: FilterStyle.cardCorner)
-                                .strokeBorder(FilterStyle.chipBorder(selected: false, accent: accent), lineWidth: FilterStyle.chipStrokeWidth)
-                        )
-                }
-                .buttonStyle(.plain)
-
-                Text("Tap card to flip")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity)
-
-                FilterStripSectionTitle(text: "Sort this card")
-                FilterFormCard {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8)], spacing: 8) {
-                        ForEach(VocabMemoryBucket.allCases) { b in
-                            FilterChipButton(
-                                title: b.title,
-                                isSelected: currentCardBucket == b,
-                                accent: accent,
-                                fillsGridCell: true
-                            ) {
-                                moveCurrentCard(to: b)
-                            }
-                        }
-                    }
-                }
-
-                HStack(spacing: 16) {
-                    Button {
-                        goToPrevious()
-                    } label: {
-                        Label("Previous", systemImage: "chevron.left")
-                            .labelStyle(.titleAndIcon)
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(!canGoBack)
-
-                    Button {
-                        goToNext()
-                    } label: {
-                        Label("Next", systemImage: "chevron.right")
-                            .labelStyle(.titleAndIcon)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(accent)
-                    .disabled(!canGoForward)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 4)
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 20)
-            .readableContentFrame(maxWidth: {
-                #if os(macOS)
-                LayoutMetrics.macVocabMaxContentWidth
-                #else
-                LayoutMetrics.vocabMaxContentWidth
-                #endif
-            }())
-        }
-        .background(Color.systemGroupedBackground)
-    }
+    // MARK: - Card faces
 
     private var progressLabel: String {
         let n = rowIndices.count
@@ -266,10 +353,8 @@ struct VocabFlashcardsView: View {
         guard position < rowIndices.count else { return .learn }
         let idx = rowIndices[position]
         switch deckKind {
-        case .words:
-            return buckets.wordBucket(for: store.words[idx].id)
-        case .roots:
-            return buckets.rootBucket(for: store.roots[idx].id)
+        case .words: return buckets.wordBucket(for: store.words[idx].id)
+        case .roots: return buckets.rootBucket(for: store.roots[idx].id)
         }
     }
 
@@ -298,8 +383,14 @@ struct VocabFlashcardsView: View {
     }
 
     private func wordFront(_ card: VocabWordCard) -> some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 8) {
+        ZStack(alignment: .top) {
+            Text(card.word)
+                .font(.title.weight(.bold))
+                .fontDesign(.monospaced)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            HStack(alignment: .top) {
                 Text("WORD")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
@@ -307,11 +398,6 @@ struct VocabFlashcardsView: View {
                 Spacer()
                 FilterBadge(text: partOfSpeechLabel(card.posKey), accent: accent.opacity(0.85))
             }
-            Text(card.word)
-                .font(.title.weight(.bold))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -327,17 +413,20 @@ struct VocabFlashcardsView: View {
     }
 
     private func wordBack(_ card: VocabWordCard) -> some View {
-        VStack(spacing: 12) {
-            Text("DEFINITION")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .tracking(0.6)
-                .multilineTextAlignment(.center)
+        ZStack(alignment: .top) {
             Text(card.definition)
                 .font(.body)
+                .fontDesign(.monospaced)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            HStack {
+                Text("DEFINITION")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .tracking(0.6)
+                Spacer()
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -355,46 +444,63 @@ struct VocabFlashcardsView: View {
     }
 
     private func rootFront(_ card: VocabRootCard) -> some View {
-        VStack(spacing: 14) {
-            Text("ROOT")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .tracking(0.6)
+        ZStack(alignment: .top) {
             Text(card.root)
                 .font(.largeTitle.weight(.bold))
                 .monospaced()
                 .foregroundStyle(.primary)
-            FilterBadge(text: card.origin, accent: accent)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            HStack(alignment: .top) {
+                Text("ROOT")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .tracking(0.6)
+                Spacer()
+                FilterBadge(text: card.origin, accent: accent)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func rootBack(_ card: VocabRootCard) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("MEANING")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .tracking(0.6)
-            Text(card.meaning)
-                .font(.body.weight(.medium))
-                .foregroundStyle(.primary)
-            if !card.examples.isEmpty {
-                Divider()
-                Text("EXAMPLE WORDS")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .tracking(0.6)
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(card.examples, id: \.self) { ex in
-                        Text("• \(ex)")
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
+        ZStack(alignment: .top) {
+            VStack(spacing: 12) {
+                Text(card.meaning)
+                    .font(.body.weight(.medium))
+                    .fontDesign(.monospaced)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity)
+                if !card.examples.isEmpty {
+                    Divider()
+                    Text("EXAMPLE WORDS")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .tracking(0.6)
+                        .multilineTextAlignment(.center)
+                    VStack(spacing: 4) {
+                        ForEach(card.examples, id: \.self) { ex in
+                            Text(ex)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                                .multilineTextAlignment(.center)
+                        }
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            HStack {
+                Text("MEANING")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .tracking(0.6)
+                Spacer()
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
+    // MARK: - Index helpers
 
     private var baseFilteredIndices: [Int] {
         switch deckKind {
@@ -422,10 +528,8 @@ struct VocabFlashcardsView: View {
 
     private var sessionStorageKey: String {
         switch deckKind {
-        case .words:
-            "vocab.pos.w.\(wordSetFilter.rawValue).\(studyBucket.rawValue)"
-        case .roots:
-            "vocab.pos.r.\(studyBucket.rawValue)"
+        case .words: "vocab.pos.w.\(wordSetFilter.rawValue).\(studyBucket.rawValue)"
+        case .roots: "vocab.pos.r.\(studyBucket.rawValue)"
         }
     }
 
@@ -452,10 +556,7 @@ struct VocabFlashcardsView: View {
     }
 
     private func clampPosition() {
-        if rowIndices.isEmpty {
-            position = 0
-            return
-        }
+        if rowIndices.isEmpty { position = 0; return }
         if position >= rowIndices.count {
             position = max(0, rowIndices.count - 1)
             persistPosition()
@@ -480,10 +581,8 @@ struct VocabFlashcardsView: View {
         guard position < rowIndices.count else { return }
         let idx = rowIndices[position]
         switch deckKind {
-        case .words:
-            buckets.setWordBucket(id: store.words[idx].id, to: bucket)
-        case .roots:
-            buckets.setRootBucket(id: store.roots[idx].id, to: bucket)
+        case .words: buckets.setWordBucket(id: store.words[idx].id, to: bucket)
+        case .roots: buckets.setRootBucket(id: store.roots[idx].id, to: bucket)
         }
         manualOrder = nil
         let newBase = baseFilteredIndices.sorted()

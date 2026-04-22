@@ -5,5 +5,5 @@ globs: Studium/Views/**/*.swift, Studium/Views/Components/FilterStyle.swift, Stu
 
 - Reuse **`FilterControls.swift`**: `FilterChipButton`, `FilterBadge` (read-only), `FilterOrderChoiceButton`, `FilterFormCard`, `FilterGroupHeading`, `FilterSubgroupLabel`, `FilterGroupBlock`, `FilterStripSectionTitle`, `ContinueSavedQuizCard`, and **`FilterPanelMetrics`** for corners/padding. Do not duplicate chip styling in new screens.
 - Use **`FilterStyle`** for fills/borders (see `FilterStyle.swift`): unselected → `tertiarySystemFill` + subtle primary border; selected → accent fill + accent border; label text **`.primary`**.
-- **Continue** saved-quiz cards: fixed **216×140** (`FilterPanelMetrics`), **play** (`play.circle.fill`) + **trash** icon buttons on the right; tap title/progress area also resumes (`onPlay` / `onDelete`).
-- On **compact** width, practice filter grid uses two `flexible(minimum: ~96)` columns; on **regular** (iPad), split Module+Difficulty | Source+Answer status.
+- **Continue** saved-quiz cards: fixed width **`MacStudiumDesign.continueCardWidth`**, intrinsic height; **Resume** (`play.fill` in label) + **trash** icon; tap title/progress area also resumes (`onPlay` / `onDelete`).
+- **Practice filters:** wide shell uses a single-column chip stack in the left sidebar (`sidebarChipGridColumns`). Compact shell uses the same filter blocks stacked vertically (not a separate two-column filter grid).

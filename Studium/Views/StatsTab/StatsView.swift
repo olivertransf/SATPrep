@@ -30,19 +30,14 @@ struct StatsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(alignment: .leading, spacing: 16) {
+                FilterStripSectionTitle(text: "Performance")
                 overallStatsCard
                 categoryBreakdownSection
                 resetProgressSection
             }
             .padding()
-            .readableContentFrame(maxWidth: {
-                #if os(macOS)
-                LayoutMetrics.macSettingsMaxContentWidth
-                #else
-                LayoutMetrics.settingsStyleMaxContentWidth
-                #endif
-            }())
+            .readableContentFrame(maxWidth: LayoutMetrics.settingsReadableMaxWidth)
         }
         .background(Color.systemGroupedBackground)
         .navigationTitle("Statistics")
@@ -126,9 +121,6 @@ struct StatsView: View {
         let total = questionLoader.questions.count
 
         return VStack(spacing: 16) {
-            Text("Overall Performance")
-                .font(.headline)
-
             // Circular progress
             ZStack {
                 Circle()
@@ -141,11 +133,11 @@ struct StatsView: View {
 
                 VStack(spacing: 2) {
                     Text("\(Int(accuracy))%")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(attempted > 0 ? accuracyColor(accuracy) : .secondary)
+                        .font(.system(size: 28, weight: .bold, design: .monospaced))
+                        .foregroundStyle(attempted > 0 ? accuracyColor(accuracy) : .secondary)
                     Text("accuracy")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
             .frame(width: 120, height: 120)
@@ -162,19 +154,19 @@ struct StatsView: View {
         .padding()
         .frame(maxWidth: .infinity)
         .background(Color.secondarySystemGroupedBackground)
-        .cornerRadius(16)
+        .cornerRadius(FilterStyle.cardCorner)
     }
 
     private func statItem(value: String, label: String, color: Color) -> some View {
         VStack(spacing: 4) {
             Text(value)
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundColor(color)
+                .font(.system(size: 22, weight: .bold, design: .monospaced))
+                .foregroundStyle(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(label)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -183,51 +175,38 @@ struct StatsView: View {
 
     private var categoryBreakdownSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Breakdown")
-                .font(.headline)
+            FilterStripSectionTitle(text: "By Module")
+            categoryCard(items: questionLoader.getAvailableModules().map { module in
+                CategoryItem(
+                    name: module.capitalized,
+                    accuracy: progressManager.getAccuracy(byModule: module, questionLoader: questionLoader)
+                )
+            })
 
-            categoryCard(
-                title: "By Module",
-                items: questionLoader.getAvailableModules().map { module in
-                    CategoryItem(
-                        name: module.capitalized,
-                        accuracy: progressManager.getAccuracy(byModule: module, questionLoader: questionLoader)
-                    )
-                }
-            )
+            FilterStripSectionTitle(text: "By Difficulty")
+            categoryCard(items: questionLoader.getAvailableDifficulties().map { difficulty in
+                CategoryItem(
+                    name: difficultyDescription(difficulty),
+                    accuracy: progressManager.getAccuracy(byDifficulty: difficulty, questionLoader: questionLoader)
+                )
+            })
 
-            categoryCard(
-                title: "By Difficulty",
-                items: questionLoader.getAvailableDifficulties().map { difficulty in
-                    CategoryItem(
-                        name: difficultyDescription(difficulty),
-                        accuracy: progressManager.getAccuracy(byDifficulty: difficulty, questionLoader: questionLoader)
-                    )
-                }
-            )
-
-            categoryCard(
-                title: "By Primary Class",
-                items: questionLoader.getAvailablePrimaryClasses(for: nil).prefix(10).map { primaryClass in
-                    CategoryItem(
-                        name: primaryClass,
-                        accuracy: progressManager.getAccuracy(byPrimaryClass: primaryClass, questionLoader: questionLoader)
-                    )
-                }
-            )
+            FilterStripSectionTitle(text: "By Primary Class")
+            categoryCard(items: questionLoader.getAvailablePrimaryClasses(for: nil).prefix(10).map { primaryClass in
+                CategoryItem(
+                    name: primaryClass,
+                    accuracy: progressManager.getAccuracy(byPrimaryClass: primaryClass, questionLoader: questionLoader)
+                )
+            })
         }
     }
 
-    private func categoryCard(title: String, items: [CategoryItem]) -> some View {
+    private func categoryCard(items: [CategoryItem]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(.secondary)
-
             if items.isEmpty {
                 Text("No data available")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .padding(.vertical, 8)
             } else {
                 ForEach(items, id: \.name) { item in
@@ -240,11 +219,11 @@ struct StatsView: View {
                             if item.accuracy > 0 {
                                 Text("\(Int(item.accuracy))%")
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(accuracyColor(item.accuracy))
+                                    .foregroundStyle(accuracyColor(item.accuracy))
                             } else {
                                 Text("--")
                                     .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                         }
 
@@ -273,15 +252,14 @@ struct StatsView: View {
         }
         .padding()
         .background(Color.secondarySystemGroupedBackground)
-        .cornerRadius(16)
+        .cornerRadius(FilterStyle.cardCorner)
     }
 
     // MARK: - Reset Progress
 
     private var resetProgressSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Reset Progress")
-                .font(.headline)
+            FilterStripSectionTitle(text: "Reset Progress")
 
             VStack(spacing: 0) {
                 resetButton(title: "Reset All Progress", color: .red) {
@@ -300,7 +278,7 @@ struct StatsView: View {
                 resetButton(title: "Reset by Difficulty", color: .orange) { showDifficultyPicker = true }
             }
             .background(Color.secondarySystemGroupedBackground)
-            .cornerRadius(16)
+            .cornerRadius(FilterStyle.cardCorner)
         }
     }
 
@@ -308,10 +286,10 @@ struct StatsView: View {
         Button(action: action) {
             HStack {
                 Text(title)
-                    .foregroundColor(color)
+                    .foregroundStyle(color)
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .font(.caption)
             }
             .padding()

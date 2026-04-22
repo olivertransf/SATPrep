@@ -78,7 +78,7 @@ struct QuizState: Codable, Identifiable {
             parts.append(QuestionBankFilterLabels.displayTitle(for: bb))
         }
         if filters.cbVerifiedInactive == .onlyVerifiedOffCBPracticeTests {
-            parts.append(QuestionBankFilterLabels.cbVerifiedPoolOnly)
+            parts.append(QuestionBankFilterLabels.cbVerifiedChipOnly)
         }
         return parts.isEmpty ? "All Questions" : parts.joined(separator: " • ")
     }
@@ -100,7 +100,6 @@ class QuizStateManager: ObservableObject {
     
     @Published var isICloudSyncEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(isICloudSyncEnabled, forKey: "quizICloudSyncEnabled")
             if isICloudSyncEnabled {
                 enableICloudSync()
             } else {
@@ -110,24 +109,20 @@ class QuizStateManager: ObservableObject {
     }
     
     private init() {
-        // Use the same setting as ProgressManager for consistency
-        let progressSyncEnabled = UserDefaults.standard.bool(forKey: "iCloudSyncEnabled")
-        self.isICloudSyncEnabled = UserDefaults.standard.bool(forKey: "quizICloudSyncEnabled")
-        
-        // If quiz sync hasn't been set yet, use progress sync setting
-        if !UserDefaults.standard.bool(forKey: "hasSetQuizICloudSyncPreference") {
-            self.isICloudSyncEnabled = progressSyncEnabled
-            UserDefaults.standard.set(true, forKey: "hasSetQuizICloudSyncPreference")
-        }
-        
+        // Default to enabled on first launch; otherwise respect stored preference.
+        let syncEnabled = UserDefaults.standard.object(forKey: "iCloudSyncEnabled") == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: "iCloudSyncEnabled")
+        self.isICloudSyncEnabled = syncEnabled
+
         // Load deleted quiz timestamps
         if let data = UserDefaults.standard.data(forKey: deletedQuizzesKey),
            let decoded = try? JSONDecoder().decode([String: Date].self, from: data) {
             deletedQuizTimestamps = decoded
         }
 
-        // Enable KVS before loading quizzes so `loadAllQuizStates` can merge from iCloud (otherwise `iCloudStore` is nil on first line).
-        if isICloudSyncEnabled {
+        // Enable KVS before loading quizzes so loadAllQuizStates can merge from iCloud.
+        if syncEnabled {
             enableICloudSync()
         }
 

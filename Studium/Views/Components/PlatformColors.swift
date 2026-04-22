@@ -2,8 +2,8 @@
 //  PlatformColors.swift
 //  Studium
 //
-//  Cross-platform Color extensions that replace UIKit-only Color initializers.
-//  Use Color.systemGroupedBackground instead of Color(.systemGroupedBackground), etc.
+//  Semantic colors aligned with `studium-web/src/index.css` (Sync-style palette).
+//  Asset names: StudiumBg, StudiumCard, StudiumSurface, StudiumFillTertiary, StudiumBorder.
 //
 
 import SwiftUI
@@ -14,81 +14,73 @@ import UIKit
 #endif
 
 extension Color {
-    // MARK: - Grouped background hierarchy (UIColor.system*GroupedBackground)
+    // MARK: - Grouped background hierarchy (matches web --bg / --card / --surface)
 
-    /// Main table / scrollview background (iOS grouped, macOS window).
+    /// Main screen background (`--bg`).
     static var systemGroupedBackground: Color {
-        #if os(macOS)
-        Color(NSColor.windowBackgroundColor)
-        #else
-        Color(UIColor.systemGroupedBackground)
-        #endif
+        Color("StudiumBg")
     }
 
-    /// Standard content surface (raised cards on grouped screens).
+    /// Primary raised surface (`--card` on web; also used like systemBackground).
     static var systemBackground: Color {
-        #if os(macOS)
-        Color(NSColor.textBackgroundColor)
-        #else
-        Color(UIColor.systemBackground)
-        #endif
+        Color("StudiumCard")
     }
 
-    /// Card / row background one level above the main background.
+    /// Secondary grouped surface (`--card` in dark, white in light).
     static var secondarySystemGroupedBackground: Color {
-        #if os(macOS)
-        Color(NSColor.controlBackgroundColor)
-        #else
-        Color(UIColor.secondarySystemGroupedBackground)
-        #endif
+        Color("StudiumCard")
     }
 
-    /// Tertiary grouped background (innermost inset group).
+    /// Tertiary inset surface (`--surface`).
     static var tertiarySystemGroupedBackground: Color {
-        #if os(macOS)
-        Color(NSColor.underPageBackgroundColor)
-        #else
-        Color(UIColor.tertiarySystemGroupedBackground)
-        #endif
+        Color("StudiumSurface")
     }
 
     // MARK: - Fill hierarchy
 
-    /// Subtle fill for chips, badges, and interactive hits (iOS tertiarySystemFill).
+    /// Unselected chip / subtle fill (`--input` on web).
     static var tertiarySystemFill: Color {
-        #if os(macOS)
-        Color.primary.opacity(0.06)
-        #else
-        Color(UIColor.tertiarySystemFill)
-        #endif
+        Color("StudiumFillTertiary")
     }
 
-    // MARK: - Gray palette (iOS systemGray4 / 5 / 6)
+    // MARK: - Gray palette (tuned to sit on Studium backgrounds)
 
-    /// Slightly lighter gray — borders, disabled backgrounds.
+    /// Borders, disabled chrome.
     static var systemGray4: Color {
         #if os(macOS)
-        Color.primary.opacity(0.22)
+        Color("StudiumBorder")
         #else
-        Color(UIColor.systemGray4)
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.141, green: 0.141, blue: 0.141, alpha: 1)
+                : UIColor(red: 0.78, green: 0.78, blue: 0.82, alpha: 1)
+        })
         #endif
     }
 
-    /// Even lighter gray — progress bar tracks, subtle fills.
+    /// Tracks, subtle pills.
     static var systemGray5: Color {
         #if os(macOS)
-        Color.primary.opacity(0.12)
+        Color("StudiumBorder").opacity(0.85)
         #else
-        Color(UIColor.systemGray5)
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.18, green: 0.18, blue: 0.18, alpha: 1)
+                : UIColor(red: 0.88, green: 0.88, blue: 0.90, alpha: 1)
+        })
         #endif
     }
 
-    /// Near-invisible gray — very subtle backgrounds.
+    /// Very subtle fills.
     static var systemGray6: Color {
         #if os(macOS)
-        Color.primary.opacity(0.06)
+        Color("StudiumFillTertiary")
         #else
-        Color(UIColor.systemGray6)
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.12, green: 0.12, blue: 0.12, alpha: 1)
+                : UIColor(red: 0.94, green: 0.94, blue: 0.96, alpha: 1)
+        })
         #endif
     }
 }

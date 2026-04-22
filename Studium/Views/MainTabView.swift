@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 struct MainTabView: View {
     @StateObject private var questionLoader = QuestionLoader.shared
@@ -25,13 +28,22 @@ struct MainTabView: View {
     }
 
     var body: some View {
-        // sidebarAdaptable gives a proper sidebar on macOS 15+ and iPad (iOS 18+).
-        // Falls back to standard tab bar on older OS versions.
-        if #available(iOS 18.0, macOS 15.0, *) {
+        // Standard tab bar on iPhone; sidebar-adaptable on iPad (iOS 18+) and macOS 15+.
+        #if os(iOS)
+        if #available(iOS 18.0, *), UIDevice.current.userInterfaceIdiom != .phone {
             sidebarTabs
         } else {
             tabs
         }
+        #elseif os(macOS)
+        if #available(macOS 15.0, *) {
+            sidebarTabs
+        } else {
+            tabs
+        }
+        #else
+        tabs
+        #endif
     }
 
     @available(iOS 18.0, macOS 15.0, *)
@@ -71,7 +83,12 @@ struct MainTabView: View {
                         }
                     )
                     .navigationTitle("Practice")
+                    #if os(iOS)
+                    // Inline avoids stacked large titles with iPad `NavigationSplitView` in Practice home.
+                    .navigationBarTitleDisplayMode(.inline)
+                    #else
                     .navLargeTitle()
+                    #endif
                 }
             }
             .tabItem {

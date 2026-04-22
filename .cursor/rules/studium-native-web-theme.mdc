@@ -1,0 +1,10 @@
+---
+description: Native Studium colors and HTML must stay aligned with studium-web theme
+globs: Studium/**/*.swift, Studium/Assets.xcassets/**/*.colorset/**
+alwaysApply: false
+---
+
+- **Source of truth:** Web tokens live in `studium-web/src/index.css` (`:root` dark, `.light`). Native UI uses the same hex values via **Asset Catalog** colorsets: `StudiumBg`, `StudiumCard`, `StudiumSurface`, `StudiumFillTertiary`, `StudiumBorder`, plus `AccentColor` (`#007AFF`).
+- **Swift mapping:** `Studium/Views/Components/PlatformColors.swift` maps `Color.systemGroupedBackground` → `StudiumBg`, `secondarySystemGroupedBackground` / `systemBackground` → `StudiumCard`, `tertiarySystemGroupedBackground` → `StudiumSurface`, `tertiarySystemFill` → `StudiumFillTertiary`. Chip outlines use generated `Color.studiumBorder` from `StudiumBorder`.
+- **Quiz / reference HTML:** `HTMLContentView.buildHTMLString` body colors and monospace stack should track the same palette as the web app (see `buildHtml` / `index.css`).
+- **Typography:** `ContentView` applies `.fontDesign(.monospaced)` app-wide to mirror the web mono stack.

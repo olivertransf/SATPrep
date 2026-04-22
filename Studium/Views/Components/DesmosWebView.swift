@@ -12,7 +12,7 @@ import UIKit
 struct DesmosCalculatorView: View {
     var body: some View {
         DesmosWebViewRepresentable()
-            .background(Color(.systemGroupedBackground))
+            .background(Color.systemGroupedBackground)
             .ignoresSafeArea(edges: .bottom)
     }
 }
@@ -47,7 +47,7 @@ import AppKit
 struct DesmosCalculatorView: View {
     var body: some View {
         DesmosWebViewRepresentableMac()
-            .background(Color(nsColor: .windowBackgroundColor))
+            .background(Color.systemGroupedBackground)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

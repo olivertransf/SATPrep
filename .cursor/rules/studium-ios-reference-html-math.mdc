@@ -6,8 +6,8 @@ alwaysApply: false
 
 # iOS Reference + HTML / MathJax
 
-- **Reference (iPhone / iPad):** Keep search inside the same content column as the reference list (first `List` section), not `NavigationStack.searchable` sidebar placement.
-- **Reference layout:** Use native inset grouped `List`, segmented `Picker` for Math vs R&W, and `DisclosureGroup` sections. Keep macOS on chip strip + `ReferenceSectionCard` scroll.
+- **Reference (all platforms):** Keep search in the same vertical column as the section list (not `NavigationStack.searchable` sidebar placement on iPad).
+- **Reference layout:** Chip strip for Math vs R&W (`FilterChipButton`), in-column search bar, then scroll of `ReferenceSectionCard` accordions (same structure on iOS, iPadOS, and macOS).
 - **Quiz HTML padding:** Question stem and explanations use `HTMLContentProfile.quizFigures` with `compact: false` so `studium-html-comfortable` applies.
 - **MathJax version:** Use MathJax 3 config only; avoid MathJax 4-only options unless script URL is upgraded.
 - **iPad math rendering:** Prefer `tex-mml-chtml.js` (CHTML output) for crisp display and aligned math; avoid SVG downscaling paths that become blurry.

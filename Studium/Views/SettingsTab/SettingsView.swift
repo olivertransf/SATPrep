@@ -9,12 +9,126 @@ struct SettingsView: View {
     @ObservedObject var progressManager: ProgressManager
     @ObservedObject var questionLoader: QuestionLoader
     @ObservedObject private var quizStateManager = QuizStateManager.shared
+    @ObservedObject private var vocabBucketStore = VocabBucketStore.shared
     @AppStorage("appearanceMode") private var appearanceMode = "system"
     @AppStorage("htmlFontSize") private var htmlFontSize: Double = 16.0
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
+    #if os(macOS)
+    @EnvironmentObject private var breakMonitor: ScreenBreakMonitor
+    @AppStorage("menuBarFontSize") private var menuBarFontSize: Double = 14.0
+    @AppStorage("menuBarFullScreenBreak") private var menuBarFullScreenBreak: Bool = false
+    @AppStorage("breakThresholdMinutes") private var breakThresholdMinutes: Int = 20
+    #endif
 
     private let accent = Color.accentColor
 
     var body: some View {
+        #if os(iOS)
+        NavigationStack {
+            Form {
+                Section {
+                    Picker("Theme", selection: $appearanceMode) {
+                        Text("System").tag("system")
+                        Text("Light").tag("light")
+                        Text("Dark").tag("dark")
+                    }
+                    .pickerStyle(.segmented)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Question text size")
+                                .font(.subheadline.weight(.medium))
+                            Spacer()
+                            Text("\(Int(htmlFontSize)) pt")
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                        HStack(spacing: 10) {
+                            Text("A")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.secondary)
+                            Slider(value: $htmlFontSize, in: 13...22, step: 1)
+                                .tint(accent)
+                            Text("A")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                } header: {
+                    Text("Appearance")
+                }
+
+                Section {
+                    NavigationLink {
+                        StatsView(progressManager: progressManager, questionLoader: questionLoader)
+                    } label: {
+                        Label("Statistics", systemImage: "chart.bar.fill")
+                            .foregroundStyle(.primary)
+                    }
+                } header: {
+                    Text("Practice")
+                } footer: {
+                    Text("Accuracy, breakdowns, reset progress")
+                }
+
+                Section {
+                    Toggle("iCloud Sync", isOn: Binding(
+                        get: { progressManager.isICloudSyncEnabled },
+                        set: { newValue in
+                            progressManager.isICloudSyncEnabled = newValue
+                            quizStateManager.isICloudSyncEnabled = newValue
+                            vocabBucketStore.isICloudSyncEnabled = newValue
+                        }
+                    ))
+                    .tint(accent)
+
+                    if progressManager.isICloudSyncEnabled {
+                        HStack(spacing: 8) {
+                            Image(systemName: "icloud.fill")
+                                .foregroundStyle(accent)
+                            Text("Syncing with iCloud")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Button {
+                            progressManager.manualSync()
+                            quizStateManager.manualSync()
+                            vocabBucketStore.manualSync()
+                        } label: {
+                            Label("Sync Now", systemImage: "arrow.clockwise")
+                        }
+                    }
+                } header: {
+                    Text("Sync")
+                } footer: {
+                    Text("Sync progress and saved quizzes across devices. Enable iCloud for this app in Settings.")
+                }
+
+                Section {
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text("1.0.0")
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("About")
+                }
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(horizontalSizeClass == .compact ? .inline : .large)
+        }
+        #else
+        macSettingsBody
+        #endif
+    }
+
+    #if os(macOS)
+    @ViewBuilder
+    private var macSettingsBody: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
@@ -83,6 +197,76 @@ struct SettingsView: View {
                         .buttonStyle(.plain)
                     }
 
+                    FilterStripSectionTitle(text: "Menu Bar")
+                    FilterFormCard(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Question font size")
+                                    .font(.subheadline.weight(.medium))
+                                Spacer()
+                                Text("\(Int(menuBarFontSize)) pt")
+                                    .font(.subheadline.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            HStack(spacing: 10) {
+                                Text("A")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                Slider(value: $menuBarFontSize, in: 11...20, step: 1)
+                                    .tint(accent)
+                                Text("A")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Divider()
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Break reminder")
+                                    .font(.subheadline.weight(.medium))
+                                Text("Show red indicator and overlay after this many minutes.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer()
+                            Picker("", selection: $breakThresholdMinutes) {
+                                ForEach([5, 10, 15, 20, 25, 30, 45, 60], id: \.self) { mins in
+                                    Text("\(mins) min").tag(mins)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(width: 90)
+                        }
+
+                        Divider()
+
+                        Toggle(isOn: $menuBarFullScreenBreak) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Full-screen break overlay")
+                                    .font(.subheadline.weight(.medium))
+                                Text("Show a question across your whole screen after 20 minutes.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .tint(accent)
+
+                        if menuBarFullScreenBreak {
+                            Button {
+                                BreakOverlayManager.shared.show(breakMonitor: breakMonitor)
+                            } label: {
+                                Label("Preview Overlay", systemImage: "eye")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(accent)
+                        }
+                    }
+
                     FilterStripSectionTitle(text: "Sync")
                     FilterFormCard(spacing: 10) {
                         Toggle("iCloud Sync", isOn: Binding(
@@ -90,6 +274,7 @@ struct SettingsView: View {
                             set: { newValue in
                                 progressManager.isICloudSyncEnabled = newValue
                                 quizStateManager.isICloudSyncEnabled = newValue
+                                vocabBucketStore.isICloudSyncEnabled = newValue
                             }
                         ))
                         .tint(accent)
@@ -105,6 +290,7 @@ struct SettingsView: View {
                             Button {
                                 progressManager.manualSync()
                                 quizStateManager.manualSync()
+                                vocabBucketStore.manualSync()
                             } label: {
                                 Label("Sync Now", systemImage: "arrow.clockwise")
                                     .font(.subheadline.weight(.semibold))
@@ -133,19 +319,14 @@ struct SettingsView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 12)
-                .readableContentFrame(maxWidth: {
-                    #if os(macOS)
-                    LayoutMetrics.macSettingsMaxContentWidth
-                    #else
-                    LayoutMetrics.settingsStyleMaxContentWidth
-                    #endif
-                }())
+                .readableContentFrame(maxWidth: LayoutMetrics.settingsReadableMaxWidth)
             }
             .background(Color.systemGroupedBackground)
             .navigationTitle("Settings")
             .navLargeTitle()
         }
     }
+    #endif
 }
 
 #Preview {

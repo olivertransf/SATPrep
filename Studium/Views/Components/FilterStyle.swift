@@ -24,8 +24,8 @@ enum FilterStyle {
         return Color.tertiarySystemFill
     }
 
-    /// Visible in light and dark: accent when selected, subtle separator when not.
+    /// Visible in light and dark: accent when selected, web `--border` when not.
     static func chipBorder(selected: Bool, accent: Color) -> Color {
-        selected ? accent.opacity(0.85) : Color.primary.opacity(0.12)
+        selected ? accent.opacity(0.85) : Color.studiumBorder
     }
 }

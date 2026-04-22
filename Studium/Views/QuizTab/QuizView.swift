@@ -30,13 +30,16 @@ struct QuizView: View {
     @State private var freeResponseText: String = ""
     @State private var hasSubmitted = false
     @State private var showExplanation = false
-    @State private var passageHeight: CGFloat?
-    @State private var questionStemHeight: CGFloat?
-    @State private var explanationHeight: CGFloat?
-    @State private var answerHeights: [String: CGFloat] = [:]
+    @State private var passageSplitFraction: Double = UserDefaults.standard.object(forKey: "studium-passage-split-pct") as? Double ?? 0.5
+    @State private var mathSplitFraction: Double = UserDefaults.standard.object(forKey: "studium-math-desmos-split-pct") as? Double ?? 0.4
     @State private var showQuestionJumper = false
+    @AppStorage("htmlFontSize") private var htmlFontSize: Double = 16.0
+    @AppStorage("passageFontSize") private var passageFontSize: Double = 17.0
+    @State private var showFontSizePopover = false
     /// macOS: measured from the question `ScrollView` / split pane for adaptive column width.
     @State private var quizDetailPaneWidth: CGFloat = 720
+    /// iOS / iPad: measured from the quiz root so split-pane matches Practice at the same width threshold.
+    @State private var quizViewportWidth: CGFloat = 0
 
     var currentQuestion: Question? {
         guard currentIndex < questions.count else { return nil }
@@ -47,12 +50,12 @@ struct QuizView: View {
         currentQuestion?.content.displayAnswerOptions.isEmpty == true
     }
 
-    /// macOS always; iPad regular uses the same split-pane quiz as macOS.
+    /// macOS always split; iOS / iPad use the same width threshold as Practice (`LayoutMetrics.macWideBreakpoint`).
     private var useSplitPaneQuizLayout: Bool {
         #if os(macOS)
         true
         #else
-        horizontalSizeClass == .regular
+        quizViewportWidth >= LayoutMetrics.macWideBreakpoint
         #endif
     }
 
@@ -61,7 +64,7 @@ struct QuizView: View {
     }
 
     /// Passage HTML body scale in the webview (split-pane and single-column share Mac baseline).
-    private var passageHTMLFontPoints: CGFloat { 17 }
+    private var passageHTMLFontPoints: CGFloat { CGFloat(passageFontSize) }
 
     /// Stem, explanation, answer rows: optional bump on iPad single-column only.
     private var quizBlockHTMLFontOverride: CGFloat? {
@@ -105,6 +108,7 @@ struct QuizView: View {
                 questionView(question: question)
             }
         }
+        .trackViewportWidth($quizViewportWidth)
         .navigationTitle("Quiz")
         .navInlineTitle()
         .toolbar {
@@ -117,6 +121,16 @@ struct QuizView: View {
                         Text("Save & Exit")
                             .font(.subheadline)
                     }
+                }
+            }
+            ToolbarItem(placement: .navTrailing) {
+                Button {
+                    showFontSizePopover = true
+                } label: {
+                    Image(systemName: "textformat.size")
+                }
+                .popover(isPresented: $showFontSizePopover, arrowEdge: .top) {
+                    fontSizePopover
                 }
             }
             ToolbarItem(placement: .navTrailing) {
@@ -158,6 +172,65 @@ struct QuizView: View {
                 progressManager.markSeen(questionId: question.questionId)
             }
             saveQuizState()
+        }
+    }
+
+    private var fontSizePopover: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Font Size")
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            fontSizeRow(label: "Content", value: $htmlFontSize, min: 13, max: 22)
+
+            if useSplitPaneQuizLayout {
+                Divider()
+                fontSizeRow(label: "Passage", value: $passageFontSize, min: 13, max: 22)
+            }
+
+            Button("Reset") {
+                htmlFontSize = 16
+                passageFontSize = 17
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .padding(16)
+        #if os(macOS)
+        .frame(minWidth: 200)
+        #endif
+    }
+
+    private func fontSizeRow(label: String, value: Binding<Double>, min minVal: Double, max maxVal: Double) -> some View {
+        HStack(spacing: 12) {
+            Text(label)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 52, alignment: .leading)
+            Spacer()
+            Button {
+                value.wrappedValue = Swift.max(minVal, value.wrappedValue - 1)
+            } label: {
+                Image(systemName: "minus.circle")
+                    .font(.title2)
+            }
+            .buttonStyle(.plain)
+            .disabled(value.wrappedValue <= minVal)
+
+            Text("\(Int(value.wrappedValue)) pt")
+                .font(.body.monospacedDigit())
+                .frame(minWidth: 44)
+
+            Button {
+                value.wrappedValue = Swift.min(maxVal, value.wrappedValue + 1)
+            } label: {
+                Image(systemName: "plus.circle")
+                    .font(.title2)
+            }
+            .buttonStyle(.plain)
+            .disabled(value.wrappedValue >= maxVal)
         }
     }
 
@@ -269,14 +342,16 @@ struct QuizView: View {
     // MARK: - Split-pane layout (macOS + iPad regular)
 
     /// Questions with a stimulus get passage left, question + answers right (SAT-style).
+    /// Math questions get Desmos calculator left, question right.
     /// Uses flexible HStack sizing (no GeometryReader) to avoid zero-width collapse on first layout.
     @ViewBuilder
     private func splitPaneQuestionLayout(question: Question) -> some View {
         let hasStimulus = question.content.displayStimulus != nil
+        let isMath = question.module.lowercased() == "math"
         let columnMax = LayoutMetrics.quizQuestionColumnMaxWidth(paneWidth: quizDetailPaneWidth)
 
-        if hasStimulus {
-            HStack(spacing: 0) {
+        if hasStimulus && !isMath {
+            SplitPaneView(fraction: $passageSplitFraction, persistKey: "studium-passage-split-pct") {
                 // Left pane — passage
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
@@ -291,23 +366,17 @@ struct QuizView: View {
                                 isScrollable: false,
                                 allowInteraction: false,
                                 fontSizeOverride: passageHTMLFontPoints,
-                                contentProfile: .passage,
-                                contentHeight: $passageHeight
+                                contentProfile: .passage
                             )
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(minHeight: safeHeight(passageHeight, default: 200))
                         }
                     }
                     .padding(.horizontal, MacStudiumDesign.quizPanePaddingH)
                     .padding(.vertical, MacStudiumDesign.quizPanePaddingV)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity)
-                .frame(minWidth: 260)
                 .background(Color.secondarySystemGroupedBackground)
-
-                Divider()
-
+            } right: {
                 // Right pane — question + answers + nav
                 ScrollView {
                     questionAndAnswersContent(question: question)
@@ -316,8 +385,21 @@ struct QuizView: View {
                         .frame(maxWidth: columnMax)
                         .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
-                .frame(minWidth: 320)
+                .trackQuizDetailPaneWidth($quizDetailPaneWidth)
+            }
+        } else if isMath {
+            SplitPaneView(fraction: $mathSplitFraction, persistKey: "studium-math-desmos-split-pct") {
+                // Left pane — Desmos graphing calculator
+                DesmosCalculatorView()
+            } right: {
+                // Right pane — question + answers + nav (+ inline stimulus if present)
+                ScrollView {
+                    questionAndAnswersContent(question: question, inlineStimulus: question.content.displayStimulus)
+                        .padding(.vertical, MacStudiumDesign.quizPanePaddingV)
+                        .padding(.horizontal, MacStudiumDesign.quizPanePaddingH)
+                        .frame(maxWidth: columnMax)
+                        .frame(maxWidth: .infinity)
+                }
                 .trackQuizDetailPaneWidth($quizDetailPaneWidth)
             }
         } else {
@@ -349,11 +431,9 @@ struct QuizView: View {
                             isScrollable: false,
                             allowInteraction: false,
                             fontSizeOverride: passageHTMLFontPoints,
-                            contentProfile: .passage,
-                            contentHeight: $passageHeight
+                            contentProfile: .passage
                         )
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(height: safeHeight(passageHeight, default: 100))
                             .padding(.horizontal, 22)
                             .padding(.vertical, 22)
                             .background(Color.tertiarySystemGroupedBackground)
@@ -373,12 +453,34 @@ struct QuizView: View {
     // MARK: - Shared question + answers content
 
     @ViewBuilder
-    private func questionAndAnswersContent(question: Question) -> some View {
+    private func questionAndAnswersContent(question: Question, inlineStimulus: String? = nil) -> some View {
         let answerOptions = question.content.displayAnswerOptions
 
         VStack(alignment: .leading, spacing: questionContentBlockSpacing) {
             if useSplitPaneQuizLayout {
                 questionMetaBadges(question: question)
+            }
+
+            // Inline stimulus (used for math questions where Desmos occupies the left pane)
+            if let stimulus = inlineStimulus {
+                VStack(alignment: .leading, spacing: 8) {
+                    quizHorizontalPaddingIOS {
+                        sectionLabel("Passage", systemImage: "text.book.closed")
+                    }
+                    quizHorizontalPaddingIOS {
+                        HTMLContentView(
+                            htmlContent: stimulus,
+                            isScrollable: false,
+                            allowInteraction: false,
+                            fontSizeOverride: passageHTMLFontPoints,
+                            contentProfile: .passage
+                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(Color.secondarySystemGroupedBackground)
+                        .cornerRadius(10)
+                    }
+                }
             }
 
             // Question stem
@@ -393,11 +495,9 @@ struct QuizView: View {
                             isScrollable: false,
                             allowInteraction: false,
                             fontSizeOverride: quizBlockHTMLFontOverride,
-                            contentProfile: .quizFigures,
-                            contentHeight: $questionStemHeight
+                            contentProfile: .quizFigures
                         )
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(height: safeHeight(questionStemHeight, default: 100))
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
@@ -462,11 +562,9 @@ struct QuizView: View {
                                 isScrollable: false,
                                 allowInteraction: false,
                                 fontSizeOverride: quizBlockHTMLFontOverride,
-                                contentProfile: .quizFigures,
-                                contentHeight: $explanationHeight
+                                contentProfile: .quizFigures
                             )
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(height: safeHeight(explanationHeight, default: 100))
                             .padding(.horizontal, 16)
                             .padding(.vertical, 16)
                             .background(Color.orange.opacity(0.08))
@@ -536,7 +634,7 @@ struct QuizView: View {
                         }
                         if let qid = currentQuestion?.questionId {
                             Text("ID: \(qid)")
-                                .font(.caption2.monospaced())
+                                .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -608,7 +706,7 @@ struct QuizView: View {
                         .disabled(hasSubmitted)
                         .autocorrectionDisabled()
                         .autocapitalizationOff()
-                        .font(.body.monospacedDigit())
+                        .font(.body)
 
                     if hasSubmitted {
                         let isCorrect = getCurrentQuestionCorrectness() == true
@@ -662,10 +760,6 @@ struct QuizView: View {
         showResult: Bool
     ) -> some View {
         let label = option.label ?? String(Character(UnicodeScalar(65 + index)!))
-        let answerHeight = Binding<CGFloat?>(
-            get: { answerHeights[option.id] },
-            set: { answerHeights[option.id] = $0 }
-        )
 
         let borderColor: Color = {
             if showResult && isCorrect { return .green }
@@ -704,13 +798,11 @@ struct QuizView: View {
                     allowInteraction: false,
                     compact: true,
                     fontSizeOverride: quizBlockHTMLFontOverride,
-                    contentProfile: .quizFigures,
-                    contentHeight: answerHeight
+                    contentProfile: .quizFigures
                 )
-                    .frame(minWidth: 1)
-                    .frame(height: safeHeight(answerHeight.wrappedValue, default: useSplitPaneQuizLayout ? 52 : 40))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .allowsHitTesting(false)
+                .frame(minWidth: 1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .allowsHitTesting(false)
 
                 if showResult {
                     if isCorrect {
@@ -836,10 +928,6 @@ struct QuizView: View {
         freeResponseText = ""
         hasSubmitted = false
         showExplanation = false
-        passageHeight = nil
-        questionStemHeight = nil
-        explanationHeight = nil
-        answerHeights.removeAll()
     }
 
     private func saveCurrentQuestionState(isCorrect: Bool? = nil) {
@@ -872,10 +960,6 @@ struct QuizView: View {
         freeResponseText = question.content.displayAnswerOptions.isEmpty
             ? (answerState.selectedAnswerId ?? "")
             : ""
-        passageHeight = nil
-        questionStemHeight = nil
-        explanationHeight = nil
-        answerHeights.removeAll()
     }
 
     private func getCurrentQuestionCorrectness() -> Bool? {
@@ -926,21 +1010,6 @@ struct QuizView: View {
     }
 
     // MARK: - Utilities
-
-    private func safeHeight(_ height: CGFloat?, default: CGFloat = 100) -> CGFloat {
-        let raw: CGFloat
-        if let height = height, height.isFinite && height > 0 && height < 10000 {
-            raw = max(height, `default`)
-        } else {
-            raw = `default`
-        }
-        #if os(iOS)
-        let scale = UIScreen.main.scale
-        return (raw * scale).rounded(.toNearestOrAwayFromZero) / scale
-        #else
-        return raw
-        #endif
-    }
 
     private func saveAndExit() {
         saveQuizState()

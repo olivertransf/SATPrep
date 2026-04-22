@@ -1,11 +1,11 @@
 ---
-description: macOS UI tokens and layout for Studium (SwiftUI)
+description: Studium UI tokens and adaptive layout (SwiftUI)
 globs: Studium/**/*.swift
 alwaysApply: false
 ---
 
-- **Design tokens:** macOS-specific typography, spacing, and shell dimensions live in `Studium/Views/Components/MacStudiumDesign.swift`. Prefer adjusting that file instead of scattering magic numbers.
-- **Practice (wide window):** filters use the **left sidebar** (`MacStudiumDesign.practiceSidebarWidth`); main column uses `practiceMainPadding*` and `browsePageTitle` / `browsePageSubtitle` for the header. **iPad regular** uses this same split (`widePracticeSplitLayout`), not a separate rounded two-pane layout.
-- **Concept cards:** wide layout (macOS + iPad regular) uses `ExpandedConceptCard` with `MacStudiumDesign.concept*`; compact iPhone uses the collapsible `ConceptCategoryCard` list.
-- **Continue / saved quiz strip:** mac cards are **fixed width** `MacStudiumDesign.continueCardWidth`, **no `Spacer` filler** inside the card; intrinsic height from content.
-- **Quiz:** split-pane layout uses `MacStudiumDesign.quiz*` insets and spacing; **iPad regular** uses `useSplitPaneQuizLayout` (same passage | question split as macOS). Section labels use subheadline in split pane; primary actions use `.controlSize(.large)` when split-pane.
+- **Design tokens:** Typography, spacing, and shell dimensions live in `Studium/Views/Components/MacStudiumDesign.swift` and are shared across iOS, iPadOS, and macOS. Prefer adjusting that file instead of scattering magic numbers.
+- **Wide vs compact:** When root width `>= LayoutMetrics.macWideBreakpoint` (900pt), Practice uses **split** `widePracticeSplitLayout` (filter sidebar + browse column). Below that, Practice uses the **compact** shell: same filter blocks and `sidebarPracticeRow` stacked vertically, then Continue (if any), then `ExpandedConceptCard` in a single column.
+- **Concept cards:** Always **`ExpandedConceptCard`** with `MacStudiumDesign.concept*` (no separate collapsible list style).
+- **Continue / saved quiz strip:** Cards are **fixed width** `MacStudiumDesign.continueCardWidth`, **no `Spacer` filler** inside the card; intrinsic height from content.
+- **Quiz:** Split-pane uses `MacStudiumDesign.quiz*` insets and spacing. On **iOS / iPad**, `useSplitPaneQuizLayout` is true when `quizViewportWidth >= LayoutMetrics.macWideBreakpoint` (same threshold as Practice). macOS is always split. Section labels use subheadline in split pane; primary actions use `.controlSize(.large)` when split-pane.

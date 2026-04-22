@@ -161,11 +161,12 @@ func buildHTMLString(
     profile: HTMLContentProfile = .standard
 ) -> String {
     let isDark = colorScheme == .dark
-    let bg          = isDark ? "#1C1C1E" : "#FFFFFF"
-    let fg          = isDark ? "#EBEBF5" : "#000000"
-    let border      = isDark ? "#48484A" : "#D1D1D6"
-    let headerBg    = isDark ? "#2C2C2E" : "#F2F2F7"
-    let rowAlt      = isDark ? "#252528" : "#FAFAFA"
+    // Match studium-web `index.css` / `buildHtml` surfaces.
+    let bg          = isDark ? "#111111" : "#FFFFFF"
+    let fg          = isDark ? "#F5F5F7" : "#0A0A0A"
+    let border      = isDark ? "#242424" : "#E6E6E6"
+    let headerBg    = isDark ? "#171717" : "#F0F3F9"
+    let rowAlt      = isDark ? "#171717" : "#F6F8FC"
     let bodyClass   = isDark ? "studysat-dark" : "studysat-light"
     let densityClass = compact ? "studium-html-compact" : "studium-html-comfortable"
 
@@ -231,7 +232,7 @@ func buildHTMLString(
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { width: 100%; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif;
             font-size: \(fontSize)px;
             line-height: 1.7;
             color: \(fg);
@@ -509,15 +510,29 @@ func buildHTMLString(
             if (pending <= 0) reportHeight();
         })();
         </script>
+        <script>
+        // Re-report height whenever the body reflows (e.g. split-pane drag changes pane width).
+        // ResizeObserver fires after each layout — postMessage is async so no SwiftUI re-render loop.
+        (function() {
+            function postH() {
+                if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.heightUpdate) {
+                    window.webkit.messageHandlers.heightUpdate.postMessage(document.body.scrollHeight);
+                }
+            }
+            if (typeof ResizeObserver !== 'undefined') {
+                new ResizeObserver(postH).observe(document.body);
+            }
+        })();
+        </script>
     </body>
     </html>
     """
 }
 
-// MARK: - iOS representable
+// MARK: - iOS representable (internal)
 
 #if os(iOS)
-struct HTMLContentView: UIViewRepresentable {
+private struct _HTMLUIRepresentable: UIViewRepresentable {
     let htmlContent: String
     let isScrollable: Bool
     let allowInteraction: Bool
@@ -530,7 +545,7 @@ struct HTMLContentView: UIViewRepresentable {
 
     init(
         htmlContent: String,
-        isScrollable: Bool = true,
+        isScrollable: Bool = false,
         allowInteraction: Bool = false,
         compact: Bool = false,
         fontSizeOverride: CGFloat? = nil,
@@ -550,7 +565,6 @@ struct HTMLContentView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let webView = makeWebView(coordinator: context.coordinator)
-        // Scrollability is set at creation on iOS (scroll view can't be toggled after init).
         webView.scrollView.isScrollEnabled = isScrollable
         webView.scrollView.showsVerticalScrollIndicator = isScrollable
         return webView
@@ -566,12 +580,12 @@ struct HTMLContentView: UIViewRepresentable {
     }
 }
 
-// MARK: - macOS representable
+// MARK: - macOS representable (internal)
 
 #elseif os(macOS)
 /// Pins `WKWebView` to the proposed SwiftUI size. A bare `WKWebView` often gets zero
 /// intrinsic width in `VStack(alignment: .leading)` / split columns, so nothing draws.
-final class WKWebViewContainer: NSView {
+private final class WKWebViewContainer: NSView {
     let webView: WKWebView
 
     init(webView: WKWebView) {
@@ -590,7 +604,7 @@ final class WKWebViewContainer: NSView {
     required init?(coder: NSCoder) { nil }
 }
 
-struct HTMLContentView: NSViewRepresentable {
+private struct _HTMLNSRepresentable: NSViewRepresentable {
     let htmlContent: String
     let isScrollable: Bool
     let allowInteraction: Bool
@@ -603,7 +617,7 @@ struct HTMLContentView: NSViewRepresentable {
 
     init(
         htmlContent: String,
-        isScrollable: Bool = true,
+        isScrollable: Bool = false,
         allowInteraction: Bool = false,
         compact: Bool = false,
         fontSizeOverride: CGFloat? = nil,
@@ -636,3 +650,79 @@ struct HTMLContentView: NSViewRepresentable {
     }
 }
 #endif
+
+// MARK: - Public self-sizing HTMLContentView
+
+/// Renders HTML/LaTeX content with automatic height sizing — no external binding needed.
+/// Set `fillViewport: true` in split-pane passage columns so the web view fills its container
+/// and scrolls internally (matching the web's `fillViewport` prop on `HtmlBlock`).
+struct HTMLContentView: View {
+    let htmlContent: String
+    var isScrollable: Bool = false
+    var allowInteraction: Bool = false
+    var compact: Bool = false
+    var fontSizeOverride: CGFloat? = nil
+    var contentProfile: HTMLContentProfile = .standard
+    var fillViewport: Bool = false
+
+    @State private var measuredHeight: CGFloat? = nil
+
+    init(
+        htmlContent: String,
+        isScrollable: Bool = false,
+        allowInteraction: Bool = false,
+        compact: Bool = false,
+        fontSizeOverride: CGFloat? = nil,
+        contentProfile: HTMLContentProfile = .standard,
+        fillViewport: Bool = false
+    ) {
+        self.htmlContent = htmlContent
+        self.isScrollable = isScrollable
+        self.allowInteraction = allowInteraction
+        self.compact = compact
+        self.fontSizeOverride = fontSizeOverride
+        self.contentProfile = contentProfile
+        self.fillViewport = fillViewport
+    }
+
+    private var frameHeight: CGFloat {
+        guard let h = measuredHeight, h > 0 else { return compact ? 24 : 60 }
+        return max(h, compact ? 24 : 48)
+    }
+
+    var body: some View {
+        if fillViewport {
+            platformRepresentable(.constant(nil))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            platformRepresentable($measuredHeight)
+                .frame(height: frameHeight)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private func platformRepresentable(_ binding: Binding<CGFloat?>) -> some View {
+        #if os(iOS)
+        _HTMLUIRepresentable(
+            htmlContent: htmlContent,
+            isScrollable: fillViewport || isScrollable,
+            allowInteraction: allowInteraction,
+            compact: compact,
+            fontSizeOverride: fontSizeOverride,
+            contentProfile: contentProfile,
+            contentHeight: binding
+        )
+        #elseif os(macOS)
+        _HTMLNSRepresentable(
+            htmlContent: htmlContent,
+            isScrollable: isScrollable,
+            allowInteraction: allowInteraction,
+            compact: compact,
+            fontSizeOverride: fontSizeOverride,
+            contentProfile: contentProfile,
+            contentHeight: binding
+        )
+        #endif
+    }
+}

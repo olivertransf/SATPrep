@@ -22,7 +22,6 @@ struct FilterView: View {
     @State private var selectedSkillDesc: String?
     @State private var selectedDifficulty: String?
     @State private var selectedAnswerStatus: FilterOptions.AnswerStatus
-    @State private var selectedBluebook: FilterOptions.BluebookFilter?
     @State private var selectedCbVerified: FilterOptions.CBVerifiedInactiveFilter?
     @State private var shuffled: Bool
     @State private var questionLimit: Int?
@@ -47,7 +46,6 @@ struct FilterView: View {
         _selectedSkillDesc = State(initialValue: filters.wrappedValue.skillDesc)
         _selectedDifficulty = State(initialValue: filters.wrappedValue.difficulty)
         _selectedAnswerStatus = State(initialValue: filters.wrappedValue.answerStatus)
-        _selectedBluebook = State(initialValue: filters.wrappedValue.isBluebook)
         _selectedCbVerified = State(initialValue: filters.wrappedValue.cbVerifiedInactive)
         _shuffled = State(initialValue: filters.wrappedValue.shuffled)
         _questionLimit = State(initialValue: filters.wrappedValue.questionLimit)
@@ -62,7 +60,7 @@ struct FilterView: View {
             skillDesc: selectedSkillDesc,
             difficulty: selectedDifficulty,
             answerStatus: selectedAnswerStatus,
-            isBluebook: selectedBluebook,
+            isBluebook: nil,
             cbVerifiedInactive: selectedCbVerified,
             shuffled: false,
             questionLimit: nil
@@ -87,7 +85,7 @@ struct FilterView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 14) {
+                VStack(spacing: 10) {
                     // Question count preview card
                     questionCountCard
 
@@ -101,20 +99,22 @@ struct FilterView: View {
 
                             VStack(spacing: 10) {
                                 answerStatusSection
-                                sourceSection
+                                cbVerifiedPoolSection
                             }
                             .frame(maxWidth: .infinity)
                         }
                     } else {
                         difficultySection
                         answerStatusSection
-                        sourceSection
+                        cbVerifiedPoolSection
                     }
 
                     // Quiz options
                     quizOptionsSection
                 }
-                .padding()
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .environment(\.filterPanelDensity, .compact)
             }
             .background(Color.systemGroupedBackground)
             .navigationTitle("Filter Questions")
@@ -141,10 +141,10 @@ struct FilterView: View {
     // MARK: - Question Count Card
 
     private var questionCountCard: some View {
-        FilterFormCard(spacing: 4) {
-            VStack(spacing: 4) {
+        FilterFormCard(spacing: 2) {
+            VStack(spacing: 2) {
                 Text("\(effectiveCount)")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(matchingCount > 0 ? Color.accentColor : .secondary)
                 Text(effectiveCount == 1 ? "question available" : "questions available")
                     .font(.caption)
@@ -271,11 +271,15 @@ struct FilterView: View {
 
     // MARK: - Difficulty Section
 
+    private var difficultyGridColumns: [GridItem] {
+        useWideFilterColumns ? [GridItem(.flexible())] : FilterPanelMetrics.filterChipPairColumns
+    }
+
     private var difficultySection: some View {
         FilterFormCard {
             FilterGroupHeading(title: "Difficulty", systemImage: "chart.bar", tint: .orange)
 
-            LazyVGrid(columns: [GridItem(.flexible())], spacing: 6) {
+            LazyVGrid(columns: difficultyGridColumns, spacing: 6) {
                 FilterChipButton(title: "All", isSelected: selectedDifficulty == nil, accent: .blue, fillsGridCell: true) {
                     selectedDifficulty = nil
                 }
@@ -298,7 +302,7 @@ struct FilterView: View {
         FilterFormCard {
             FilterGroupHeading(title: "Answer Status", systemImage: "checkmark.circle", tint: .green)
 
-            LazyVGrid(columns: [GridItem(.flexible())], spacing: 6) {
+            LazyVGrid(columns: difficultyGridColumns, spacing: 6) {
                 ForEach(FilterOptions.AnswerStatus.allCases, id: \.self) { status in
                     let shortLabel: String = {
                         switch status {
@@ -316,62 +320,32 @@ struct FilterView: View {
         }
     }
 
-    // MARK: - Source Section
+    // MARK: - Verified pool (sidecar IDs)
 
-    private var sourceSection: some View {
-        FilterFormCard {
-            FilterGroupHeading(title: QuestionBankFilterLabels.practiceTestsGroupTitle, systemImage: "books.vertical", tint: .purple)
-
-            VStack(alignment: .leading, spacing: 8) {
-                LazyVGrid(columns: [GridItem(.flexible())], spacing: 6) {
-                    FilterChipButton(title: QuestionBankFilterLabels.practiceTestsAll, isSelected: selectedBluebook == nil, accent: .purple, fillsGridCell: true) {
-                        selectedBluebook = nil
-                    }
-                    FilterChipButton(title: QuestionBankFilterLabels.practiceTestsOnly, isSelected: selectedBluebook == .bluebook, accent: .purple, fillsGridCell: true) {
-                        selectedBluebook = (selectedBluebook == .bluebook) ? nil : .bluebook
-                    }
-                    FilterChipButton(title: QuestionBankFilterLabels.excludeActiveShort, isSelected: selectedBluebook == .notBluebook, accent: .purple, fillsGridCell: true) {
-                        selectedBluebook = (selectedBluebook == .notBluebook) ? nil : .notBluebook
-                    }
+    private var cbVerifiedPoolSection: some View {
+        FilterFormCard(spacing: 6) {
+            FilterGroupHeading(
+                title: QuestionBankFilterLabels.cbVerifiedPoolGroupTitle,
+                systemImage: "checkmark.seal.fill",
+                tint: .teal
+            )
+            LazyVGrid(columns: difficultyGridColumns, spacing: 6) {
+                FilterChipButton(
+                    title: QuestionBankFilterLabels.cbVerifiedChipAll,
+                    isSelected: selectedCbVerified == nil,
+                    accent: .teal,
+                    fillsGridCell: true
+                ) {
+                    selectedCbVerified = nil
                 }
-                Text(QuestionBankFilterLabels.practiceTestsHelp)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(questionLoader.bluebookTaggingExplanation)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Divider().padding(.vertical, 4)
-
-                FilterSubgroupLabel(text: QuestionBankFilterLabels.cbVerifiedPoolTitle)
-                LazyVGrid(columns: [GridItem(.flexible())], spacing: 6) {
-                    FilterChipButton(
-                        title: QuestionBankFilterLabels.cbVerifiedPoolAny,
-                        isSelected: selectedCbVerified == nil,
-                        accent: .purple,
-                        fillsGridCell: true
-                    ) {
-                        selectedCbVerified = nil
-                    }
-                    FilterChipButton(
-                        title: QuestionBankFilterLabels.cbVerifiedPoolOnly,
-                        isSelected: selectedCbVerified == .onlyVerifiedOffCBPracticeTests,
-                        accent: .purple,
-                        fillsGridCell: true
-                    ) {
-                        selectedCbVerified = (selectedCbVerified == .onlyVerifiedOffCBPracticeTests) ? nil : .onlyVerifiedOffCBPracticeTests
-                    }
+                FilterChipButton(
+                    title: QuestionBankFilterLabels.cbVerifiedChipOnly,
+                    isSelected: selectedCbVerified == .onlyVerifiedOffCBPracticeTests,
+                    accent: .teal,
+                    fillsGridCell: true
+                ) {
+                    selectedCbVerified = (selectedCbVerified == .onlyVerifiedOffCBPracticeTests) ? nil : .onlyVerifiedOffCBPracticeTests
                 }
-                Text(QuestionBankFilterLabels.cbVerifiedPoolHelp)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(questionLoader.cbVerifiedSidecarExplanation)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -384,7 +358,7 @@ struct FilterView: View {
 
             FilterSubgroupLabel(text: "Question order")
 
-            HStack(spacing: 8) {
+            HStack(alignment: .top, spacing: 6) {
                 FilterOrderChoiceButton(
                     title: "In order",
                     subtitle: "Stable sequence",
@@ -459,7 +433,6 @@ struct FilterView: View {
         selectedSkillDesc = nil
         selectedDifficulty = nil
         selectedAnswerStatus = .all
-        selectedBluebook = nil
         selectedCbVerified = nil
         shuffled = true
         questionLimit = nil
@@ -474,7 +447,7 @@ struct FilterView: View {
             skillDesc: selectedSkillDesc,
             difficulty: selectedDifficulty,
             answerStatus: selectedAnswerStatus,
-            isBluebook: selectedBluebook,
+            isBluebook: nil,
             cbVerifiedInactive: selectedCbVerified,
             shuffled: shuffled,
             questionLimit: useQuestionLimit ? questionLimit : nil

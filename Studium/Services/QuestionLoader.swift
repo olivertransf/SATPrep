@@ -81,26 +81,29 @@ class QuestionLoader: ObservableObject {
         }
     }
     
+    func getHardMCQuestions() -> [Question] {
+        let hardIds = questionIdsByDifficulty["H"] ?? []
+        let englishIds = questionIdsByModule["english"] ?? []
+        return hardIds.intersection(englishIds)
+            .compactMap { questionsById[$0] }
+            .filter { !$0.content.displayAnswerOptions.isEmpty }
+    }
+
+    /// Medium or hard MC questions across all modules (used by menu bar + break overlay).
+    func getMediumAndHardMCQuestions() -> [Question] {
+        let hardIds = questionIdsByDifficulty["H"] ?? []
+        let mediumIds = questionIdsByDifficulty["M"] ?? []
+        return hardIds.union(mediumIds)
+            .compactMap { questionsById[$0] }
+            .filter { !$0.content.displayAnswerOptions.isEmpty }
+    }
+
     func getFilteredQuestions(filters: FilterOptions, progressManager: ProgressManager) -> [Question] {
         filters.filteredQuestions(
             from: questions,
             progress: progressManager.progress,
             cbVerifiedNotOnPracticeTestIds: cbVerifiedNotOnPracticeTestIds
         )
-    }
-
-    /// Shown under the Source / Bluebook filter so users know how many items carry `ibn` in the loaded bank.
-    var bluebookTaggingExplanation: String {
-        "Tagged items use the item booklet id (ibn) in the question file. This bank: \(bluebookTaggedCount) tagged (\(bluebookTaggedMathCount) Math, \(bluebookTaggedEnglishCount) Reading & Writing)."
-    }
-
-    /// Shown next to the Educator Bank verified-pool filter.
-    var cbVerifiedSidecarExplanation: String {
-        let total = cbVerifiedNotOnPracticeTestIds.count
-        if total == 0 {
-            return "No sidecar file or empty list (add cb-verified-not-on-practice-tests.json to the app target)."
-        }
-        return "Sidecar lists \(total) IDs from Educator Bank HTML (exclude active). \(cbVerifiedInBankCount) appear in this question bank."
     }
 
     /// Returns count of questions matching filters (without shuffle/limit) for preview
