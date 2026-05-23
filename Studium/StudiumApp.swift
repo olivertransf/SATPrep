@@ -25,6 +25,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 @main
 struct StudiumApp: App {
+    init() {
+        StudiumLegacyDataCleanup.runIfNeeded()
+    }
+
     // "system" | "light" | "dark"  — default follows the OS
     @AppStorage("appearanceMode") private var appearanceMode = "system"
     @Environment(\.scenePhase) private var scenePhase
@@ -80,8 +84,6 @@ struct StudiumApp: App {
     }
 
     private func syncAllManagers() {
-        ProgressManager.shared.manualSync()
-        QuizStateManager.shared.manualSync()
-        VocabBucketStore.shared.manualSync()
+        StudiumCloudSyncService.shared.syncIfNeeded()
     }
 }

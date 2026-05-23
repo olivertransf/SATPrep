@@ -797,6 +797,7 @@ struct QuizView: View {
                 selectedAnswerId = nil
             }
         }
+        saveQuizState()
     }
 
     private func answerOptionView(
@@ -830,6 +831,7 @@ struct QuizView: View {
                 toggleStrikeout(for: option.id)
             } else if !isStruckOut {
                 selectedAnswerId = option.id
+                saveQuizState()
             }
         }) {
             HStack(alignment: .top, spacing: useSplitPaneQuizLayout ? 16 : 12) {

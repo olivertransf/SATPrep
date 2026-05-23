@@ -15,10 +15,7 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private func syncIfNeeded() {
-        guard ProgressManager.shared.isICloudSyncEnabled else { return }
-        ProgressManager.shared.manualSync()
-        QuizStateManager.shared.manualSync()
-        VocabBucketStore.shared.manualSync()
+        StudiumCloudSyncService.shared.syncIfNeeded()
     }
 
     var body: some View {
@@ -33,8 +30,14 @@ struct ContentView: View {
                 #endif
             }
             .onChange(of: scenePhase) { _, phase in
-                guard phase == .active else { return }
-                syncIfNeeded()
+                switch phase {
+                case .active:
+                    syncIfNeeded()
+                case .background:
+                    Task { await StudiumCloudSyncService.shared.flushPush() }
+                default:
+                    break
+                }
             }
             #if os(macOS)
             .onChange(of: colorScheme) { _, _ in applyWindowBackground() }

@@ -113,6 +113,42 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, question?.questionId])
 
+  const answerStatesRef = useRef(answerStates)
+  const currentIndexRef = useRef(currentIndex)
+  const selectedIdRef = useRef(selectedId)
+  const freeTextRef = useRef(freeText)
+  const hasSubmittedRef = useRef(hasSubmitted)
+  answerStatesRef.current = answerStates
+  currentIndexRef.current = currentIndex
+  selectedIdRef.current = selectedId
+  freeTextRef.current = freeText
+  hasSubmittedRef.current = hasSubmitted
+
+  useEffect(() => {
+    const flush = () => {
+      const q = questions[currentIndexRef.current]
+      if (!q) return
+      let base = answerStatesRef.current
+      if (!hasSubmittedRef.current) {
+        const hasDraft = isFreeResponse(q)
+          ? freeTextRef.current.trim().length > 0
+          : !!selectedIdRef.current
+        if (hasDraft) {
+          const id = isFreeResponse(q) ? freeTextRef.current : selectedIdRef.current!
+          base = { ...base, [q.questionId]: { selectedAnswerId: id, hasSubmitted: false } }
+        }
+      }
+      saveQuiz({
+        ...quiz,
+        currentIndex: currentIndexRef.current,
+        answerStates: base,
+        lastSaved: Date.now(),
+      })
+    }
+    window.addEventListener('pagehide', flush)
+    return () => window.removeEventListener('pagehide', flush)
+  }, [quiz, questions])
+
   // Keyboard nav
   useEffect(() => {
     function handler(e: KeyboardEvent) {

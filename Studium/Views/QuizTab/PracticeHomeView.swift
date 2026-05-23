@@ -111,7 +111,7 @@ struct PracticeHomeView: View {
         }
         #if os(iOS)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !useWideSplit {
+            if !useWideSplit, !StudiumDesignSystem.isPhone {
                 phoneStickyStartBar
             }
         }
@@ -207,65 +207,75 @@ struct PracticeHomeView: View {
     }
 
     private var compactFilterHeader: some View {
-        VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingSM) {
-            HStack(alignment: .center, spacing: StudiumDesignSystem.spacingMD) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Practice")
-                        .font(.headline.weight(.semibold))
-                    HStack(spacing: 4) {
-                        Text("\(matchingQuizCount)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(matchingQuizCount > 0 ? Color.accentColor : .secondary)
-                        Text("match")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+        HStack(alignment: .center, spacing: StudiumDesignSystem.spacingMD) {
+            Button {
+                showFilterSheet = true
+            } label: {
+                HStack(spacing: StudiumDesignSystem.spacingSM) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text("\(matchingQuizCount)")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(matchingQuizCount > 0 ? Color.accentColor : .secondary)
+                                .monospacedDigit()
+                            Text(matchingQuizCount == 1 ? "question" : "questions")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(filterSummaryLine)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
                     }
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
                 }
-                Spacer(minLength: 8)
-                Button {
-                    showFilterSheet = true
-                } label: {
-                    Label("Filters", systemImage: "line.3.horizontal.decrease.circle")
-                }
-                .buttonStyle(.bordered)
-                .controlSize(StudiumDesignSystem.primaryCTAControlSize)
-                .labelStyle(.titleAndIcon)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            if !filterDraft.summaryParts.isEmpty {
-                Text(filterDraft.summaryParts.joined(separator: " · "))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Filters, \(matchingQuizCount) matching")
+
+            #if os(iOS)
+            if StudiumDesignSystem.isPhone {
+                phoneHeaderStartButton
             }
+            #endif
         }
         .padding(.horizontal, StudiumDesignSystem.practiceMainPaddingH)
-        .padding(.vertical, StudiumDesignSystem.spacingMD)
+        .padding(.vertical, StudiumDesignSystem.spacingSM)
         .background(Color.systemBackground)
     }
 
-    private var phoneStickyStartBar: some View {
-        HStack(spacing: StudiumDesignSystem.spacingMD) {
-            Button { showFilterSheet = true } label: {
-                Image(systemName: "line.3.horizontal.decrease.circle")
-                    .font(.subheadline.weight(.medium))
-                    .frame(
-                        width: StudiumDesignSystem.phoneIconButtonSize,
-                        height: StudiumDesignSystem.phoneIconButtonSize
-                    )
+    private var phoneHeaderStartButton: some View {
+        Button(action: startQuizFromDraft) {
+            Label {
+                Text(matchingQuizCount > 0 ? "Start \(matchingQuizCount)" : "Start")
+            } icon: {
+                Image(systemName: "play.fill")
             }
-            .buttonStyle(.bordered)
-            .controlSize(StudiumDesignSystem.primaryCTAControlSize)
-            .accessibilityLabel("Filters")
-
-            StudiumPrimaryButton(
-                title: "Start \(matchingQuizCount)",
-                systemImage: "play.fill",
-                isDisabled: matchingQuizCount == 0,
-                action: startQuizFromDraft
-            )
         }
-        .padding(.horizontal, StudiumDesignSystem.practiceMainPaddingH)
+        .buttonStyle(.borderedProminent)
+        .controlSize(StudiumDesignSystem.primaryCTAControlSize)
+        .disabled(matchingQuizCount == 0)
+        .fixedSize()
+        .accessibilityLabel(matchingQuizCount > 0 ? "Start \(matchingQuizCount) questions" : "Start")
+    }
+
+    private var filterSummaryLine: String {
+        let parts = filterDraft.summaryParts
+        return parts.isEmpty ? "All questions · tap to filter" : parts.joined(separator: " · ")
+    }
+
+    private var phoneStickyStartBar: some View {
+        StudiumPrimaryButton(
+            title: matchingQuizCount > 0 ? "Start \(matchingQuizCount)" : "Start",
+            systemImage: "play.fill",
+            isDisabled: matchingQuizCount == 0,
+            action: startQuizFromDraft
+        )
+        .padding(.horizontal, StudiumDesignSystem.practicePhoneStickyBarPadding)
         .padding(.vertical, StudiumDesignSystem.spacingSM)
         .background(.bar)
     }
@@ -294,9 +304,10 @@ struct PracticeHomeView: View {
 
     private var phoneMainBottomPadding: CGFloat {
         #if os(iOS)
-        useWideSplit
-            ? StudiumDesignSystem.practiceMainPaddingBottom
-            : StudiumDesignSystem.practiceMainPaddingBottom + 72
+        if useWideSplit || StudiumDesignSystem.isPhone {
+            return StudiumDesignSystem.practiceMainPaddingBottom
+        }
+        return StudiumDesignSystem.practiceMainPaddingBottom + 56
         #else
         StudiumDesignSystem.practiceMainPaddingBottom
         #endif
@@ -359,49 +370,72 @@ struct PracticeHomeView: View {
     }
 
     private var conceptSkillPicker: some View {
-        #if os(iOS)
         let skillPickerMinHeight: CGFloat = StudiumDesignSystem.isPhone
             ? StudiumDesignSystem.filterSidebarChipMinHeight
             : StudiumDesignSystem.filterChipMinHeight
-        #else
-        let skillPickerMinHeight: CGFloat = StudiumDesignSystem.filterChipMinHeight
-        #endif
 
-        return FilterFormCard(spacing: StudiumDesignSystem.spacingSM) {
-            FilterGroupBlock(title: "Skill", systemImage: "target", tint: .purple) {
-                Picker(selection: $filterDraft.skillDesc) {
-                    Text("All skills").tag(Optional<String>.none)
-                    ForEach(conceptSkillOptions, id: \.self) { skill in
-                        Text(skill).tag(Optional(skill))
-                    }
-                } label: {
-                    HStack(spacing: StudiumDesignSystem.spacingSM) {
-                        Text(filterDraft.skillDesc ?? "All skills")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
-                            .lineLimit(2)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, StudiumDesignSystem.filterChipHPadding)
-                    .padding(.vertical, StudiumDesignSystem.filterChipVPadding)
-                    .frame(maxWidth: .infinity, minHeight: skillPickerMinHeight)
-                    .background(Color.systemBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: FilterPanelMetrics.filterChipCardCorner, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: FilterPanelMetrics.filterChipCardCorner, style: .continuous)
-                            .strokeBorder(Color.studiumBorder, lineWidth: FilterStyle.chipStrokeWidth)
-                    )
-                }
-                .labelsHidden()
+        return Group {
+            #if os(iOS)
+            if StudiumDesignSystem.isPhone && !useWideSplit {
+                phoneSkillPicker(minHeight: skillPickerMinHeight)
+            } else {
+                skillPickerCard(minHeight: skillPickerMinHeight)
+            }
+            #else
+            skillPickerCard(minHeight: skillPickerMinHeight)
+            #endif
+        }
+    }
+
+    private func phoneSkillPicker(minHeight: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingXS) {
+            Text("Skill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            skillPickerControl(minHeight: minHeight)
+        }
+    }
+
+    private func skillPickerCard(minHeight: CGFloat) -> some View {
+        FilterFormCard(spacing: StudiumDesignSystem.spacingSM) {
+            FilterGroupBlock(title: "Skill", systemImage: "target", tint: Color.accentColor) {
+                skillPickerControl(minHeight: minHeight)
             }
         }
     }
 
+    private func skillPickerControl(minHeight: CGFloat) -> some View {
+        Picker(selection: $filterDraft.skillDesc) {
+            Text("All skills").tag(Optional<String>.none)
+            ForEach(conceptSkillOptions, id: \.self) { skill in
+                Text(skill).tag(Optional(skill))
+            }
+        } label: {
+            HStack(spacing: StudiumDesignSystem.spacingSM) {
+                Text(filterDraft.skillDesc ?? "All skills")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, StudiumDesignSystem.filterChipHPadding)
+            .padding(.vertical, StudiumDesignSystem.filterChipVPadding)
+            .frame(maxWidth: .infinity, minHeight: minHeight)
+            .background(Color.systemBackground)
+            .clipShape(RoundedRectangle(cornerRadius: FilterPanelMetrics.filterChipCardCorner, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: FilterPanelMetrics.filterChipCardCorner, style: .continuous)
+                    .strokeBorder(Color.studiumBorder, lineWidth: FilterStyle.chipStrokeWidth)
+            )
+        }
+        .labelsHidden()
+    }
+
     private var conceptCardsGrid: some View {
-        let accentColors: [Color] = [.blue, .indigo, .purple, .teal]
+        let accentColors = phoneConceptAccents
         return Group {
             if isComputingConcepts && conceptCategories.isEmpty {
                 VStack(spacing: StudiumDesignSystem.spacingMD) {
@@ -434,6 +468,15 @@ struct PracticeHomeView: View {
                 }
             }
         }
+    }
+
+    private var phoneConceptAccents: [Color] {
+        #if os(iOS)
+        if StudiumDesignSystem.isPhone && !useWideSplit {
+            return Array(repeating: Color.accentColor, count: 4)
+        }
+        #endif
+        return [.blue, .indigo, .purple, .teal]
     }
 
     private func startQuizFromDraft() {

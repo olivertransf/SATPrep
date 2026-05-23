@@ -1,4 +1,5 @@
 import type { SavedQuiz } from '../types'
+import { tombstoneQuiz } from './deleted'
 
 const KEY = 'studium_saved_quizzes'
 
@@ -18,6 +19,7 @@ export function saveQuiz(quiz: SavedQuiz): void {
 }
 
 export function deleteQuiz(id: string): void {
+  tombstoneQuiz(id)
   const all = loadAllQuizzes().filter(q => q.id !== id)
   localStorage.setItem(KEY, JSON.stringify(all))
 }

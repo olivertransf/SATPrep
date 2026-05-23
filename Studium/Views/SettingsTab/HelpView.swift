@@ -19,8 +19,8 @@ struct HelpView: View {
                 Label("Report rendering issues with the question ID shown under Q n/total.", systemImage: "number")
             }
             Section("Sync") {
-                Label("Enable iCloud Sync in Settings to sync progress, saved quizzes, and vocab buckets.", systemImage: "icloud")
-                Label("Use Sync Now after enabling iCloud on a new device.", systemImage: "arrow.clockwise")
+                Label("Enable Cloud Sync in Settings with your sync password (same as the web app).", systemImage: "icloud")
+                Label("Use Sync Now to refresh from Supabase after practicing on another device.", systemImage: "arrow.clockwise")
             }
             #if os(macOS)
             Section("Menu bar & breaks") {

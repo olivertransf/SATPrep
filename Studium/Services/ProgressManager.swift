@@ -14,46 +14,19 @@ class ProgressManager: ObservableObject {
     @Published private(set) var progress: [String: QuestionProgress] = [:]
     
     private let userDefaultsKey = "questionProgress"
-    private let iCloudKey = "questionProgress"
     private let deletedProgressKey = "deletedQuestionProgress"
-    private let iCloudDeletedKey = "deletedQuestionProgress"
-    private var iCloudStore: NSUbiquitousKeyValueStore?
-    private var cancellables = Set<AnyCancellable>()
     
-    private var deletedProgressTimestamps: [String: Date] = [:] // Track when progress was deleted
-    
-    @Published var isICloudSyncEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(isICloudSyncEnabled, forKey: "iCloudSyncEnabled")
-            if isICloudSyncEnabled {
-                enableICloudSync()
-            } else {
-                disableICloudSync()
-            }
-        }
-    }
+    private var deletedProgressTimestamps: [String: Date] = [:]
     
     private init() {
-        self.isICloudSyncEnabled = UserDefaults.standard.bool(forKey: "iCloudSyncEnabled")
-        
-        // Load deleted progress timestamps
-        if let data = UserDefaults.standard.data(forKey: deletedProgressKey),
-           let decoded = try? JSONDecoder().decode([String: Date].self, from: data) {
-            deletedProgressTimestamps = decoded
-        }
-        
-        loadProgress()
-        
-        // Enable iCloud sync by default if not explicitly disabled
-        if isICloudSyncEnabled {
-            enableICloudSync()
-        } else {
-            // First launch: enable iCloud by default. `didSet` on `isICloudSyncEnabled` calls `enableICloudSync()` — do not call it twice (duplicate observers break sync).
-            if !UserDefaults.standard.bool(forKey: "hasSetICloudSyncPreference") {
-                UserDefaults.standard.set(true, forKey: "hasSetICloudSyncPreference")
-                isICloudSyncEnabled = true
+        if let data = UserDefaults.standard.data(forKey: deletedProgressKey) {
+            if let decoded = try? JSONDecoder().decode([String: Date].self, from: data) {
+                deletedProgressTimestamps = decoded
+            } else if let ms = try? JSONDecoder().decode([String: Double].self, from: data) {
+                deletedProgressTimestamps = ms.mapValues { Date(timeIntervalSince1970: $0 / 1000) }
             }
         }
+        loadProgress()
     }
     
     // MARK: - Local Storage
@@ -76,12 +49,31 @@ class ProgressManager: ObservableObject {
             UserDefaults.standard.set(encoded, forKey: deletedProgressKey)
         }
         
-        // Sync to iCloud if enabled
-        if isICloudSyncEnabled && iCloudStore != nil {
-            // Use async to avoid blocking
-            DispatchQueue.main.async { [weak self] in
-                self?.syncToICloud()
-            }
+        Task { @MainActor in
+            StudiumCloudSyncService.shared.schedulePush()
+        }
+    }
+
+    // MARK: - Cloud sync
+
+    func exportProgress() -> [String: QuestionProgress] { progress }
+
+    func exportDeletedProgress() -> [String: Date] { deletedProgressTimestamps }
+
+    func applyCloudSync(progress: [String: QuestionProgress], deleted: [String: Date]) {
+        self.progress = progress
+        deletedProgressTimestamps = deleted
+        if let encoded = try? JSONEncoder().encode(progress) {
+            UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
+        }
+        if let encoded = try? JSONEncoder().encode(deletedProgressTimestamps) {
+            UserDefaults.standard.set(encoded, forKey: deletedProgressKey)
+        }
+    }
+
+    func manualSync() {
+        Task { @MainActor in
+            await StudiumCloudSyncService.shared.pullAndMerge()
         }
     }
     
@@ -256,274 +248,5 @@ class ProgressManager: ObservableObject {
         saveProgress()
     }
     
-    // MARK: - iCloud Sync
-    
-    func manualSync() {
-        guard isICloudSyncEnabled else {
-            print("iCloud sync is disabled")
-            return
-        }
-
-        if iCloudStore == nil {
-            enableICloudSync()
-        }
-        guard let store = iCloudStore else { return }
-
-        _ = store.synchronize()
-        syncFromICloud()
-        syncToICloud()
-    }
-    
-    private func enableICloudSync() {
-        // Check if iCloud is available
-        guard FileManager.default.ubiquityIdentityToken != nil else {
-            print("iCloud not available - sync disabled")
-            DispatchQueue.main.async { [weak self] in
-                self?.isICloudSyncEnabled = false
-            }
-            return
-        }
-        
-        iCloudStore = NSUbiquitousKeyValueStore.default
-        iCloudStore?.synchronize() // fetch latest from iCloud before reading
-
-        // Idempotent: first launch could set sync on twice; duplicate observers drop remote updates.
-        NotificationCenter.default.removeObserver(
-            self,
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: NSUbiquitousKeyValueStore.default
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(iCloudDidChange),
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: NSUbiquitousKeyValueStore.default
-        )
-        
-        // Sync from iCloud on enable
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.syncFromICloud()
-        }
-        
-        // Also push local data to iCloud
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.syncToICloud()
-        }
-    }
-    
-    private func disableICloudSync() {
-        NotificationCenter.default.removeObserver(
-            self,
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: NSUbiquitousKeyValueStore.default
-        )
-        iCloudStore = nil
-    }
-    
-    @objc private func iCloudDidChange(notification: Notification) {
-        guard let userInfo = notification.userInfo else {
-            DispatchQueue.main.async { [weak self] in self?.syncFromICloud() }
-            return
-        }
-        // NSUbiquitousKeyValueStoreChangeReason.quotaViolationChange == 2
-        if let reason = (userInfo[NSUbiquitousKeyValueStoreChangeReasonKey] as? NSNumber)?.intValue,
-           reason == 2 {
-            #if !targetEnvironment(simulator)
-            print("iCloud key-value store quota exceeded; progress sync may be incomplete (reduce data or contact support).")
-            #endif
-        }
-        let keys = userInfo[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String]
-        let shouldMerge: Bool
-        if let keys {
-            // Apple: if this key is absent, assume everything may have changed.
-            shouldMerge = keys.isEmpty
-                || keys.contains(iCloudKey)
-                || keys.contains(iCloudDeletedKey)
-        } else {
-            shouldMerge = true
-        }
-        guard shouldMerge else { return }
-        DispatchQueue.main.async { [weak self] in
-            self?.syncFromICloud()
-        }
-    }
-    
-    private func syncToICloud() {
-        guard let store = iCloudStore else {
-            return
-        }
-        
-        // Check if iCloud is still available
-        guard FileManager.default.ubiquityIdentityToken != nil else {
-            print("iCloud no longer available - disabling sync")
-            DispatchQueue.main.async { [weak self] in
-                self?.isICloudSyncEnabled = false
-            }
-            return
-        }
-        
-        // Save progress
-        if let encoded = try? JSONEncoder().encode(progress) {
-            store.set(encoded, forKey: iCloudKey)
-        } else {
-            print("Failed to encode progress for iCloud")
-            return
-        }
-        
-        // Save deleted timestamps
-        if let encoded = try? JSONEncoder().encode(deletedProgressTimestamps) {
-            store.set(encoded, forKey: iCloudDeletedKey)
-        }
-        
-        let synced = store.synchronize()
-        
-        if synced {
-            print("iCloud sync successful")
-        } else {
-            // Don't print warning for simulator - iCloud may not be fully available
-            #if !targetEnvironment(simulator)
-            print("Warning: iCloud sync failed - synchronize() returned false")
-            #endif
-        }
-    }
-    
-    private func syncFromICloud() {
-        guard let store = iCloudStore else {
-            return
-        }
-        _ = store.synchronize()
-
-        // Get iCloud progress
-        var iCloudProgress: [String: QuestionProgress] = [:]
-        if let data = store.data(forKey: iCloudKey),
-           let decoded = try? JSONDecoder().decode([String: QuestionProgress].self, from: data) {
-            iCloudProgress = decoded
-        }
-        
-        // Get iCloud deleted timestamps
-        var iCloudDeletedTimestamps: [String: Date] = [:]
-        if let data = store.data(forKey: iCloudDeletedKey),
-           let decoded = try? JSONDecoder().decode([String: Date].self, from: data) {
-            iCloudDeletedTimestamps = decoded
-        }
-        
-        // Empty KVS can mean "nothing uploaded yet" or "still downloading". Run full merge so local
-        // rows seed correctly; avoid a standalone upload that bypasses merge.
-
-        // Merge deleted timestamps - keep the most recent deletion
-        var mergedDeletedTimestamps = deletedProgressTimestamps
-        for (questionId, iCloudDeleteTime) in iCloudDeletedTimestamps {
-            if let localDeleteTime = mergedDeletedTimestamps[questionId] {
-                // Keep the more recent deletion
-                if iCloudDeleteTime > localDeleteTime {
-                    mergedDeletedTimestamps[questionId] = iCloudDeleteTime
-                }
-            } else {
-                // Only in iCloud
-                mergedDeletedTimestamps[questionId] = iCloudDeleteTime
-            }
-        }
-        
-        // Merge progress - respect deletions
-        var hasChanges = false
-        var mergedProgress = progress
-        
-        // Process iCloud items - only add if not deleted (or deleted before last attempt)
-        for (questionId, iCloudProgressItem) in iCloudProgress {
-            // Check if this progress was deleted
-            let iCloudDeleteTime = iCloudDeletedTimestamps[questionId]
-            let localDeleteTime = mergedDeletedTimestamps[questionId]
-            
-            // If deleted and deletion is after last attempt, skip it
-            if let deleteTime = iCloudDeleteTime ?? localDeleteTime,
-               let lastAttempted = iCloudProgressItem.lastAttempted,
-               deleteTime > lastAttempted {
-                // Deleted - respect deletion
-                if mergedProgress[questionId] != nil {
-                    mergedProgress.removeValue(forKey: questionId)
-                    hasChanges = true
-                }
-                continue
-            }
-            
-            // If progress exists and is newer than deletion, clear deletion timestamp
-            if let lastAttempted = iCloudProgressItem.lastAttempted {
-                if let deleteTime = mergedDeletedTimestamps[questionId],
-                   lastAttempted > deleteTime {
-                    mergedDeletedTimestamps.removeValue(forKey: questionId)
-                    hasChanges = true
-                }
-            }
-            
-            // Progress is valid - merge it
-            let localProgressItem = mergedProgress[questionId]
-            
-            if let local = localProgressItem, let localDate = local.lastAttempted, let iCloudDate = iCloudProgressItem.lastAttempted {
-                // Use the more recent one
-                if localDate > iCloudDate {
-                    // Keep local - will push to iCloud
-                    hasChanges = true
-                } else {
-                    // Use iCloud
-                    mergedProgress[questionId] = iCloudProgressItem
-                    hasChanges = true
-                }
-            } else if localProgressItem == nil {
-                // No local, use iCloud
-                mergedProgress[questionId] = iCloudProgressItem
-                hasChanges = true
-            }
-        }
-        
-        // Check for local items not in iCloud (if not deleted)
-        for (questionId, localItem) in mergedProgress {
-            if iCloudProgress[questionId] == nil {
-                // Check if deleted
-                if let deleteTime = mergedDeletedTimestamps[questionId],
-                   let lastAttempted = localItem.lastAttempted,
-                   deleteTime > lastAttempted {
-                    // Deleted - remove it
-                    mergedProgress.removeValue(forKey: questionId)
-                    hasChanges = true
-                    continue
-                }
-                
-                // If progress exists and is newer than deletion, clear deletion timestamp
-                if let lastAttempted = localItem.lastAttempted {
-                    if let deleteTime = mergedDeletedTimestamps[questionId],
-                       lastAttempted > deleteTime {
-                        mergedDeletedTimestamps.removeValue(forKey: questionId)
-                        hasChanges = true
-                    }
-                }
-                
-                // Local item not in iCloud - will be pushed
-                hasChanges = true
-            }
-        }
-        
-        // Clean up old deletion timestamps (older than 30 days)
-        let thirtyDaysAgo = Date().addingTimeInterval(-30 * 24 * 60 * 60)
-        mergedDeletedTimestamps = mergedDeletedTimestamps.filter { $0.value > thirtyDaysAgo }
-        
-        if hasChanges || mergedDeletedTimestamps != deletedProgressTimestamps {
-            // Update progress
-            progress = mergedProgress
-            
-            // Update deleted timestamps
-            deletedProgressTimestamps = mergedDeletedTimestamps
-            
-            // Save locally
-            if let encoded = try? JSONEncoder().encode(progress) {
-                UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
-            }
-            if let encoded = try? JSONEncoder().encode(deletedProgressTimestamps) {
-                UserDefaults.standard.set(encoded, forKey: deletedProgressKey)
-            }
-            
-            // Push to iCloud
-            syncToICloud()
-        }
-    }
 }
 

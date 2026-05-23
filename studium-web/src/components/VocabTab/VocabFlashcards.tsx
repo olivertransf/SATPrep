@@ -1,24 +1,18 @@
 import { useState, useEffect } from 'react'
 import type { VocabWord } from '../../types'
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
+import { loadWordBucketsForUI, saveWordBucketsFromUI, type WebVocabBucket } from '../../store/vocabBuckets'
 
 interface VocabFlashcardsProps {
   words: VocabWord[]
+  onLocalChange?: () => void
 }
 
 type PosFilter = 'all' | 'noun' | 'verb' | 'adj' | 'adverb' | 'other'
-type BucketFilter = 'learn' | 'review' | 'mastered'
+type BucketFilter = WebVocabBucket
 
-const BUCKET_KEY = 'studium_vocab_buckets'
 const POS_KEY = 'studium_vocab_pos_filter'
 const BUCKET_FILTER_KEY = 'studium_vocab_bucket_filter'
-
-function loadBuckets(): Record<string, BucketFilter> {
-  try { return JSON.parse(localStorage.getItem(BUCKET_KEY) ?? '{}') } catch { return {} }
-}
-function saveBuckets(b: Record<string, BucketFilter>) {
-  localStorage.setItem(BUCKET_KEY, JSON.stringify(b))
-}
 
 const POS_OPTIONS: { value: PosFilter; label: string }[] = [
   { value: 'all',    label: 'All' },
@@ -35,8 +29,8 @@ const BUCKET_OPTIONS: { value: BucketFilter; label: string; accent: string; bg: 
   { value: 'mastered', label: 'Mastered', accent: 'var(--success)', bg: 'rgba(34,197,94,0.12)'  },
 ]
 
-export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
-  const [buckets, setBuckets] = useState<Record<string, BucketFilter>>(loadBuckets)
+export default function VocabFlashcards({ words, onLocalChange }: VocabFlashcardsProps) {
+  const [buckets, setBuckets] = useState<Record<string, BucketFilter>>(loadWordBucketsForUI)
   const [posFilter, setPosFilter] = useState<PosFilter>(() => {
     return (localStorage.getItem(POS_KEY) as PosFilter) ?? 'all'
   })
@@ -59,6 +53,12 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
 
   useEffect(() => { setFlipped(false) }, [index])
 
+  useEffect(() => {
+    const refresh = () => setBuckets(loadWordBucketsForUI())
+    window.addEventListener('studium-cloud-sync', refresh)
+    return () => window.removeEventListener('studium-cloud-sync', refresh)
+  }, [])
+
   const card = filtered[index]
   const currentBucket = BUCKET_OPTIONS.find(b => b.value === bucketFilter)!
 
@@ -66,7 +66,8 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
     if (!card) return
     const next = { ...buckets, [card.id]: b }
     setBuckets(next)
-    saveBuckets(next)
+    saveWordBucketsFromUI(next)
+    onLocalChange?.()
     if (index < filtered.length - 1) setIndex(i => i + 1)
     else if (filtered.length > 1) setIndex(0)
   }
@@ -125,11 +126,31 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
 
         {/* Card or empty state */}
         {filtered.length === 0 ? (
-          <div className="studium-card p-8 text-center">
-            <div className="text-4xl mb-3">📭</div>
-            <div className="text-base font-semibold" style={{ color: 'var(--text)' }}>No cards here</div>
-            <div className="text-sm mt-1" style={{ color: 'var(--muted)' }}>Try a different filter</div>
-          </div>
+          <>
+            <div className="studium-card p-8 text-center">
+              <div className="text-base font-semibold" style={{ color: 'var(--text)' }}>No cards in this pile</div>
+              <div className="text-sm mt-2" style={{ color: 'var(--muted)' }}>
+                Switch study pile, part of speech, or move cards from another pile.
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--muted)' }}>
+                Try another pile
+              </div>
+              <div className="flex gap-2">
+                {BUCKET_OPTIONS.filter(o => o.value !== bucketFilter).map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => updateBucketFilter(opt.value)}
+                    className="studium-chip flex-1 py-2 text-xs"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
         ) : (
           <>
             {/* Counter */}

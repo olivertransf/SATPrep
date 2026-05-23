@@ -36,12 +36,12 @@ struct StatsView: View {
                 categoryBreakdownSection
                 resetProgressSection
             }
-            .padding()
+            .padding(StudiumDesignSystem.isPhone ? StudiumDesignSystem.spacingLG : StudiumDesignSystem.spacingXL)
             .readableContentFrame(maxWidth: LayoutMetrics.settingsReadableMaxWidth)
         }
         .background(Color.systemGroupedBackground)
         .navigationTitle("Statistics")
-        .navLargeTitle()
+        .navAdaptiveTitle()
         .alert("Reset Progress", isPresented: $showResetConfirmation) {
             Button("Cancel", role: .cancel) { resetType = nil }
             Button("Reset", role: .destructive) { performReset() }

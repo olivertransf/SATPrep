@@ -7,7 +7,7 @@ import SwiftUI
 
 struct ExpandedConceptCard: View {
     let category: ConceptCategory
-    var accentColor: Color = .blue
+    var accentColor: Color = .accentColor
     let onPractice: () -> Void
     let onPracticeSkill: (String) -> Void
 

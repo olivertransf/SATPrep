@@ -54,9 +54,10 @@ enum StudiumDesignSystem {
     static var practiceSidebarFooterPadding: CGFloat { spacingLG }
     static var practiceSidebarHeaderPadding: CGFloat { spacingLG }
     static var practiceMainPaddingH: CGFloat { isPhone ? spacingLG : spacingXL }
-    static var practiceMainPaddingTop: CGFloat { isPhone ? 10 : 20 }
-    static var practiceMainPaddingBottom: CGFloat { isPhone ? 18 : 28 }
-    static var practiceMainSectionSpacing: CGFloat { isPhone ? 14 : 22 }
+    static var practiceMainPaddingTop: CGFloat { isPhone ? 8 : 20 }
+    static var practiceMainPaddingBottom: CGFloat { isPhone ? 16 : 28 }
+    static var practiceMainSectionSpacing: CGFloat { isPhone ? 12 : 22 }
+    static var practicePhoneStickyBarPadding: CGFloat { isPhone ? 12 : spacingLG }
     static var practiceSidebarSectionSpacing: CGFloat { isPhone ? spacingMD : spacingLG }
     static var conceptGridSpacing: CGFloat { isPhone ? 10 : 14 }
 
@@ -107,7 +108,7 @@ enum StudiumDesignSystem {
     }
 
     static var browsePageTitle: Font {
-        .title2.weight(.bold)
+        isPhone ? .headline.weight(.semibold) : .title2.weight(.bold)
     }
 
     static var browsePageSubtitle: Font {

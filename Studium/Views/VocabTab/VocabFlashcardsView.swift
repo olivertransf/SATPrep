@@ -72,7 +72,7 @@ struct VocabFlashcardsView: View {
             }
         }
         .navigationTitle("Vocab")
-        .navLargeTitle()
+        .navAdaptiveTitle()
         .onAppear {
             restorePosition()
             validateManualOrder()
@@ -136,23 +136,22 @@ struct VocabFlashcardsView: View {
 
             Divider()
 
-            // Right main: card + sort + nav
-            if rowIndices.isEmpty {
-                emptyDeckView
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView {
-                    VStack(spacing: 20) {
+            // Right main: card + sort + nav (controls stay visible when pile is empty)
+            ScrollView {
+                VStack(spacing: 20) {
+                    if rowIndices.isEmpty {
+                        emptyDeckCard
+                    } else {
                         progressAndCardSection
                         sortSection
                         navButtons
                     }
-                    .padding(24)
-                    .readableContentFrame(maxWidth: 680)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.systemGroupedBackground)
+                .padding(24)
+                .readableContentFrame(maxWidth: 680)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.systemGroupedBackground)
         }
         .background(Color.systemGroupedBackground)
     }
@@ -160,32 +159,30 @@ struct VocabFlashcardsView: View {
     // MARK: - Narrow layout (iPhone)
 
     private var narrowLayout: some View {
-        Group {
-            if rowIndices.isEmpty {
-                emptyDeckView
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        deckPickerSection
-                        studyPileSection
-                        if deckKind == .words { wordTypeSection }
-                        progressAndCardSection
-                        sortSection
-                        navButtons
-                    }
-                    .padding(.horizontal)
-                    .padding(.bottom, 20)
-                    .readableContentFrame(maxWidth: LayoutMetrics.vocabReadableMaxWidth)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                deckPickerSection
+                studyPileSection
+                if deckKind == .words { wordTypeSection }
+                if rowIndices.isEmpty {
+                    emptyDeckCard
+                } else {
+                    progressAndCardSection
+                    sortSection
+                    navButtons
                 }
-                .background(Color.systemGroupedBackground)
-                .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button { shuffleDeck() } label: {
-                            Label("Shuffle", systemImage: "shuffle")
-                        }
-                        .disabled(baseFilteredIndices.isEmpty)
-                    }
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 20)
+            .readableContentFrame(maxWidth: LayoutMetrics.vocabReadableMaxWidth)
+        }
+        .background(Color.systemGroupedBackground)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { shuffleDeck() } label: {
+                    Label("Shuffle", systemImage: "shuffle")
                 }
+                .disabled(baseFilteredIndices.isEmpty)
             }
         }
     }
@@ -324,12 +321,56 @@ struct VocabFlashcardsView: View {
         }
     }
 
-    private var emptyDeckView: some View {
-        ContentUnavailableView(
-            "No cards here",
-            systemImage: "rectangle.on.rectangle",
-            description: Text(emptyDeckHint)
-        )
+    private var emptyDeckCard: some View {
+        VStack(spacing: StudiumDesignSystem.spacingMD) {
+            HStack {
+                Text(progressLabel)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+
+            VStack(spacing: StudiumDesignSystem.spacingSM) {
+                Image(systemName: "rectangle.on.rectangle.angled")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.tertiary)
+                Text("No cards in this pile")
+                    .font(.headline)
+                Text(emptyDeckHint)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: isWide ? 280 : 200)
+            .padding(24)
+            .background(Color.secondarySystemGroupedBackground)
+            .clipShape(RoundedRectangle(cornerRadius: FilterStyle.cardCorner))
+            .overlay(
+                RoundedRectangle(cornerRadius: FilterStyle.cardCorner)
+                    .strokeBorder(Color.studiumBorder.opacity(0.6), lineWidth: FilterStyle.chipStrokeWidth)
+            )
+
+            pileSwitcherHint
+        }
+    }
+
+    private var pileSwitcherHint: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            FilterStripSectionTitle(text: "Try another pile")
+            FilterFormCard {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
+                    ForEach(VocabMemoryBucket.allCases.filter { $0 != studyBucket }) { b in
+                        FilterChipButton(
+                            title: b.title,
+                            isSelected: false,
+                            accent: accent,
+                            fillsGridCell: true
+                        ) { studyBucket = b }
+                    }
+                }
+            }
+        }
     }
 
     private var emptyDeckHint: String {

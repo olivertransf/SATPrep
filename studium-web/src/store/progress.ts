@@ -1,4 +1,5 @@
 import type { QuestionProgress } from '../types'
+import { loadDeletedProgress, tombstoneAllProgress } from './deleted'
 
 const KEY = 'studium_progress'
 
@@ -40,6 +41,12 @@ export function markAnswered(
 }
 
 export function resetAll(): Record<string, QuestionProgress> {
+  const existing = loadProgress()
+  tombstoneAllProgress(existing)
   localStorage.removeItem(KEY)
   return {}
+}
+
+export function exportDeletedProgress(): Record<string, number> {
+  return loadDeletedProgress()
 }

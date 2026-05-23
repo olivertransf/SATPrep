@@ -70,7 +70,67 @@ struct FilterOptions: Codable, Equatable, Hashable {
         self.shuffled = shuffled
         self.questionLimit = questionLimit
     }
-    
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        program = try c.decodeIfPresent(String.self, forKey: .program)
+        module = try c.decodeIfPresent(String.self, forKey: .module)
+        primaryClassCdDesc = try c.decodeIfPresent(String.self, forKey: .primaryClassCdDesc)
+        skillDesc = try c.decodeIfPresent(String.self, forKey: .skillDesc)
+        difficulty = try c.decodeIfPresent(String.self, forKey: .difficulty)
+        questionLimit = try c.decodeIfPresent(Int.self, forKey: .questionLimit)
+        shuffled = try c.decodeIfPresent(Bool.self, forKey: .shuffled) ?? true
+
+        if let raw = try c.decodeIfPresent(String.self, forKey: .answerStatus) {
+            answerStatus = Self.decodeAnswerStatus(raw)
+        } else {
+            answerStatus = .all
+        }
+
+        if let raw = try c.decodeIfPresent(String.self, forKey: .isBluebook) {
+            isBluebook = Self.decodeBluebook(raw)
+        } else {
+            isBluebook = nil
+        }
+
+        if let raw = try c.decodeIfPresent(String.self, forKey: .cbVerifiedInactive) {
+            cbVerifiedInactive = Self.decodeCBVerified(raw)
+        } else {
+            cbVerifiedInactive = nil
+        }
+    }
+
+    private static func decodeAnswerStatus(_ raw: String) -> AnswerStatus {
+        switch raw.lowercased() {
+        case "all": return .all
+        case "unanswered": return .unanswered
+        case "incorrect": return .incorrect
+        case "correct": return .correct
+        default: return AnswerStatus(rawValue: raw) ?? .all
+        }
+    }
+
+    private static func decodeBluebook(_ raw: String) -> BluebookFilter? {
+        switch raw.lowercased().replacingOccurrences(of: " ", with: "") {
+        case "bluebook": return .bluebook
+        case "notbluebook": return .notBluebook
+        case "all": return .all
+        default: return BluebookFilter(rawValue: raw)
+        }
+    }
+
+    private static func decodeCBVerified(_ raw: String) -> CBVerifiedInactiveFilter? {
+        if raw == CBVerifiedInactiveFilter.onlyVerifiedOffCBPracticeTests.rawValue {
+            return .onlyVerifiedOffCBPracticeTests
+        }
+        switch raw.lowercased() {
+        case "onlyverifiedoffcbpracticetests", "verified off practice tests":
+            return .onlyVerifiedOffCBPracticeTests
+        case "any", "ignore": return nil
+        default: return CBVerifiedInactiveFilter(rawValue: raw)
+        }
+    }
+
     nonisolated func matches(_ question: Question, cbVerifiedNotOnPracticeTestIds: Set<String>) -> Bool {
         if let program = program, question.program != program {
             return false

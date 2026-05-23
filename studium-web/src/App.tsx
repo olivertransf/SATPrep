@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type {
   Question, VocabWord, QuestionProgress, FilterOptions,
   SavedQuiz, QuestionData, VocabData,
@@ -13,6 +13,7 @@ import DesmosCalculator from './components/DesmosTab/DesmosCalculator'
 import StatsView from './components/StatsTab/StatsView'
 import SettingsView from './components/SettingsTab/SettingsView'
 import ReferenceView from './components/ReferenceTab/ReferenceView'
+import { useCloudSync } from './hooks/useCloudSync'
 import {
   BookOpen, Layers, Calculator, BarChart2, Settings, Sun, Moon, BookMarked,
 } from 'lucide-react'
@@ -59,6 +60,16 @@ export default function App() {
   })
   const { dark, toggle } = useDarkMode()
 
+  const onCloudMerged = useCallback((data: { progress: Record<string, QuestionProgress>; savedQuizzes: SavedQuiz[] }) => {
+    setProgress(data.progress)
+    setSavedQuizzes(data.savedQuizzes)
+  }, [])
+
+  const cloudSync = useCloudSync({
+    enabled: !loading,
+    onMerged: onCloudMerged,
+  })
+
   function handleFontSizeChange(size: number) {
     setHtmlFontSize(size)
     localStorage.setItem('studium_html_font_size', String(size))
@@ -83,6 +94,7 @@ export default function App() {
   function handleProgressChange(p: Record<string, QuestionProgress>) {
     setProgress(p)
     saveProgress(p)
+    cloudSync.notifyLocalChange()
   }
 
   function handleStartQuiz(filters: FilterOptions) {
@@ -98,6 +110,7 @@ export default function App() {
     }
     saveQuiz(quiz)
     setSavedQuizzes(loadAllQuizzes())
+    cloudSync.notifyLocalChange()
     setActiveQuiz(quiz)
   }
 
@@ -107,6 +120,7 @@ export default function App() {
 
   function handleExitQuiz() {
     setSavedQuizzes(loadAllQuizzes())
+    cloudSync.notifyLocalChange()
     setActiveQuiz(null)
   }
 
@@ -221,10 +235,13 @@ export default function App() {
                 cbVerifiedNotOnPracticeTestIds={cbVerifiedIds}
                 onStartQuiz={handleStartQuiz}
                 onResumeQuiz={handleResumeQuiz}
-                onQuizzesChange={setSavedQuizzes}
+                onQuizzesChange={quizzes => {
+                  setSavedQuizzes(quizzes)
+                  cloudSync.notifyLocalChange()
+                }}
               />
             ) : tab === 'vocab' ? (
-              <VocabFlashcards words={vocabWords} />
+              <VocabFlashcards words={vocabWords} onLocalChange={cloudSync.notifyLocalChange} />
             ) : tab === 'reference' ? (
               <ReferenceView />
             ) : tab === 'desmos' ? (
@@ -233,12 +250,14 @@ export default function App() {
               <StatsView questions={questions} progress={progress} />
             ) : (
               <SettingsView
+                onQuizzesChange={setSavedQuizzes}
                 progress={progress}
                 onProgressChange={handleProgressChange}
                 onToggleTheme={toggle}
                 isDark={dark}
                 fontSize={htmlFontSize}
                 onFontSizeChange={handleFontSizeChange}
+                cloudSync={cloudSync}
               />
             )}
           </div>

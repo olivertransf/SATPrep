@@ -1,0 +1,5 @@
+# Local Supabase credentials (copy from StudiumSync.plist.example)
+Studium/StudiumSync.plist
+
+# Web env
+studium-web/.env.local

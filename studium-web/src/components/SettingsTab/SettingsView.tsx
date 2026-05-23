@@ -2,15 +2,21 @@ import { useState } from 'react'
 import type { QuestionProgress } from '../../types'
 import { resetAll } from '../../store/progress'
 import { loadAllQuizzes } from '../../store/quiz'
+import { loadDeletedProgress, tombstoneAllQuizzes } from '../../store/deleted'
+import { pushCloudSync } from '../../store/cloudSync'
 import { Sun, Moon, AlertTriangle } from 'lucide-react'
+import type { useCloudSync } from '../../hooks/useCloudSync'
+import { CloudSyncSettings } from './CloudSyncSettings'
 
 interface SettingsViewProps {
   progress: Record<string, QuestionProgress>
   onProgressChange: (p: Record<string, QuestionProgress>) => void
+  onQuizzesChange: (quizzes: import('../../types').SavedQuiz[]) => void
   onToggleTheme: () => void
   isDark: boolean
   fontSize: number
   onFontSizeChange: (size: number) => void
+  cloudSync: ReturnType<typeof useCloudSync>
 }
 
 function SettingRow({ label, sub, right }: { label: string; sub?: string; right: React.ReactNode }) {
@@ -26,19 +32,35 @@ function SettingRow({ label, sub, right }: { label: string; sub?: string; right:
   )
 }
 
-export default function SettingsView({ progress, onProgressChange, onToggleTheme, isDark, fontSize, onFontSizeChange }: SettingsViewProps) {
+export default function SettingsView({
+  progress, onProgressChange, onQuizzesChange, onToggleTheme, isDark, fontSize, onFontSizeChange, cloudSync,
+}: SettingsViewProps) {
   const [showConfirm, setShowConfirm] = useState(false)
 
   const attempted = Object.values(progress).filter(p => p.correct !== undefined).length
   const seen = Object.values(progress).filter(p => p.seen).length
   const savedQuizCount = loadAllQuizzes().length
 
-  function handleReset() {
-    const cleared = resetAll()
-    onProgressChange(cleared)
+  async function handleReset() {
+    const quizzes = loadAllQuizzes()
+    const deletedQuizzes = tombstoneAllQuizzes(quizzes)
+    resetAll()
+    const deletedProgress = loadDeletedProgress()
+    onProgressChange({})
     localStorage.removeItem('studium_saved_quizzes')
     localStorage.removeItem('studium_vocab_buckets')
+    onQuizzesChange([])
+    window.dispatchEvent(new Event('studium-cloud-sync'))
     setShowConfirm(false)
+    if (cloudSync.active) {
+      await pushCloudSync({
+        progress: {},
+        deleted_progress: deletedProgress,
+        saved_quizzes: [],
+        deleted_quizzes: deletedQuizzes,
+        vocab_buckets: { words: {}, roots: {} },
+      })
+    }
   }
 
   return (
@@ -103,10 +125,17 @@ export default function SettingsView({ progress, onProgressChange, onToggleTheme
 
         <div className="studium-card overflow-hidden p-0">
           <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+            <div className="studium-eyebrow">Cloud sync</div>
+          </div>
+          <CloudSyncSettings sync={cloudSync} />
+        </div>
+
+        <div className="studium-card overflow-hidden p-0">
+          <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
             <div className="studium-eyebrow">Data</div>
           </div>
           <div className="px-4 py-2 border-b text-sm" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
-            Progress is saved locally in your browser. Nothing is synced to the cloud.
+            Local cache in this browser. When cloud sync is on, Supabase is the backup across devices.
           </div>
           <div className="px-4 py-2">
             <button

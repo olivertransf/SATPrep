@@ -78,11 +78,7 @@ struct MainTabView: View {
                         onResumeQuiz: { resumeQuiz($0) }
                     )
                     .navigationTitle("Practice")
-                    #if os(iOS)
-                    .navigationBarTitleDisplayMode(.inline)
-                    #else
-                    .navLargeTitle()
-                    #endif
+                    .navAdaptiveTitle()
                 }
             }
             .tabItem { Label("Practice", systemImage: "books.vertical") }

@@ -53,6 +53,20 @@ extension View {
         #endif
     }
 
+    /// Large title on iPad/Mac; inline on iPhone.
+    @ViewBuilder
+    func navAdaptiveTitle() -> some View {
+        #if os(iOS)
+        if StudiumDesignSystem.isPhone {
+            self.navigationBarTitleDisplayMode(.inline)
+        } else {
+            self.navigationBarTitleDisplayMode(.large)
+        }
+        #else
+        self
+        #endif
+    }
+
     // MARK: - Text input (iOS only)
 
     /// Disables auto-capitalisation on iOS; no-op on macOS (not applicable).

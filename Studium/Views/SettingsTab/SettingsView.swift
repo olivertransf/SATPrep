@@ -75,36 +75,11 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("iCloud Sync", isOn: Binding(
-                        get: { progressManager.isICloudSyncEnabled },
-                        set: { newValue in
-                            progressManager.isICloudSyncEnabled = newValue
-                            quizStateManager.isICloudSyncEnabled = newValue
-                            vocabBucketStore.isICloudSyncEnabled = newValue
-                        }
-                    ))
-                    .tint(accent)
-
-                    if progressManager.isICloudSyncEnabled {
-                        HStack(spacing: 8) {
-                            Image(systemName: "icloud.fill")
-                                .foregroundStyle(accent)
-                            Text("Syncing with iCloud")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Button {
-                            progressManager.manualSync()
-                            quizStateManager.manualSync()
-                            vocabBucketStore.manualSync()
-                        } label: {
-                            Label("Sync Now", systemImage: "arrow.clockwise")
-                        }
-                    }
+                    CloudSyncSettingsSection()
                 } header: {
-                    Text("Sync")
+                    Text("Cloud sync")
                 } footer: {
-                    Text("Sync progress and saved quizzes across devices. Enable iCloud for this app in Settings.")
+                    Text("Progress, quizzes, and vocab sync to Supabase (same as the web app).")
                 }
 
                 Section {
@@ -127,7 +102,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(horizontalSizeClass == .compact ? .inline : .large)
+            .navAdaptiveTitle()
         }
         #else
         macSettingsBody
@@ -275,42 +250,9 @@ struct SettingsView: View {
                         }
                     }
 
-                    FilterStripSectionTitle(text: "Sync")
+                    FilterStripSectionTitle(text: "Cloud sync")
                     FilterFormCard(spacing: 10) {
-                        Toggle("iCloud Sync", isOn: Binding(
-                            get: { progressManager.isICloudSyncEnabled },
-                            set: { newValue in
-                                progressManager.isICloudSyncEnabled = newValue
-                                quizStateManager.isICloudSyncEnabled = newValue
-                                vocabBucketStore.isICloudSyncEnabled = newValue
-                            }
-                        ))
-                        .tint(accent)
-
-                        if progressManager.isICloudSyncEnabled {
-                            HStack(spacing: 8) {
-                                Image(systemName: "icloud.fill")
-                                    .foregroundStyle(accent)
-                                Text("Syncing with iCloud")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Button {
-                                progressManager.manualSync()
-                                quizStateManager.manualSync()
-                                vocabBucketStore.manualSync()
-                            } label: {
-                                Label("Sync Now", systemImage: "arrow.clockwise")
-                                    .font(.subheadline.weight(.semibold))
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(accent)
-                        }
-
-                        Text("Sync progress and saved quizzes across devices. Enable iCloud for this app in Settings.")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        CloudSyncSettingsSection()
                     }
 
                     FilterStripSectionTitle(text: "Help")
