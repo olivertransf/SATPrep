@@ -133,7 +133,7 @@ struct StatsView: View {
 
                 VStack(spacing: 2) {
                     Text("\(Int(accuracy))%")
-                        .font(.system(size: 28, weight: .bold, design: .monospaced))
+                        .font(StudiumDesignSystem.statDigitFont)
                         .foregroundStyle(attempted > 0 ? accuracyColor(accuracy) : .secondary)
                     Text("accuracy")
                         .font(.caption)
@@ -160,7 +160,7 @@ struct StatsView: View {
     private func statItem(value: String, label: String, color: Color) -> some View {
         VStack(spacing: 4) {
             Text(value)
-                .font(.system(size: 22, weight: .bold, design: .monospaced))
+                .font(StudiumDesignSystem.statFont)
                 .foregroundStyle(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)

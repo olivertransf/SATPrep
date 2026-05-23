@@ -14,12 +14,29 @@ struct QuestionAnswerState: Codable {
     var selectedAnswerId: String?
     var hasSubmitted: Bool
     var isCorrect: Bool?
-    
-    init(questionId: String, selectedAnswerId: String? = nil, hasSubmitted: Bool = false, isCorrect: Bool? = nil) {
+    var struckOutOptionIds: [String]
+
+    init(
+        questionId: String,
+        selectedAnswerId: String? = nil,
+        hasSubmitted: Bool = false,
+        isCorrect: Bool? = nil,
+        struckOutOptionIds: [String] = []
+    ) {
         self.questionId = questionId
         self.selectedAnswerId = selectedAnswerId
         self.hasSubmitted = hasSubmitted
         self.isCorrect = isCorrect
+        self.struckOutOptionIds = struckOutOptionIds
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        questionId = try container.decode(String.self, forKey: .questionId)
+        selectedAnswerId = try container.decodeIfPresent(String.self, forKey: .selectedAnswerId)
+        hasSubmitted = try container.decode(Bool.self, forKey: .hasSubmitted)
+        isCorrect = try container.decodeIfPresent(Bool.self, forKey: .isCorrect)
+        struckOutOptionIds = try container.decodeIfPresent([String].self, forKey: .struckOutOptionIds) ?? []
     }
 }
 

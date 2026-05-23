@@ -20,12 +20,12 @@ import {
 type Tab = 'practice' | 'vocab' | 'reference' | 'desmos' | 'stats' | 'settings'
 
 const TABS: { id: Tab; label: string; Icon: React.ElementType }[] = [
-  { id: 'practice',  label: 'Practice',  Icon: BookOpen },
-  { id: 'vocab',     label: 'Vocab',     Icon: Layers },
+  { id: 'practice', label: 'Practice', Icon: BookOpen },
+  { id: 'vocab', label: 'Vocab', Icon: Layers },
   { id: 'reference', label: 'Reference', Icon: BookMarked },
-  { id: 'desmos',    label: 'Desmos',    Icon: Calculator },
-  { id: 'stats',     label: 'Stats',     Icon: BarChart2 },
-  { id: 'settings',  label: 'Settings',  Icon: Settings },
+  { id: 'desmos', label: 'Desmos', Icon: Calculator },
+  { id: 'stats', label: 'Stats', Icon: BarChart2 },
+  { id: 'settings', label: 'Settings', Icon: Settings },
 ]
 
 function useDarkMode() {
@@ -120,8 +120,7 @@ export default function App() {
   if (loading) {
     return (
       <div
-        className="h-screen flex items-center justify-center"
-        style={{ background: 'var(--bg)' }}
+        className="h-screen flex items-center justify-center studium-screen"
         role="status"
         aria-live="polite"
         aria-label="Loading Studium"
@@ -141,47 +140,40 @@ export default function App() {
   const currentTabLabel = TABS.find(t => t.id === tab)?.label ?? ''
 
   return (
-    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+    <div className="h-screen flex overflow-hidden studium-screen">
 
-      {/* ---- Desktop Sidebar (md+) ---- */}
       {!activeQuiz && (
         <aside
-          className="hidden md:flex flex-col w-[220px] shrink-0 border-r h-full"
+          className="hidden md:flex flex-col w-[240px] shrink-0 border-r h-full"
           style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
           aria-label="Main navigation"
         >
-          {/* App name */}
-          <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-            <div className="text-sm font-semibold tracking-tight uppercase" style={{ color: 'var(--text)' }}>Studium</div>
-            <div className="text-[11px] mt-0.5" style={{ color: 'var(--muted)' }}>SAT Prep</div>
+          <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-lg font-bold tracking-tight" style={{ color: 'var(--text)' }}>Studium</div>
+            <div className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>SAT Prep</div>
           </div>
 
-          {/* Nav */}
-          <nav className="flex-1 py-2.5 space-y-1 px-2" aria-label="Tabs">
+          <nav className="flex-1 py-3 px-3 space-y-1" aria-label="Tabs">
             {TABS.map(({ id, label, Icon }) => (
               <button
                 key={id}
+                type="button"
                 onClick={() => setTab(id)}
                 aria-current={tab === id ? 'page' : undefined}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-sm text-xs font-medium uppercase tracking-wide transition-all border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-1"
-                style={tab === id
-                  ? { background: 'rgba(0,122,255,0.14)', color: 'var(--text)', borderColor: 'rgba(0,122,255,0.45)' }
-                  : { color: 'var(--muted)', borderColor: 'transparent' }
-                }
+                className={['studium-nav-item', tab === id ? 'studium-nav-item--active' : ''].join(' ')}
               >
-                <Icon size={16} aria-hidden="true" />
+                <Icon size={18} aria-hidden="true" />
                 <span>{label}</span>
               </button>
             ))}
           </nav>
 
-          {/* Theme toggle */}
-          <div className="px-3 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
+          <div className="px-3 py-4 border-t" style={{ borderColor: 'var(--border)' }}>
             <button
+              type="button"
               onClick={toggle}
               aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-semibold border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-              style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}
+              className="studium-btn-secondary w-full"
             >
               {dark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
               <span>{dark ? 'Light mode' : 'Dark mode'}</span>
@@ -190,28 +182,25 @@ export default function App() {
         </aside>
       )}
 
-      {/* ---- Main content area ---- */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden studium-screen">
 
-        {/* Mobile top header */}
         {!activeQuiz && (
           <header
-            className="md:hidden flex items-center justify-between px-3 py-2.5 border-b shrink-0"
+            className="md:hidden flex items-center justify-between px-4 py-3 border-b shrink-0"
             style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
           >
-              <h1 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text)' }}>{currentTabLabel}</h1>
+            <h1 className="text-lg font-semibold m-0" style={{ color: 'var(--text)' }}>{currentTabLabel}</h1>
             <button
+              type="button"
               onClick={toggle}
               aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="p-2 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-              style={{ color: 'var(--muted)' }}
+              className="studium-btn-secondary px-3 min-h-[36px]"
             >
               {dark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
             </button>
           </header>
         )}
 
-        {/* Content */}
         <main className="flex-1 overflow-hidden flex flex-col min-h-0">
           <div className="tab-content flex-1 overflow-hidden flex flex-col min-h-0">
             {activeQuiz ? (
@@ -255,7 +244,6 @@ export default function App() {
           </div>
         </main>
 
-        {/* Mobile bottom tab bar */}
         {!activeQuiz && (
           <nav
             className="md:hidden flex shrink-0 border-t"
@@ -265,14 +253,15 @@ export default function App() {
             {TABS.map(({ id, label, Icon }) => (
               <button
                 key={id}
+                type="button"
                 onClick={() => setTab(id)}
                 aria-current={tab === id ? 'page' : undefined}
                 aria-label={label}
-                className="flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+                className="flex-1 flex flex-col items-center gap-0.5 py-2 min-h-[52px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
                 style={tab === id ? { color: 'var(--accent)' } : { color: 'var(--muted)' }}
               >
-                <Icon size={20} aria-hidden="true" />
-                <span className="text-[10px] font-medium mobile-tab-label">{label}</span>
+                <Icon size={22} aria-hidden="true" />
+                <span className="text-[11px] font-medium mobile-tab-label">{label}</span>
               </button>
             ))}
           </nav>

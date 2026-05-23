@@ -16,10 +16,30 @@ private struct FilterPanelDensityKey: EnvironmentKey {
     static let defaultValue: FilterPanelDensity = .standard
 }
 
+private struct FilterSidebarLayoutKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+private struct FilterPhoneSheetLayoutKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
 extension EnvironmentValues {
     var filterPanelDensity: FilterPanelDensity {
         get { self[FilterPanelDensityKey.self] }
         set { self[FilterPanelDensityKey.self] = newValue }
+    }
+
+    /// Practice split-pane filter column (tighter chips, 2-column grid, roomier card).
+    var filterSidebarLayout: Bool {
+        get { self[FilterSidebarLayoutKey.self] }
+        set { self[FilterSidebarLayoutKey.self] = newValue }
+    }
+
+    /// iPhone filter sheet — relaxed card padding and 2-column chips (not `.compact` density).
+    var filterPhoneSheetLayout: Bool {
+        get { self[FilterPhoneSheetLayoutKey.self] }
+        set { self[FilterPhoneSheetLayoutKey.self] = newValue }
     }
 }
 
@@ -32,9 +52,39 @@ enum FilterPanelMetrics {
     static let formPadding: CGFloat = 12
     static let formPaddingCompact: CGFloat = 8
 
-    /// Two equal columns for chip grids (difficulty, status, source rows).
+    /// Two equal columns for chip grids on narrow phone layouts.
     static var filterChipPairColumns: [GridItem] {
-        [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)]
+        filterChipGridColumns(columnCount: 2)
+    }
+
+    static let filterChipCardCorner: CGFloat = 10
+    static let filterChipGridSpacing: CGFloat = 8
+    static let sidebarChipGridSpacing: CGFloat = 10
+    static let sidebarFormPadding: CGFloat = 16
+    static let sidebarFormCorner: CGFloat = 14
+    static let sidebarSectionSpacing: CGFloat = 18
+    static let phoneSheetFormPadding: CGFloat = 16
+    static let phoneSheetFormCorner: CGFloat = 14
+    static let phoneSheetSectionSpacing: CGFloat = 16
+    static let phoneSheetChipGridSpacing: CGFloat = 10
+    /// Minimum cell width when fitting 3–4 columns in a filter panel.
+    static let filterChipMinCellWidth: CGFloat = 84
+
+    static var sidebarChipColumns: [GridItem] {
+        filterChipGridColumns(columnCount: 2)
+    }
+
+    static func filterChipGridColumns(columnCount: Int) -> [GridItem] {
+        let count = min(4, max(2, columnCount))
+        return Array(repeating: GridItem(.flexible(), spacing: filterChipGridSpacing), count: count)
+    }
+
+    /// Picks 2–4 columns from available width (sidebar or sheet).
+    static func filterChipGridColumns(forWidth width: CGFloat, maxColumns: Int = 4) -> [GridItem] {
+        let spacing = filterChipGridSpacing
+        let cell = filterChipMinCellWidth
+        let count = min(maxColumns, max(2, Int((width + spacing) / (cell + spacing))))
+        return filterChipGridColumns(columnCount: count)
     }
 }
 
@@ -44,7 +94,7 @@ struct FilterStripSectionTitle: View {
 
     var body: some View {
         Text(text)
-            .font(MacStudiumDesign.sectionEyebrow)
+            .font(StudiumDesignSystem.sectionEyebrow)
             .foregroundStyle(.secondary)
             .textCase(.uppercase)
             .tracking(0.5)
@@ -55,14 +105,24 @@ struct FilterStripSectionTitle: View {
 
 struct FilterGroupHeading: View {
     @Environment(\.filterPanelDensity) private var filterPanelDensity
+    @Environment(\.filterSidebarLayout) private var filterSidebarLayout
+    @Environment(\.filterPhoneSheetLayout) private var filterPhoneSheetLayout
 
     let title: String
     let systemImage: String
     let tint: Color
 
+    private var usesRelaxedFilterLayout: Bool { filterSidebarLayout || filterPhoneSheetLayout }
+
+    private var titleFont: Font {
+        if usesRelaxedFilterLayout { return .subheadline.weight(.semibold) }
+        if filterPanelDensity == .compact { return .subheadline.weight(.semibold) }
+        return StudiumDesignSystem.sidebarGroupTitle
+    }
+
     var body: some View {
         Label(title, systemImage: systemImage)
-            .font(filterPanelDensity == .compact ? .subheadline.weight(.semibold) : MacStudiumDesign.sidebarGroupTitle)
+            .font(titleFont)
             .foregroundStyle(.primary)
             .labelStyle(.titleAndIcon)
             .tint(tint)
@@ -84,6 +144,8 @@ struct FilterSubgroupLabel: View {
 
 struct FilterGroupBlock<Content: View>: View {
     @Environment(\.filterPanelDensity) private var filterPanelDensity
+    @Environment(\.filterSidebarLayout) private var filterSidebarLayout
+    @Environment(\.filterPhoneSheetLayout) private var filterPhoneSheetLayout
 
     let title: String
     let systemImage: String
@@ -91,7 +153,8 @@ struct FilterGroupBlock<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     private var headingToContentSpacing: CGFloat {
-        filterPanelDensity == .compact ? 3 : 5
+        if filterSidebarLayout || filterPhoneSheetLayout { return StudiumDesignSystem.spacingSM }
+        return filterPanelDensity == .compact ? 3 : 5
     }
 
     var body: some View {
@@ -105,26 +168,49 @@ struct FilterGroupBlock<Content: View>: View {
 /// Grouped card used across Filter sheet sections (and can wrap practice-style blocks).
 struct FilterFormCard<Content: View>: View {
     @Environment(\.filterPanelDensity) private var filterPanelDensity
+    @Environment(\.filterSidebarLayout) private var filterSidebarLayout
+    @Environment(\.filterPhoneSheetLayout) private var filterPhoneSheetLayout
 
     var spacing: CGFloat = 8
     @ViewBuilder let content: () -> Content
 
+    private var usesRelaxedFilterLayout: Bool { filterSidebarLayout || filterPhoneSheetLayout }
+
     private var cardPadding: CGFloat {
-        filterPanelDensity == .compact ? FilterPanelMetrics.formPaddingCompact : FilterPanelMetrics.formPadding
+        if filterSidebarLayout { return FilterPanelMetrics.sidebarFormPadding }
+        if filterPhoneSheetLayout { return FilterPanelMetrics.phoneSheetFormPadding }
+        return filterPanelDensity == .compact ? FilterPanelMetrics.formPaddingCompact : FilterPanelMetrics.formPadding
     }
 
     private var cardCorner: CGFloat {
-        filterPanelDensity == .compact ? FilterPanelMetrics.formCardCornerCompact : FilterPanelMetrics.formCardCorner
+        if filterSidebarLayout { return FilterPanelMetrics.sidebarFormCorner }
+        if filterPhoneSheetLayout { return FilterPanelMetrics.phoneSheetFormCorner }
+        return filterPanelDensity == .compact ? FilterPanelMetrics.formCardCornerCompact : FilterPanelMetrics.formCardCorner
+    }
+
+    private var resolvedSpacing: CGFloat {
+        if filterSidebarLayout { return FilterPanelMetrics.sidebarSectionSpacing }
+        if filterPhoneSheetLayout { return FilterPanelMetrics.phoneSheetSectionSpacing }
+        return spacing
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: spacing) {
+        VStack(alignment: .leading, spacing: resolvedSpacing) {
             content()
         }
         .padding(cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.secondarySystemGroupedBackground)
-        .clipShape(RoundedRectangle(cornerRadius: cardCorner))
+        .background(Color.systemBackground)
+        .clipShape(RoundedRectangle(cornerRadius: cardCorner, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: cardCorner, style: .continuous)
+                .strokeBorder(Color.studiumSeparator.opacity(filterSidebarLayout ? 0.25 : 0.35), lineWidth: 0.5)
+        )
+        .shadow(
+            color: usesRelaxedFilterLayout ? Color.black.opacity(filterSidebarLayout ? 0.04 : 0.05) : .clear,
+            radius: 8,
+            y: 2
+        )
     }
 }
 
@@ -132,6 +218,8 @@ struct FilterFormCard<Content: View>: View {
 
 struct FilterChipButton: View {
     @Environment(\.filterPanelDensity) private var filterPanelDensity
+    @Environment(\.filterSidebarLayout) private var filterSidebarLayout
+    @Environment(\.filterPhoneSheetLayout) private var filterPhoneSheetLayout
 
     let title: String
     let isSelected: Bool
@@ -142,23 +230,64 @@ struct FilterChipButton: View {
     let action: () -> Void
 
     private var isCompact: Bool { filterPanelDensity == .compact }
-    private var hPad: CGFloat { isCompact ? 8 : 10 }
-    private var vPad: CGFloat { isCompact ? 4 : 5 }
-    private var chipFont: Font { .caption.weight(.semibold) }
+    private var hPad: CGFloat {
+        if fillsGridCell {
+            if filterSidebarLayout || filterPhoneSheetLayout { return StudiumDesignSystem.spacingSM }
+            return isCompact ? 6 : StudiumDesignSystem.filterChipHPadding
+        }
+        return isCompact ? 8 : 10
+    }
+    private var vPad: CGFloat {
+        if fillsGridCell {
+            if filterSidebarLayout { return 9 }
+            if filterPhoneSheetLayout { return StudiumDesignSystem.spacingSM }
+            return isCompact ? 8 : StudiumDesignSystem.filterChipVPadding
+        }
+        return isCompact ? 4 : 5
+    }
+    private var chipFont: Font {
+        if fillsGridCell && (filterSidebarLayout || filterPhoneSheetLayout) {
+            return .footnote.weight(.semibold)
+        }
+        return fillsGridCell ? .footnote.weight(.semibold) : .caption.weight(.semibold)
+    }
+    private var gridMinHeight: CGFloat {
+        guard fillsGridCell else { return 0 }
+        if filterSidebarLayout { return StudiumDesignSystem.filterSidebarChipMinHeight }
+        if filterPhoneSheetLayout { return StudiumDesignSystem.filterSidebarChipMinHeight }
+        return StudiumDesignSystem.filterChipMinHeight
+    }
 
     var body: some View {
         Button(action: action) {
-            chipLabel
-                .padding(.horizontal, hPad)
-                .padding(.vertical, vPad)
-                .background(isSelected ? accent : .clear)
-                .clipShape(Capsule())
-                .overlay(Capsule().strokeBorder(
-                    isSelected ? accent : Color.studiumBorder,
-                    lineWidth: FilterStyle.chipStrokeWidth
-                ))
+            Group {
+                if fillsGridCell {
+                    chipLabel
+                        .padding(.horizontal, hPad)
+                        .padding(.vertical, vPad)
+                        .frame(maxWidth: .infinity, minHeight: gridMinHeight)
+                } else {
+                    chipLabel
+                        .padding(.horizontal, hPad)
+                        .padding(.vertical, vPad)
+                }
+            }
+            .background(isSelected ? accent : Color.systemBackground)
+            .clipShape(chipShape)
+            .overlay(chipShape.strokeBorder(
+                isSelected ? accent : Color.studiumBorder,
+                lineWidth: FilterStyle.chipStrokeWidth
+            ))
         }
         .buttonStyle(.plain)
+    }
+
+    private var chipShape: RoundedRectangle {
+        if fillsGridCell {
+            RoundedRectangle(cornerRadius: FilterPanelMetrics.filterChipCardCorner, style: .continuous)
+        } else {
+            RoundedRectangle(cornerRadius: 999, style: .continuous)
+        }
     }
 
     @ViewBuilder
@@ -166,7 +295,7 @@ struct FilterChipButton: View {
         let text = Text(title)
             .font(chipFont)
             .multilineTextAlignment(.center)
-            .foregroundStyle(isSelected ? Color.white : Color.secondary)
+            .foregroundStyle(isSelected ? Color.white : (fillsGridCell ? Color.primary : Color.secondary))
             .lineLimit(fillsGridCell ? 4 : 2)
             .minimumScaleFactor(0.88)
 
@@ -224,7 +353,7 @@ struct FilterOrderChoiceButton: View {
     private var isCompact: Bool { filterPanelDensity == .compact }
 
     private var orderMinHeight: CGFloat {
-        let base = MacStudiumDesign.orderChoiceMinHeight
+        let base = StudiumDesignSystem.orderChoiceMinHeight
         return isCompact ? max(40, base - 10) : base
     }
 
@@ -246,8 +375,8 @@ struct FilterOrderChoiceButton: View {
                     .lineLimit(2)
             }
             .frame(maxWidth: .infinity, minHeight: orderMinHeight, alignment: .leading)
-            .padding(.horizontal, max(8, MacStudiumDesign.orderChoicePaddingH - (isCompact ? 2 : 0)))
-            .padding(.vertical, max(6, MacStudiumDesign.orderChoicePaddingV - (isCompact ? 2 : 0)))
+            .padding(.horizontal, max(8, StudiumDesignSystem.orderChoicePaddingH - (isCompact ? 2 : 0)))
+            .padding(.vertical, max(6, StudiumDesignSystem.orderChoicePaddingV - (isCompact ? 2 : 0)))
             .background(FilterStyle.orderCardFill(selected: isSelected, accent: tint, colorScheme: colorScheme))
             .clipShape(RoundedRectangle(cornerRadius: FilterStyle.cardCorner))
             .overlay(
@@ -268,6 +397,7 @@ struct ContinueSavedQuizCard: View {
     let title: String
     let answered: Int
     let total: Int
+    var usePhoneLayout: Bool = false
     let onPlay: () -> Void
     let onDelete: () -> Void
 
@@ -275,54 +405,122 @@ struct ContinueSavedQuizCard: View {
         total > 0 ? Double(answered) / Double(total) : 0
     }
 
+    private var progressLabel: String {
+        "\(answered) of \(total) answered"
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: MacStudiumDesign.continueCardSpacing) {
+        Group {
+            if usePhoneLayout {
+                phoneLayout
+            } else {
+                stripLayout
+            }
+        }
+        .studiumElevatedCard(padding: usePhoneLayout ? StudiumDesignSystem.spacingMD : StudiumDesignSystem.spacingLG)
+        .frame(maxWidth: usePhoneLayout ? .infinity : nil, alignment: .topLeading)
+        .frame(width: usePhoneLayout ? nil : StudiumDesignSystem.continueCardWidth, alignment: .topLeading)
+    }
+
+    private var stripLayout: some View {
+        VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingMD) {
             Text(title)
-                .font(MacStudiumDesign.continueCardTitle)
+                .font(.headline)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.leading)
-                .lineLimit(4)
+                .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
                 .contentShape(Rectangle())
                 .onTapGesture { onPlay() }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingSM) {
                 ProgressView(value: progress)
                     .tint(Color.accentColor)
-                    .controlSize(.regular)
-                Text("\(answered) of \(total) answered")
-                    .font(MacStudiumDesign.continueCardMeta)
+                Text(progressLabel)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
             .contentShape(Rectangle())
             .onTapGesture { onPlay() }
 
-            HStack(spacing: 10) {
-                Button(action: onPlay) {
-                    Label("Resume", systemImage: "play.fill")
-                        .font(MacStudiumDesign.continueResumeButton)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(MacStudiumDesign.primaryCTAControlSize)
+            stripActionRow
+        }
+    }
 
-                Button(role: .destructive, action: onDelete) {
-                    Image(systemName: "trash")
-                        .font(.body)
+    private var phoneLayout: some View {
+        VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingMD) {
+            VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingXS) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                HStack {
+                    Text(progressLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    Text("\(Int((progress * 100).rounded()))%")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
                 }
-                .buttonStyle(.bordered)
-                .tint(.red)
-                .accessibilityLabel("Delete saved quiz")
+            }
+
+            StudiumProgressBar(fraction: progress)
+
+            phoneActionRow
+        }
+    }
+
+    private var stripActionRow: some View {
+        HStack(spacing: StudiumDesignSystem.spacingSM) {
+            Button(action: onPlay) {
+                Label("Resume", systemImage: "play.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(StudiumDesignSystem.primaryCTAControlSize)
+
+            deleteButton(compact: false)
+        }
+    }
+
+    private var phoneActionRow: some View {
+        HStack(spacing: StudiumDesignSystem.spacingSM) {
+            Button(action: onPlay) {
+                Label("Resume", systemImage: "play.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(StudiumDesignSystem.primaryCTAControlSize)
+
+            deleteButton(compact: true)
+        }
+    }
+
+    private func deleteButton(compact: Bool) -> some View {
+        Button(role: .destructive, action: onDelete) {
+            Group {
+                if compact {
+                    Image(systemName: "trash")
+                        .font(.subheadline.weight(.medium))
+                        .frame(
+                            width: StudiumDesignSystem.phoneIconButtonSize,
+                            height: StudiumDesignSystem.phoneIconButtonSize
+                        )
+                } else {
+                    Image(systemName: "trash")
+                }
             }
         }
-        .padding(MacStudiumDesign.continueCardPadding)
-        .frame(width: MacStudiumDesign.continueCardWidth, alignment: .topLeading)
-        .background(Color.secondarySystemGroupedBackground)
-        .clipShape(RoundedRectangle(cornerRadius: FilterStyle.cardCorner))
-        .overlay(
-            RoundedRectangle(cornerRadius: FilterStyle.cardCorner)
-                .strokeBorder(FilterStyle.chipBorder(selected: false, accent: .blue), lineWidth: FilterStyle.chipStrokeWidth)
-        )
+        .buttonStyle(.bordered)
+        .controlSize(StudiumDesignSystem.primaryCTAControlSize)
+        .accessibilityLabel("Delete saved quiz")
     }
 }

@@ -2,68 +2,29 @@
 //  PracticeHomeView.swift
 //  Studium
 //
-//  Created by Oliver Tran on 12/23/25.
-//
 
 import SwiftUI
 #if os(iOS)
 import UIKit
 #endif
 
-// MARK: - Flow layout for filter groups
-
-private struct FilterFlowLayout: Layout {
-    var hSpacing: CGFloat = 16
-    var vSpacing: CGFloat = 8
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        compute(subviews: subviews, width: proposal.width ?? 0).size
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let result = compute(subviews: subviews, width: bounds.width)
-        for (subview, origin) in zip(subviews, result.origins) {
-            subview.place(at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y), proposal: .unspecified)
-        }
-    }
-
-    private func compute(subviews: Subviews, width: CGFloat) -> (size: CGSize, origins: [CGPoint]) {
-        var origins: [CGPoint] = []
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowH: CGFloat = 0
-        for subview in subviews {
-            let sz = subview.sizeThatFits(.unspecified)
-            guard sz.width > 0 else { origins.append(.zero); continue }
-            if x > 0 && x + sz.width > width {
-                y += rowH + vSpacing; x = 0; rowH = 0
-            }
-            origins.append(CGPoint(x: x, y: y))
-            x += sz.width + hSpacing
-            rowH = max(rowH, sz.height)
-        }
-        return (CGSize(width: width, height: y + rowH), origins)
-    }
-}
-
-// MARK: - Concept data model (computed off main thread)
-
 struct ConceptCategory: Identifiable {
-    let id: String // primaryClassCdDesc
+    let id: String
     let count: Int
     let skills: [ConceptSkill]
 }
 
 struct ConceptSkill: Identifiable {
-    let id: String // skillDesc
+    let id: String
     let count: Int
 }
-
-// MARK: - PracticeHomeView
 
 struct PracticeHomeView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewportWidth: CGFloat = 0
+    @State private var filterDraft = PracticeFilterDraft()
+    @State private var showFilterSheet = false
+    @State private var showEmptyQuizAlert = false
 
     @ObservedObject var questionLoader: QuestionLoader
     @ObservedObject var progressManager: ProgressManager
@@ -72,30 +33,25 @@ struct PracticeHomeView: View {
     var onStartQuiz: (FilterOptions) -> Void
     var onResumeQuiz: (QuizState) -> Void
 
-    // MARK: Filter state
-    @State private var selectedModule: String? = nil
-    @State private var selectedDifficulty: String? = nil
-    @State private var selectedCBVerified: FilterOptions.CBVerifiedInactiveFilter? = nil
-    @State private var selectedAnswerStatus: FilterOptions.AnswerStatus = .all
-    @State private var randomOrder: Bool = true
-
-    // MARK: UI state
     @State private var conceptCategories: [ConceptCategory] = []
     @State private var isComputingConcepts = false
 
+    private var useWideSplit: Bool {
+        viewportWidth >= LayoutMetrics.macWideBreakpoint
+    }
+
     private var conceptFilters: FilterOptions {
-        FilterOptions(
-            module: selectedModule,
-            difficulty: selectedDifficulty,
-            answerStatus: selectedAnswerStatus,
-            isBluebook: nil,
-            cbVerifiedInactive: selectedCBVerified,
-            shuffled: false,
-            questionLimit: nil
-        )
+        filterDraft.conceptFilterOptions()
     }
 
     private var totalCount: Int { conceptCategories.reduce(0) { $0 + $1.count } }
+
+    private var matchingQuizCount: Int {
+        questionLoader.getFilteredQuestionCount(
+            filters: filterDraft.filterOptions(forCount: false),
+            progressManager: progressManager
+        )
+    }
 
     private var conceptColumnCount: Int {
         if viewportWidth >= LayoutMetrics.macTripleColumnBreakpoint { return 3 }
@@ -105,234 +61,398 @@ struct PracticeHomeView: View {
 
     private var conceptGridColumns: [GridItem] {
         (0..<conceptColumnCount).map { _ in
-            GridItem(.flexible(), spacing: MacStudiumDesign.conceptGridSpacing, alignment: .top)
+            GridItem(.flexible(), spacing: StudiumDesignSystem.spacingLG, alignment: .top)
         }
     }
 
-    // MARK: - Body
-
     var body: some View {
-        VStack(spacing: 0) {
-            filterBarSection
-            Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: MacStudiumDesign.practiceMainSectionSpacing) {
-                    if !quizStateManager.savedQuizzes.isEmpty {
-                        continueSection
-                    }
-                    browseTitleRow
-                    conceptCardsGrid
-                }
-                .padding(.horizontal, MacStudiumDesign.practiceMainPaddingH)
-                .padding(.top, MacStudiumDesign.practiceMainPaddingTop)
-                .padding(.bottom, MacStudiumDesign.practiceMainPaddingBottom)
+        Group {
+            if let error = questionLoader.error {
+                StudiumEmptyState(
+                    title: "Could not load questions",
+                    message: error.localizedDescription,
+                    systemImage: "exclamationmark.triangle",
+                    primaryActionTitle: "Retry",
+                    primaryAction: { questionLoader.reload() }
+                )
+            } else if questionLoader.isLoading && questionLoader.questions.isEmpty {
+                StudiumEmptyState(
+                    title: "Loading question bank",
+                    message: nil,
+                    systemImage: "arrow.down.circle"
+                )
+                .overlay { ProgressView() }
+            } else if useWideSplit {
+                widePracticeSplitLayout
+            } else {
+                compactPracticeLayout
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Color.systemGroupedBackground)
         .trackViewportWidth($viewportWidth)
         .task(id: conceptFilters) { await recomputeConcepts() }
         .onAppear { quizStateManager.loadAllQuizStates() }
+        .sheet(isPresented: $showFilterSheet) {
+            PracticeFilterSheet(
+                questionLoader: questionLoader,
+                progressManager: progressManager,
+                mode: .startQuiz(onStart: onStartQuiz),
+                draft: $filterDraft
+            )
+            #if os(iOS)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            #endif
+        }
+        .alert("No questions match", isPresented: $showEmptyQuizAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Adjust filters and try again.")
+        }
+        #if os(iOS)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !useWideSplit {
+                phoneStickyStartBar
+            }
+        }
+        #endif
     }
 
-    // MARK: - Filter bar
+    // MARK: - Wide layout
 
-    private var filterBarSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            FilterFlowLayout(hSpacing: 18, vSpacing: 8) {
-                if questionLoader.getAvailableModules().count > 1 {
-                    filterGroup("Section") {
-                        FilterChipButton(title: "All", isSelected: selectedModule == nil, accent: .blue) { selectedModule = nil }
-                        ForEach(questionLoader.getAvailableModules(), id: \.self) { mod in
-                            FilterChipButton(
-                                title: QuestionBankFilterLabels.sectionChipTitle(module: mod),
-                                isSelected: selectedModule == mod,
-                                accent: .blue
-                            ) { selectedModule = selectedModule == mod ? nil : mod }
-                        }
+    private var widePracticeSplitLayout: some View {
+        HStack(alignment: .top, spacing: 0) {
+            practiceFilterSidebar
+            Divider()
+            practiceMainColumn
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var sidebarWidth: CGFloat {
+        #if os(iOS)
+        StudiumDesignSystem.isPad ? StudiumDesignSystem.practiceSidebarWidthIPad : StudiumDesignSystem.practiceSidebarWidth
+        #else
+        StudiumDesignSystem.practiceSidebarWidth
+        #endif
+    }
+
+    private var practiceFilterSidebar: some View {
+        VStack(spacing: 0) {
+            sidebarHeader
+                .padding(.horizontal, StudiumDesignSystem.practiceSidebarHeaderPadding)
+                .padding(.top, StudiumDesignSystem.practiceSidebarHeaderPadding)
+                .padding(.bottom, StudiumDesignSystem.spacingSM)
+
+            ScrollView {
+                PracticeFilterPanel(draft: $filterDraft, columns: sidebarChipGridColumns)
+                    .padding(.horizontal, StudiumDesignSystem.practiceSidebarPadding)
+                    .padding(.bottom, StudiumDesignSystem.spacingLG)
+            }
+
+            sidebarFooter
+        }
+        .frame(width: sidebarWidth)
+        .frame(maxHeight: .infinity)
+        .background(Color.systemGroupedBackground)
+        .environment(\.filterSidebarLayout, true)
+        .environment(\.filterPanelDensity, .standard)
+    }
+
+    private var sidebarHeader: some View {
+        VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingSM) {
+            Text("Filters")
+                .font(.title2.weight(.semibold))
+            HStack(spacing: StudiumDesignSystem.spacingSM) {
+                Text("\(matchingQuizCount)")
+                    .font(StudiumDesignSystem.statDigitFont)
+                    .foregroundStyle(matchingQuizCount > 0 ? Color.accentColor : .secondary)
+                Text(matchingQuizCount == 1 ? "question matches" : "questions match")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var sidebarFooter: some View {
+        VStack(spacing: 0) {
+            Divider()
+            StudiumPrimaryButton(
+                title: "Start \(matchingQuizCount)",
+                systemImage: "play.fill",
+                isDisabled: matchingQuizCount == 0
+            ) {
+                startQuizFromDraft()
+            }
+            .padding(StudiumDesignSystem.practiceSidebarFooterPadding)
+        }
+        .background(Color.systemBackground)
+        .shadow(color: Color.black.opacity(0.06), radius: 6, y: -2)
+    }
+
+    private var sidebarChipGridColumns: [GridItem] {
+        FilterPanelMetrics.sidebarChipColumns
+    }
+
+    // MARK: - Compact layout
+
+    private var compactPracticeLayout: some View {
+        VStack(spacing: 0) {
+            compactFilterHeader
+            Divider()
+            practiceMainColumn
+        }
+    }
+
+    private var compactFilterHeader: some View {
+        VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingSM) {
+            HStack(alignment: .center, spacing: StudiumDesignSystem.spacingMD) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Practice")
+                        .font(.headline.weight(.semibold))
+                    HStack(spacing: 4) {
+                        Text("\(matchingQuizCount)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(matchingQuizCount > 0 ? Color.accentColor : .secondary)
+                        Text("match")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                 }
-                filterGroup("Difficulty") {
-                    FilterChipButton(title: "All",    isSelected: selectedDifficulty == nil, accent: .blue)   { selectedDifficulty = nil }
-                    FilterChipButton(title: "Easy",   isSelected: selectedDifficulty == "E", accent: .green)  { selectedDifficulty = selectedDifficulty == "E" ? nil : "E" }
-                    FilterChipButton(title: "Medium", isSelected: selectedDifficulty == "M", accent: .orange) { selectedDifficulty = selectedDifficulty == "M" ? nil : "M" }
-                    FilterChipButton(title: "Hard",   isSelected: selectedDifficulty == "H", accent: .red)    { selectedDifficulty = selectedDifficulty == "H" ? nil : "H" }
-                }
-                filterGroup("Status") {
-                    FilterChipButton(title: "All",     isSelected: selectedAnswerStatus == .all,        accent: .blue)  { selectedAnswerStatus = .all }
-                    FilterChipButton(title: "New",     isSelected: selectedAnswerStatus == .unanswered, accent: .blue)  { selectedAnswerStatus = selectedAnswerStatus == .unanswered ? .all : .unanswered }
-                    FilterChipButton(title: "Wrong",   isSelected: selectedAnswerStatus == .incorrect,  accent: .red)   { selectedAnswerStatus = selectedAnswerStatus == .incorrect  ? .all : .incorrect }
-                    FilterChipButton(title: "Correct", isSelected: selectedAnswerStatus == .correct,    accent: .green) { selectedAnswerStatus = selectedAnswerStatus == .correct    ? .all : .correct }
-                }
-                filterGroup("Source") {
-                    FilterChipButton(
-                        title: QuestionBankFilterLabels.cbVerifiedChipOnly,
-                        isSelected: selectedCBVerified == .onlyVerifiedOffCBPracticeTests,
-                        accent: .purple
-                    ) { selectedCBVerified = selectedCBVerified == .onlyVerifiedOffCBPracticeTests ? nil : .onlyVerifiedOffCBPracticeTests }
-                }
-            }
-            .padding(.bottom, 10)
-
-            Divider()
-
-            HStack(spacing: 8) {
+                Spacer(minLength: 8)
                 Button {
-                    selectedModule = nil
-                    selectedDifficulty = nil
-                    selectedAnswerStatus = .all
-                    selectedCBVerified = nil
+                    showFilterSheet = true
                 } label: {
-                    Label("Reset", systemImage: "arrow.counterclockwise")
-                        .font(.subheadline.weight(.medium))
+                    Label("Filters", systemImage: "line.3.horizontal.decrease.circle")
                 }
                 .buttonStyle(.bordered)
-
-                Button { randomOrder.toggle() } label: {
-                    Label(randomOrder ? "Shuffle" : "In Order",
-                          systemImage: randomOrder ? "shuffle" : "list.number")
-                        .font(.subheadline.weight(.medium))
-                }
-                .buttonStyle(.bordered)
-                .tint(randomOrder ? .accentColor : nil)
-
-                Spacer()
-
-                Button {
-                    onStartQuiz(FilterOptions(
-                        module: selectedModule,
-                        difficulty: selectedDifficulty,
-                        answerStatus: selectedAnswerStatus,
-                        isBluebook: nil,
-                        cbVerifiedInactive: selectedCBVerified,
-                        shuffled: randomOrder
-                    ))
-                } label: {
-                    Label("Start \(totalCount)", systemImage: "play.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 4)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(totalCount == 0)
+                .controlSize(StudiumDesignSystem.primaryCTAControlSize)
+                .labelStyle(.titleAndIcon)
             }
-            .padding(.top, 10)
+            if !filterDraft.summaryParts.isEmpty {
+                Text(filterDraft.summaryParts.joined(separator: " · "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
-        .padding(.horizontal, MacStudiumDesign.practiceMainPaddingH)
-        .padding(.vertical, 12)
-        .background(Color.secondarySystemGroupedBackground)
+        .padding(.horizontal, StudiumDesignSystem.practiceMainPaddingH)
+        .padding(.vertical, StudiumDesignSystem.spacingMD)
+        .background(Color.systemBackground)
     }
 
-    private func filterGroup<Content: View>(_ label: String, @ViewBuilder chips: () -> Content) -> some View {
-        HStack(spacing: 6) {
-            Text(label + ":")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
-                .fixedSize()
-            chips()
+    private var phoneStickyStartBar: some View {
+        HStack(spacing: StudiumDesignSystem.spacingMD) {
+            Button { showFilterSheet = true } label: {
+                Image(systemName: "line.3.horizontal.decrease.circle")
+                    .font(.subheadline.weight(.medium))
+                    .frame(
+                        width: StudiumDesignSystem.phoneIconButtonSize,
+                        height: StudiumDesignSystem.phoneIconButtonSize
+                    )
+            }
+            .buttonStyle(.bordered)
+            .controlSize(StudiumDesignSystem.primaryCTAControlSize)
+            .accessibilityLabel("Filters")
+
+            StudiumPrimaryButton(
+                title: "Start \(matchingQuizCount)",
+                systemImage: "play.fill",
+                isDisabled: matchingQuizCount == 0,
+                action: startQuizFromDraft
+            )
         }
+        .padding(.horizontal, StudiumDesignSystem.practiceMainPaddingH)
+        .padding(.vertical, StudiumDesignSystem.spacingSM)
+        .background(.bar)
     }
 
-    // MARK: - Continue section
+    // MARK: - Main column
+
+    private var practiceMainColumn: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: StudiumDesignSystem.practiceMainSectionSpacing) {
+                if !quizStateManager.savedQuizzes.isEmpty {
+                    continueSection
+                }
+                browseTitleRow
+                conceptSkillPicker
+                conceptCardsGrid
+            }
+            .padding(.horizontal, StudiumDesignSystem.practiceMainPaddingH)
+            .padding(.top, StudiumDesignSystem.practiceMainPaddingTop)
+            .padding(.bottom, phoneMainBottomPadding)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if os(iOS)
+        .environment(\.filterPhoneSheetLayout, !useWideSplit && StudiumDesignSystem.isPhone)
+        #endif
+    }
+
+    private var phoneMainBottomPadding: CGFloat {
+        #if os(iOS)
+        useWideSplit
+            ? StudiumDesignSystem.practiceMainPaddingBottom
+            : StudiumDesignSystem.practiceMainPaddingBottom + 72
+        #else
+        StudiumDesignSystem.practiceMainPaddingBottom
+        #endif
+    }
+
+    private var usePhoneContinueCards: Bool {
+        #if os(iOS)
+        StudiumDesignSystem.isPhone && !useWideSplit
+        #else
+        false
+        #endif
+    }
 
     private var continueSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingSM) {
             FilterStripSectionTitle(text: "Continue")
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 12) {
+            if usePhoneContinueCards {
+                VStack(spacing: StudiumDesignSystem.spacingMD) {
                     ForEach(quizStateManager.savedQuizzes.prefix(5)) { quiz in
-                        let answered = quiz.answerStates.values.filter { $0.hasSubmitted }.count
-                        let total = quiz.questionIds.count
-                        ContinueSavedQuizCard(
-                            title: quiz.filterDescription(),
-                            answered: answered,
-                            total: total,
-                            onPlay: { onResumeQuiz(quiz) },
-                            onDelete: { quizStateManager.deleteQuizState(id: quiz.id) }
-                        )
+                        continueCard(for: quiz, phoneLayout: true)
                     }
                 }
+            } else {
+                continueHorizontalScroll
             }
         }
     }
 
-    // MARK: - Browse header
-
-    private var browseTitleRow: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Browse by Concept")
-                .font(MacStudiumDesign.browsePageTitle)
-            Spacer()
-            Group {
-                if isComputingConcepts {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Text("\(totalCount) question\(totalCount == 1 ? "" : "s")")
-                        .font(MacStudiumDesign.browsePageSubtitle)
-                        .foregroundStyle(.secondary)
+    private var continueHorizontalScroll: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: StudiumDesignSystem.spacingMD) {
+                ForEach(quizStateManager.savedQuizzes.prefix(5)) { quiz in
+                    continueCard(for: quiz)
                 }
             }
         }
     }
 
-    // MARK: - Concept cards
+    private func continueCard(for quiz: QuizState, phoneLayout: Bool = false) -> some View {
+        let answered = quiz.answerStates.values.filter { $0.hasSubmitted }.count
+        return ContinueSavedQuizCard(
+            title: quiz.filterDescription(),
+            answered: answered,
+            total: quiz.questionIds.count,
+            usePhoneLayout: phoneLayout,
+            onPlay: { onResumeQuiz(quiz) },
+            onDelete: { quizStateManager.deleteQuizState(id: quiz.id) }
+        )
+    }
+
+    private var browseTitleRow: some View {
+        StudiumSectionHeader(
+            title: "Browse by concept",
+            subtitle: isComputingConcepts ? "Updating counts…" : "\(totalCount) questions"
+        )
+    }
+
+    private var conceptSkillOptions: [String] {
+        questionLoader.getAvailableSkillDescs(for: nil, primaryClass: nil)
+    }
+
+    private var conceptSkillPicker: some View {
+        #if os(iOS)
+        let skillPickerMinHeight: CGFloat = StudiumDesignSystem.isPhone
+            ? StudiumDesignSystem.filterSidebarChipMinHeight
+            : StudiumDesignSystem.filterChipMinHeight
+        #else
+        let skillPickerMinHeight: CGFloat = StudiumDesignSystem.filterChipMinHeight
+        #endif
+
+        return FilterFormCard(spacing: StudiumDesignSystem.spacingSM) {
+            FilterGroupBlock(title: "Skill", systemImage: "target", tint: .purple) {
+                Picker(selection: $filterDraft.skillDesc) {
+                    Text("All skills").tag(Optional<String>.none)
+                    ForEach(conceptSkillOptions, id: \.self) { skill in
+                        Text(skill).tag(Optional(skill))
+                    }
+                } label: {
+                    HStack(spacing: StudiumDesignSystem.spacingSM) {
+                        Text(filterDraft.skillDesc ?? "All skills")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, StudiumDesignSystem.filterChipHPadding)
+                    .padding(.vertical, StudiumDesignSystem.filterChipVPadding)
+                    .frame(maxWidth: .infinity, minHeight: skillPickerMinHeight)
+                    .background(Color.systemBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: FilterPanelMetrics.filterChipCardCorner, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: FilterPanelMetrics.filterChipCardCorner, style: .continuous)
+                            .strokeBorder(Color.studiumBorder, lineWidth: FilterStyle.chipStrokeWidth)
+                    )
+                }
+                .labelsHidden()
+            }
+        }
+    }
 
     private var conceptCardsGrid: some View {
-        let spacing = MacStudiumDesign.conceptGridSpacing
         let accentColors: [Color] = [.blue, .indigo, .purple, .teal]
         return Group {
             if isComputingConcepts && conceptCategories.isEmpty {
-                VStack(spacing: 14) {
+                VStack(spacing: StudiumDesignSystem.spacingMD) {
                     ProgressView()
                     Text("Counting questions…")
                         .font(.body)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 60)
             } else if conceptCategories.isEmpty {
-                Text("No questions match the current filters.")
-                    .font(.title3)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 60)
+                StudiumEmptyState(
+                    title: "No questions match",
+                    message: "Change filters to see concept cards.",
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    primaryActionTitle: "Filters",
+                    primaryAction: { showFilterSheet = true }
+                )
+                .padding(.vertical, 40)
             } else {
-                LazyVGrid(columns: conceptGridColumns, alignment: .leading, spacing: spacing) {
+                LazyVGrid(columns: conceptGridColumns, alignment: .leading, spacing: StudiumDesignSystem.conceptGridSpacing) {
                     ForEach(Array(conceptCategories.enumerated()), id: \.element.id) { index, category in
                         ExpandedConceptCard(
                             category: category,
                             accentColor: accentColors[index % accentColors.count],
-                            onPractice: {
-                                onStartQuiz(FilterOptions(
-                                    module: selectedModule,
-                                    primaryClassCdDesc: category.id,
-                                    difficulty: selectedDifficulty,
-                                    answerStatus: selectedAnswerStatus,
-                                    isBluebook: nil,
-                                    cbVerifiedInactive: selectedCBVerified,
-                                    shuffled: randomOrder
-                                ))
-                            },
-                            onPracticeSkill: { skill in
-                                onStartQuiz(FilterOptions(
-                                    module: selectedModule,
-                                    primaryClassCdDesc: category.id,
-                                    skillDesc: skill,
-                                    difficulty: selectedDifficulty,
-                                    answerStatus: selectedAnswerStatus,
-                                    isBluebook: nil,
-                                    cbVerifiedInactive: selectedCBVerified,
-                                    shuffled: randomOrder
-                                ))
-                            }
+                            onPractice: { startConceptQuiz(categoryId: category.id) },
+                            onPracticeSkill: { skill in startConceptQuiz(categoryId: category.id, skill: skill) }
                         )
-                        .frame(maxWidth: .infinity, alignment: .top)
                     }
                 }
             }
         }
     }
 
-    // MARK: - Background concept computation
+    private func startQuizFromDraft() {
+        let filters = filterDraft.filterOptions(forCount: false)
+        let count = questionLoader.getFilteredQuestionCount(filters: filters, progressManager: progressManager)
+        guard count > 0 else {
+            showEmptyQuizAlert = true
+            return
+        }
+        onStartQuiz(filters)
+    }
+
+    private func startConceptQuiz(categoryId: String, skill: String? = nil) {
+        var f = filterDraft.conceptFilterOptions()
+        f.primaryClassCdDesc = categoryId
+        f.skillDesc = skill
+        f.shuffled = filterDraft.shuffled
+        onStartQuiz(f)
+    }
 
     private func recomputeConcepts() async {
         isComputingConcepts = true
@@ -369,87 +489,5 @@ struct PracticeHomeView: View {
             conceptCategories = categories
             isComputingConcepts = false
         }
-    }
-}
-
-// MARK: - Expanded Concept Card
-
-/// Concept card used in both split-pane and compact practice layouts.
-struct ExpandedConceptCard: View {
-    let category: ConceptCategory
-    var accentColor: Color = .blue
-    let onPractice: () -> Void
-    let onPracticeSkill: (String) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Accent top stripe (matching web design)
-            Rectangle()
-                .fill(accentColor)
-                .frame(height: 3)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(category.id)
-                    .font(MacStudiumDesign.conceptCategoryTitle)
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                Text("\(category.count) question\(category.count == 1 ? "" : "s")")
-                    .font(MacStudiumDesign.conceptCategoryCount)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(minHeight: MacStudiumDesign.conceptCardHeaderMinHeight, alignment: .topLeading)
-            .padding(.horizontal, MacStudiumDesign.conceptCardPaddingH)
-            .padding(.top, MacStudiumDesign.conceptCardHeaderTop)
-            .padding(.bottom, MacStudiumDesign.conceptCardHeaderBottom)
-
-            Divider()
-                .padding(.horizontal, MacStudiumDesign.conceptCardPaddingH)
-
-            VStack(spacing: 0) {
-                ForEach(category.skills) { skill in
-                    Button { onPracticeSkill(skill.id) } label: {
-                        HStack(alignment: .firstTextBaseline, spacing: 12) {
-                            Text(skill.id)
-                                .font(MacStudiumDesign.conceptSkillTitle)
-                                .foregroundStyle(.primary)
-                                .multilineTextAlignment(.leading)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            Text("\(skill.count)")
-                                .font(MacStudiumDesign.conceptSkillCount)
-                                .foregroundStyle(.secondary)
-                                .frame(minWidth: 28, alignment: .trailing)
-                            Image(systemName: "chevron.right")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .padding(.vertical, MacStudiumDesign.conceptSkillRowVPadding)
-                        .padding(.horizontal, MacStudiumDesign.conceptCardPaddingH)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-
-                    if skill.id != category.skills.last?.id {
-                        Divider().padding(.leading, MacStudiumDesign.conceptCardPaddingH)
-                    }
-                }
-            }
-
-            Button(action: onPractice) {
-                Label("Practice this category", systemImage: "play.fill")
-                    .font(MacStudiumDesign.conceptPrimaryButton)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, MacStudiumDesign.conceptPracticeButtonVPadding)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(MacStudiumDesign.primaryCTAControlSize)
-            .padding(MacStudiumDesign.conceptFooterPadding)
-        }
-        .background(Color.secondarySystemGroupedBackground)
-        .clipShape(RoundedRectangle(cornerRadius: MacStudiumDesign.conceptCardCorner))
-        .overlay(
-            RoundedRectangle(cornerRadius: MacStudiumDesign.conceptCardCorner)
-                .strokeBorder(Color.studiumBorder.opacity(0.65), lineWidth: 1)
-        )
     }
 }

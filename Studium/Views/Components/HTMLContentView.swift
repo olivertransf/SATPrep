@@ -28,6 +28,27 @@ private final class WeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
     }
 }
 
+extension Notification.Name {
+    static let studiumClearQuizHighlights = Notification.Name("studiumClearQuizHighlights")
+}
+
+private enum StudiumHighlightScripts {
+    static let clearAll = """
+    (function() {
+        document.querySelectorAll('mark.studium-highlight').forEach(function(mark) {
+            var parent = mark.parentNode;
+            if (!parent) return;
+            while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+            parent.removeChild(mark);
+            parent.normalize();
+        });
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.heightUpdate) {
+            window.webkit.messageHandlers.heightUpdate.postMessage(document.body.scrollHeight);
+        }
+    })();
+    """
+}
+
 // MARK: - Coordinator (shared by iOS + macOS)
 
 final class HTMLCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
@@ -36,9 +57,49 @@ final class HTMLCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHand
     /// updating contentHeight triggers updateUIView/updateNSView → loadHTMLString
     /// → JS height callback → contentHeight update → updateUIView/updateNSView…
     var lastLoadedHTML: String = ""
+    weak var webView: WKWebView?
+    var highlightModeActive = false
+    private var clearHighlightsObserver: NSObjectProtocol?
 
     init(contentHeight: Binding<CGFloat?>) {
         self.contentHeight = contentHeight
+        super.init()
+        clearHighlightsObserver = NotificationCenter.default.addObserver(
+            forName: .studiumClearQuizHighlights,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.clearHighlights()
+        }
+    }
+
+    deinit {
+        if let clearHighlightsObserver {
+            NotificationCenter.default.removeObserver(clearHighlightsObserver)
+        }
+    }
+
+    func attach(webView: WKWebView) {
+        self.webView = webView
+    }
+
+    func syncHighlightMode(active: Bool) {
+        highlightModeActive = active
+        let flag = active ? "true" : "false"
+        webView?.evaluateJavaScript(
+            "window.studiumHighlightActive = \(flag);"
+                + "if (document.body) document.body.classList.toggle('studium-highlight-mode', \(flag));"
+        )
+    }
+
+    func clearHighlights() {
+        webView?.evaluateJavaScript(StudiumHighlightScripts.clearAll) { [weak self] _, _ in
+            self?.webView?.evaluateJavaScript("document.body.scrollHeight") { result, _ in
+                if let num = result as? NSNumber {
+                    self?.applyHeight(CGFloat(num.doubleValue))
+                }
+            }
+        }
     }
 
     // MARK: Height
@@ -83,6 +144,7 @@ final class HTMLCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHand
             }
         }
         poll()
+        syncHighlightMode(active: highlightModeActive)
     }
 }
 
@@ -136,7 +198,7 @@ private func makeWebView(coordinator: HTMLCoordinator) -> WKWebView {
 /// behavior", which in practice causes SwiftUI to tear down and recreate the
 /// WKWebView, leaving content permanently blank.
 /// Base URL for `loadHTMLString` so subresources (e.g. MathJax CDN) resolve consistently on macOS.
-private let htmlContentBaseURL = URL(string: "https://cdn.jsdelivr.net/")
+private let htmlContentBaseURL = StudiumHTMLBuilder.contentBaseURL
 
 /// Layout + typography intent for HTML blocks (passages vs question media).
 enum HTMLContentProfile: String {
@@ -169,8 +231,9 @@ func buildHTMLString(
     let rowAlt      = isDark ? "#171717" : "#F6F8FC"
     let bodyClass   = isDark ? "studysat-dark" : "studysat-light"
     let densityClass = compact ? "studium-html-compact" : "studium-html-comfortable"
+    let highlightFill = isDark ? "rgba(202, 138, 4, 0.45)" : "#FDE68A"
 
-    let processed = content
+    let processed = StudiumHTMLEntities.decode(content)
         .replacingOccurrences(of: "<span class=\"sr-only\">blank</span>", with: "", options: .caseInsensitive)
         .replacingOccurrences(of: "<span class=\"sr-only\">Blank</span>", with: "")
         .replacingOccurrences(of: "<span class=\"sr-only\">BLANK</span>", with: "")
@@ -253,8 +316,29 @@ func buildHTMLString(
         }
         /* Comfortable question / explanation HTML: match passage inset (compact rows stay tight via studium-html-compact). */
         body.studium-html-comfortable.studium-profile-quizfig {
-            padding: 18px 22px 22px !important;
-            line-height: 1.74 !important;
+            padding: 12px 16px 16px !important;
+            line-height: 1.65 !important;
+        }
+        body.studium-highlight-mode {
+            -webkit-user-select: text;
+            user-select: text;
+            cursor: text;
+        }
+        body:not(.studium-highlight-mode) {
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        body.studium-highlight-mode ::selection {
+            background-color: \(highlightFill);
+            color: inherit;
+        }
+        mark.studium-highlight {
+            background-color: \(highlightFill) !important;
+            color: inherit !important;
+            border-radius: 2px;
+            padding: 0 1px;
+            box-decoration-break: clone;
+            -webkit-box-decoration-break: clone;
         }
         /* Question-bank HTML frequently contains inline style="color:#000000" on spans/paragraphs.
            Force all text to the correct colour so it's visible against the background.
@@ -524,6 +608,41 @@ func buildHTMLString(
             }
         })();
         </script>
+        <script>
+        (function() {
+            window.studiumHighlightActive = false;
+
+            function reportHeight() {
+                if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.heightUpdate) {
+                    window.webkit.messageHandlers.heightUpdate.postMessage(document.body.scrollHeight);
+                }
+            }
+
+            function applyHighlightFromSelection() {
+                if (!window.studiumHighlightActive) return;
+                var sel = window.getSelection();
+                if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
+                var range = sel.getRangeAt(0);
+                if (!document.body.contains(range.commonAncestorContainer)) return;
+                var mark = document.createElement('mark');
+                mark.className = 'studium-highlight';
+                mark.setAttribute('data-studium-highlight', '1');
+                try {
+                    range.surroundContents(mark);
+                } catch (e) {
+                    var fragment = range.extractContents();
+                    mark.appendChild(fragment);
+                    range.insertNode(mark);
+                }
+                sel.removeAllRanges();
+                reportHeight();
+            }
+
+            document.addEventListener('mouseup', function() {
+                setTimeout(applyHighlightFromSelection, 0);
+            });
+        })();
+        </script>
     </body>
     </html>
     """
@@ -539,6 +658,7 @@ private struct _HTMLUIRepresentable: UIViewRepresentable {
     let compact: Bool
     let fontSizeOverride: CGFloat?
     let contentProfile: HTMLContentProfile
+    let textHighlightingEnabled: Bool
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("htmlFontSize") private var storedFontSize: Double = 16.0
     @Binding var contentHeight: CGFloat?
@@ -550,6 +670,7 @@ private struct _HTMLUIRepresentable: UIViewRepresentable {
         compact: Bool = false,
         fontSizeOverride: CGFloat? = nil,
         contentProfile: HTMLContentProfile = .standard,
+        textHighlightingEnabled: Bool = false,
         contentHeight: Binding<CGFloat?> = .constant(nil)
     ) {
         self.htmlContent = htmlContent
@@ -558,6 +679,7 @@ private struct _HTMLUIRepresentable: UIViewRepresentable {
         self.compact = compact
         self.fontSizeOverride = fontSizeOverride
         self.contentProfile = contentProfile
+        self.textHighlightingEnabled = textHighlightingEnabled
         self._contentHeight = contentHeight
     }
 
@@ -565,18 +687,38 @@ private struct _HTMLUIRepresentable: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let webView = makeWebView(coordinator: context.coordinator)
+        context.coordinator.attach(webView: webView)
         webView.scrollView.isScrollEnabled = isScrollable
         webView.scrollView.showsVerticalScrollIndicator = isScrollable
+        applyInteractionSettings(to: webView, coordinator: context.coordinator)
         return webView
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.contentHeight = $contentHeight
+        context.coordinator.attach(webView: webView)
+        applyInteractionSettings(to: webView, coordinator: context.coordinator)
         let fontPx = fontSizeOverride ?? CGFloat(storedFontSize)
         loadIfNeeded(
-            buildHTMLString(htmlContent, colorScheme: colorScheme, fontSize: fontPx, compact: compact, profile: contentProfile),
-            into: webView, coordinator: context.coordinator
+            buildHTMLString(
+                htmlContent,
+                colorScheme: colorScheme,
+                fontSize: fontPx,
+                compact: compact,
+                profile: contentProfile
+            ),
+            into: webView,
+            coordinator: context.coordinator
         )
+        context.coordinator.syncHighlightMode(active: textHighlightingEnabled)
+    }
+
+    private func applyInteractionSettings(to webView: WKWebView, coordinator: HTMLCoordinator) {
+        webView.isUserInteractionEnabled = allowInteraction
+        if #available(iOS 14.5, *) {
+            webView.configuration.preferences.isTextInteractionEnabled = allowInteraction
+        }
+        coordinator.syncHighlightMode(active: textHighlightingEnabled)
     }
 }
 
@@ -611,6 +753,7 @@ private struct _HTMLNSRepresentable: NSViewRepresentable {
     let compact: Bool
     let fontSizeOverride: CGFloat?
     let contentProfile: HTMLContentProfile
+    let textHighlightingEnabled: Bool
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("htmlFontSize") private var storedFontSize: Double = 16.0
     @Binding var contentHeight: CGFloat?
@@ -622,6 +765,7 @@ private struct _HTMLNSRepresentable: NSViewRepresentable {
         compact: Bool = false,
         fontSizeOverride: CGFloat? = nil,
         contentProfile: HTMLContentProfile = .standard,
+        textHighlightingEnabled: Bool = false,
         contentHeight: Binding<CGFloat?> = .constant(nil)
     ) {
         self.htmlContent = htmlContent
@@ -630,23 +774,43 @@ private struct _HTMLNSRepresentable: NSViewRepresentable {
         self.compact = compact
         self.fontSizeOverride = fontSizeOverride
         self.contentProfile = contentProfile
+        self.textHighlightingEnabled = textHighlightingEnabled
         self._contentHeight = contentHeight
     }
 
     func makeCoordinator() -> HTMLCoordinator { HTMLCoordinator(contentHeight: $contentHeight) }
 
     func makeNSView(context: Context) -> WKWebViewContainer {
-        WKWebViewContainer(webView: makeWebView(coordinator: context.coordinator))
+        let webView = makeWebView(coordinator: context.coordinator)
+        context.coordinator.attach(webView: webView)
+        applyInteractionSettings(to: webView, coordinator: context.coordinator)
+        return WKWebViewContainer(webView: webView)
     }
 
     func updateNSView(_ container: WKWebViewContainer, context: Context) {
         context.coordinator.contentHeight = $contentHeight
+        context.coordinator.attach(webView: container.webView)
+        applyInteractionSettings(to: container.webView, coordinator: context.coordinator)
         let fontPx = fontSizeOverride ?? CGFloat(storedFontSize)
         loadIfNeeded(
-            buildHTMLString(htmlContent, colorScheme: colorScheme, fontSize: fontPx, compact: compact, profile: contentProfile),
+            buildHTMLString(
+                htmlContent,
+                colorScheme: colorScheme,
+                fontSize: fontPx,
+                compact: compact,
+                profile: contentProfile
+            ),
             into: container.webView,
             coordinator: context.coordinator
         )
+        context.coordinator.syncHighlightMode(active: textHighlightingEnabled)
+    }
+
+    private func applyInteractionSettings(to webView: WKWebView, coordinator: HTMLCoordinator) {
+        if #available(macOS 11.3, *) {
+            webView.configuration.preferences.isTextInteractionEnabled = allowInteraction
+        }
+        coordinator.syncHighlightMode(active: textHighlightingEnabled)
     }
 }
 #endif
@@ -664,6 +828,7 @@ struct HTMLContentView: View {
     var fontSizeOverride: CGFloat? = nil
     var contentProfile: HTMLContentProfile = .standard
     var fillViewport: Bool = false
+    var textHighlightingEnabled: Bool = false
 
     @State private var measuredHeight: CGFloat? = nil
 
@@ -674,7 +839,8 @@ struct HTMLContentView: View {
         compact: Bool = false,
         fontSizeOverride: CGFloat? = nil,
         contentProfile: HTMLContentProfile = .standard,
-        fillViewport: Bool = false
+        fillViewport: Bool = false,
+        textHighlightingEnabled: Bool = false
     ) {
         self.htmlContent = htmlContent
         self.isScrollable = isScrollable
@@ -683,6 +849,7 @@ struct HTMLContentView: View {
         self.fontSizeOverride = fontSizeOverride
         self.contentProfile = contentProfile
         self.fillViewport = fillViewport
+        self.textHighlightingEnabled = textHighlightingEnabled
     }
 
     private var frameHeight: CGFloat {
@@ -711,6 +878,7 @@ struct HTMLContentView: View {
             compact: compact,
             fontSizeOverride: fontSizeOverride,
             contentProfile: contentProfile,
+            textHighlightingEnabled: textHighlightingEnabled,
             contentHeight: binding
         )
         #elseif os(macOS)
@@ -721,6 +889,7 @@ struct HTMLContentView: View {
             compact: compact,
             fontSizeOverride: fontSizeOverride,
             contentProfile: contentProfile,
+            textHighlightingEnabled: textHighlightingEnabled,
             contentHeight: binding
         )
         #endif

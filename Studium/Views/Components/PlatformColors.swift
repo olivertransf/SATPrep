@@ -26,9 +26,19 @@ extension Color {
         Color("StudiumCard")
     }
 
-    /// Secondary grouped surface (`--card` in dark, white in light).
+    /// Raised card on grouped background (`--card`).
     static var secondarySystemGroupedBackground: Color {
         Color("StudiumCard")
+    }
+
+    /// Muted secondary label.
+    static var studiumMuted: Color {
+        Color.secondary
+    }
+
+    /// Hairline separators and chip outlines.
+    static var studiumSeparator: Color {
+        Color.studiumBorder
     }
 
     /// Tertiary inset surface (`--surface`).

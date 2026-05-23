@@ -386,7 +386,6 @@ struct VocabFlashcardsView: View {
         ZStack(alignment: .top) {
             Text(card.word)
                 .font(.title.weight(.bold))
-                .fontDesign(.monospaced)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -416,7 +415,6 @@ struct VocabFlashcardsView: View {
         ZStack(alignment: .top) {
             Text(card.definition)
                 .font(.body)
-                .fontDesign(.monospaced)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -467,7 +465,6 @@ struct VocabFlashcardsView: View {
             VStack(spacing: 12) {
                 Text(card.meaning)
                     .font(.body.weight(.medium))
-                    .fontDesign(.monospaced)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity)

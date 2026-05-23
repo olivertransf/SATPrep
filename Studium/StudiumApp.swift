@@ -6,6 +6,22 @@
 //
 
 import SwiftUI
+#if os(macOS)
+import AppKit
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        NSApp.setActivationPolicy(.accessory)
+        return false
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        if NSApp.windows.contains(where: { $0.isVisible && $0.isKeyWindow }) {
+            NSApp.setActivationPolicy(.regular)
+        }
+    }
+}
+#endif
 
 @main
 struct StudiumApp: App {
@@ -13,6 +29,7 @@ struct StudiumApp: App {
     @AppStorage("appearanceMode") private var appearanceMode = "system"
     @Environment(\.scenePhase) private var scenePhase
     #if os(macOS)
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var breakMonitor = ScreenBreakMonitor()
     @AppStorage("menuBarFullScreenBreak") private var menuBarFullScreenBreak: Bool = false
     #endif
@@ -27,7 +44,7 @@ struct StudiumApp: App {
 
     var body: some Scene {
         #if os(macOS)
-        WindowGroup {
+        WindowGroup(id: "main") {
             ContentView()
                 .preferredColorScheme(preferredScheme)
                 .environmentObject(breakMonitor)

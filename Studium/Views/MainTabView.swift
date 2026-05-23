@@ -2,8 +2,6 @@
 //  MainTabView.swift
 //  Studium
 //
-//  Created by Oliver Tran on 12/23/25.
-//
 
 import SwiftUI
 #if os(iOS)
@@ -19,16 +17,22 @@ struct MainTabView: View {
     @State private var activeQuizQuestionIds: [String] = []
     @State private var activeQuizId: String? = nil
     @State private var isInQuiz = false
+    @State private var showLaunchEmptyAlert = false
 
-    var quizQuestions: [Question] {
+    private var quizQuestions: [Question] {
         guard !activeQuizQuestionIds.isEmpty else { return [] }
         let byId = questionLoader.questionsById
-        let restored = activeQuizQuestionIds.compactMap { byId[$0] }
-        return restored.count == activeQuizQuestionIds.count ? restored : []
+        return activeQuizQuestionIds.compactMap { byId[$0] }
+    }
+
+    private var quizResumeIssue: String? {
+        guard isInQuiz, !activeQuizQuestionIds.isEmpty else { return nil }
+        let missing = activeQuizQuestionIds.count - quizQuestions.count
+        guard missing > 0 else { return nil }
+        return "\(missing) question\(missing == 1 ? "" : "s") missing from the question bank. End this quiz or update the bank."
     }
 
     var body: some View {
-        // Standard tab bar on iPhone; sidebar-adaptable on iPad (iOS 18+) and macOS 15+.
         #if os(iOS)
         if #available(iOS 18.0, *), UIDevice.current.userInterfaceIdiom != .phone {
             sidebarTabs
@@ -51,11 +55,8 @@ struct MainTabView: View {
         tabs.tabViewStyle(.sidebarAdaptable)
     }
 
-    // MARK: - Tab content (shared)
-
     private var tabs: some View {
         TabView {
-            // Practice Tab
             NavigationStack {
                 if isInQuiz {
                     QuizView(
@@ -63,80 +64,69 @@ struct MainTabView: View {
                         progressManager: progressManager,
                         questions: quizQuestions,
                         filters: $activeQuizFilters,
-                        showFilters: .constant(false),
                         savedQuestionIds: $activeQuizQuestionIds,
                         currentQuizId: $activeQuizId,
-                        onEndQuiz: {
-                            isInQuiz = false
-                        }
+                        resumeIssue: quizResumeIssue,
+                        onEndQuiz: { endQuiz() }
                     )
                 } else {
                     PracticeHomeView(
                         questionLoader: questionLoader,
                         progressManager: progressManager,
                         quizStateManager: quizStateManager,
-                        onStartQuiz: { filters in
-                            launchQuiz(filters: filters)
-                        },
-                        onResumeQuiz: { savedQuiz in
-                            resumeQuiz(savedQuiz)
-                        }
+                        onStartQuiz: { launchQuiz(filters: $0) },
+                        onResumeQuiz: { resumeQuiz($0) }
                     )
                     .navigationTitle("Practice")
                     #if os(iOS)
-                    // Inline avoids stacked large titles with iPad `NavigationSplitView` in Practice home.
                     .navigationBarTitleDisplayMode(.inline)
                     #else
                     .navLargeTitle()
                     #endif
                 }
             }
-            .tabItem {
-                Label("Practice", systemImage: "books.vertical")
-            }
+            .tabItem { Label("Practice", systemImage: "books.vertical") }
 
-            // Reference Tab
             ReferenceView()
-            .tabItem {
-                Label("Reference", systemImage: "book.closed")
-            }
+                .tabItem { Label("Reference", systemImage: "book.closed") }
 
-            // Vocab flashcards
             NavigationStack {
                 VocabFlashcardsView()
             }
-            .tabItem {
-                Label("Vocab", systemImage: "rectangle.on.rectangle.angled")
-            }
+            .tabItem { Label("Vocab", systemImage: "rectangle.on.rectangle.angled") }
 
-            // Desmos graphing calculator
             NavigationStack {
                 DesmosCalculatorView()
                     .navigationTitle("Desmos")
                     .navInlineTitle()
             }
-            .tabItem {
-                Label("Desmos", systemImage: "function")
-            }
+            .tabItem { Label("Desmos", systemImage: "function") }
 
-            // Settings Tab
-            SettingsView(progressManager: progressManager, questionLoader: questionLoader)
-            .tabItem {
-                Label("Settings", systemImage: "gearshape")
+            NavigationStack {
+                StatsView(progressManager: progressManager, questionLoader: questionLoader)
             }
+            .tabItem { Label("Stats", systemImage: "chart.bar.fill") }
+
+            SettingsView(progressManager: progressManager, questionLoader: questionLoader)
+                .tabItem { Label("Settings", systemImage: "gearshape") }
+        }
+        .alert("No questions match", isPresented: $showLaunchEmptyAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Adjust filters and try again.")
         }
     }
 
-    // MARK: - Quiz Launch
-
     private func launchQuiz(filters: FilterOptions) {
         let questions = questionLoader.getFilteredQuestions(filters: filters, progressManager: progressManager)
-        guard !questions.isEmpty else { return }
-
+        guard !questions.isEmpty else {
+            showLaunchEmptyAlert = true
+            return
+        }
         let state = QuizState(
             filters: filters,
             currentIndex: 0,
-            questionIds: questions.map { $0.questionId }
+            questionIds: questions.map(\.questionId)
         )
         activeQuizFilters = filters
         activeQuizQuestionIds = state.questionIds
@@ -150,5 +140,9 @@ struct MainTabView: View {
         activeQuizQuestionIds = savedQuiz.questionIds
         activeQuizId = savedQuiz.id
         isInQuiz = true
+    }
+
+    private func endQuiz() {
+        isInQuiz = false
     }
 }

@@ -1,14 +1,16 @@
 import { useState, useMemo } from 'react'
 import type {
-  Question, QuestionProgress, FilterOptions, SavedQuiz, AnswerStatus,
-  CBVerifiedInactiveFilter,
+  Question, QuestionProgress, FilterOptions, SavedQuiz,
 } from '../../types'
 import { getFilteredQuestions } from '../../utils/questions'
 import { deleteQuiz } from '../../store/quiz'
-import {
-  Play, Trash2, ChevronDown, ChevronUp,
-  Shuffle, ArrowDownUp, RotateCcw,
-} from 'lucide-react'
+import { Play, SlidersHorizontal, X } from 'lucide-react'
+import { useWidePracticeLayout } from '../../hooks/useMediaQuery'
+import { PRACTICE_SIDEBAR_WIDTH_PX } from '../../design/tokens'
+import { SectionEyebrow } from '../ui/SectionEyebrow'
+import { PracticeFiltersPanel, type PracticeFilterState } from './PracticeFiltersPanel'
+import { ContinueQuizCard } from './ContinueQuizCard'
+import { ConceptCard, type ConceptCategoryData } from './ConceptCard'
 
 interface PracticeHomeProps {
   questions: Question[]
@@ -20,28 +22,23 @@ interface PracticeHomeProps {
   onQuizzesChange: (quizzes: SavedQuiz[]) => void
 }
 
-interface ConceptSkill    { id: string; count: number }
-interface ConceptCategory { id: string; count: number; skills: ConceptSkill[] }
-
 const DIFFICULTY_LABELS: Record<string, string> = { E: 'Easy', M: 'Medium', H: 'Hard' }
 
-const CARD_ACCENTS = [
-  '#007aff', '#0a84ff', '#3f9bff', '#5caeff',
-]
+const CARD_ACCENTS = ['#007aff', '#0a84ff', '#3f9bff', '#5caeff']
 
 function sectionLabel(m: string) {
   const l = m.toLowerCase()
   if (l === 'english') return 'Reading & Writing'
-  if (l === 'math')    return 'Math'
+  if (l === 'math') return 'Math'
   return m.charAt(0).toUpperCase() + m.slice(1)
 }
 
 function describeFilters(f: FilterOptions): string {
   const parts: string[] = []
-  if (f.module)             parts.push(sectionLabel(f.module))
+  if (f.module) parts.push(sectionLabel(f.module))
   if (f.primaryClassCdDesc) parts.push(f.primaryClassCdDesc)
-  if (f.skillDesc)          parts.push(f.skillDesc)
-  if (f.difficulty)         parts.push(DIFFICULTY_LABELS[f.difficulty] ?? f.difficulty)
+  if (f.skillDesc) parts.push(f.skillDesc)
+  if (f.difficulty) parts.push(DIFFICULTY_LABELS[f.difficulty] ?? f.difficulty)
   if (f.answerStatus !== 'all') parts.push(f.answerStatus)
   if (f.isBluebook === 'bluebook') parts.push('Practice tests only')
   if (f.isBluebook === 'notBluebook') parts.push('Exclude active')
@@ -50,197 +47,42 @@ function describeFilters(f: FilterOptions): string {
   return parts.length > 0 ? parts.join(' · ') : 'All Questions'
 }
 
-const CB_VERIFIED = {
-  group: 'CB verified pool',
-  any: 'Any',
-  only: 'Verified off practice tests',
-  help:
-    'Only IDs from an Educator Question Bank export with “Exclude Active Questions” (sidecar JSON).',
-} as const
-
-function PillButton({
-  label, active, onClick,
-}: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all"
-      style={active
-        ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
-        : { background: 'transparent', color: 'var(--muted)', borderColor: 'var(--border)' }}
-    >
-      {label}
-    </button>
-  )
-}
-
-// ─── Concept card ─────────────────────────────────────────────────────────────
-
-interface ConceptCardProps {
-  cat: ConceptCategory
-  accent: string
-  progress: Record<string, QuestionProgress>
-  filteredQuestions: Question[]
-  expanded: boolean
-  onToggle: () => void
-  onPractice: (catId: string, skillId?: string) => void
-}
-
-function ConceptCard({ cat, accent, progress, filteredQuestions, expanded, onToggle, onPractice }: ConceptCardProps) {
-  const catQs   = filteredQuestions.filter(q => q.primaryClassCdDesc === cat.id)
-  const answered = catQs.filter(q => progress[q.questionId]?.correct !== undefined).length
-  const correct  = catQs.filter(q => progress[q.questionId]?.correct === true).length
-  const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : null
-  const pct      = cat.count > 0 ? Math.round((answered / cat.count) * 100) : 0
-
-  return (
-    <div className="rounded-sm border overflow-hidden"
-      style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-
-      {/* Accent top stripe */}
-      <div className="h-px" style={{ background: accent }} />
-
-      <div className="px-3.5 pt-3 pb-3 space-y-2.5">
-        {/* Title + count */}
-        <div className="flex items-start justify-between gap-2">
-          <span className="text-sm font-medium leading-snug" style={{ color: 'var(--text)' }}>
-            {cat.id}
-          </span>
-          <span className="text-xs tabular-nums shrink-0 pt-0.5" style={{ color: 'var(--muted)' }}>
-            {cat.count}
-          </span>
-        </div>
-
-        {/* Progress bar + stats */}
-        <div className="space-y-1">
-          <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--surface)' }}>
-            <div className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${pct}%`, background: accent }} />
-          </div>
-          <div className="flex items-center justify-between text-xs" style={{ color: 'var(--muted)' }}>
-            <span>{answered}/{cat.count} done</span>
-            {accuracy !== null && (
-              <span style={{
-                color: accuracy >= 70 ? 'var(--success)'
-                  : accuracy >= 50 ? 'var(--warning)'
-                  : 'var(--error)',
-              }}>
-                {accuracy}% acc
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Buttons */}
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => onPractice(cat.id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-semibold flex-1 justify-center transition-all border"
-            style={{ background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' }}
-          >
-            <Play size={11} aria-hidden="true" />
-            Practice
-          </button>
-          <button
-            onClick={onToggle}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-sm text-xs font-medium border transition-all"
-            style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}
-          >
-            {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            {cat.skills.length}
-          </button>
-        </div>
-      </div>
-
-      {/* Skills list */}
-      {expanded && (
-        <div className="border-t" style={{ borderColor: 'var(--border)' }}>
-          {cat.skills.map(s => {
-            const sQs  = catQs.filter(q => q.skillDesc === s.id)
-            const sAns = sQs.filter(q => progress[q.questionId]?.correct !== undefined).length
-            const sCor = sQs.filter(q => progress[q.questionId]?.correct === true).length
-            const sAcc = sAns > 0 ? Math.round((sCor / sAns) * 100) : null
-            return (
-              <div key={s.id}
-                className="flex items-center gap-2.5 px-3.5 py-2 border-b last:border-0"
-                style={{ borderColor: 'var(--border)' }}>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium leading-snug" style={{ color: 'var(--text)' }}>{s.id}</div>
-                  <div className="text-[11px]" style={{ color: 'var(--muted)' }}>
-                    {s.count} q
-                    {sAcc !== null && (
-                      <span style={{
-                        color: sAcc >= 70 ? 'var(--success)' : sAcc >= 50 ? 'var(--warning)' : 'var(--error)',
-                      }}>
-                        {' · '}{sAcc}%
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => onPractice(cat.id, s.id)}
-                  className="px-2.5 py-1 rounded-sm text-[11px] font-medium border shrink-0 transition-all"
-                  style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
-                >
-                  Practice
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Main component ───────────────────────────────────────────────────────────
-
 export default function PracticeHome({
   questions, progress, savedQuizzes, cbVerifiedNotOnPracticeTestIds,
   onStartQuiz, onResumeQuiz, onQuizzesChange,
 }: PracticeHomeProps) {
-  const [difficulty,   setDifficulty]   = useState<string | undefined>()
-  const [answerStatus, setAnswerStatus] = useState<AnswerStatus>('all')
-  const [cbVerifiedInactive, setCbVerifiedInactive] = useState<CBVerifiedInactiveFilter | undefined>()
-  const [shuffled,     setShuffled]     = useState(true)
-  const [questionLimit, setQuestionLimit] = useState<number | undefined>()
+  const useWideSplit = useWidePracticeLayout()
+  const [showFilterSheet, setShowFilterSheet] = useState(false)
 
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+  const [filterState, setFilterState] = useState<PracticeFilterState>({
+    answerStatus: 'all',
+    shuffled: true,
+  })
 
-  const verifiedInBank = useMemo(
-    () => questions.filter(q => cbVerifiedNotOnPracticeTestIds.has(q.questionId.toLowerCase())).length,
-    [questions, cbVerifiedNotOnPracticeTestIds],
-  )
+  function patchFilters(patch: Partial<PracticeFilterState>) {
+    setFilterState(prev => ({ ...prev, ...patch }))
+  }
 
   const currentFilters: FilterOptions = useMemo(() => ({
     module: undefined,
-    difficulty,
+    difficulty: filterState.difficulty,
     primaryClassCdDesc: undefined,
     skillDesc: undefined,
-    answerStatus,
+    answerStatus: filterState.answerStatus,
     isBluebook: undefined,
-    cbVerifiedInactive,
+    cbVerifiedInactive: filterState.cbVerifiedInactive,
     shuffled: false,
-    questionLimit,
-  }), [difficulty, answerStatus, cbVerifiedInactive, questionLimit])
+    questionLimit: filterState.questionLimit,
+  }), [filterState])
 
   const filteredQuestions = useMemo(
     () => getFilteredQuestions(questions, currentFilters, progress, cbVerifiedNotOnPracticeTestIds),
-    [questions, currentFilters, progress, cbVerifiedNotOnPracticeTestIds]
+    [questions, currentFilters, progress, cbVerifiedNotOnPracticeTestIds],
   )
 
   const matchingCount = filteredQuestions.length
 
-  const stats = useMemo(() => {
-    const answered  = filteredQuestions.filter(q => progress[q.questionId]?.correct !== undefined).length
-    const correct   = filteredQuestions.filter(q => progress[q.questionId]?.correct === true).length
-    const remaining = filteredQuestions.filter(q => !progress[q.questionId]?.seen).length
-    const accuracy  = answered > 0 ? Math.round((correct / answered) * 100) : null
-    return { answered, correct, remaining, accuracy }
-  }, [filteredQuestions, progress])
-
-  const conceptCategories: ConceptCategory[] = useMemo(() => {
+  const conceptCategories: ConceptCategoryData[] = useMemo(() => {
     const catMap: Record<string, Record<string, number>> = {}
     for (const q of filteredQuestions) {
       if (!catMap[q.primaryClassCdDesc]) catMap[q.primaryClassCdDesc] = {}
@@ -260,7 +102,7 @@ export default function PracticeHome({
   function handleStart(catId?: string, skillId?: string) {
     onStartQuiz({
       ...currentFilters,
-      shuffled,
+      shuffled: filterState.shuffled,
       ...(catId ? { primaryClassCdDesc: catId } : {}),
       ...(skillId ? { skillDesc: skillId } : {}),
     })
@@ -271,240 +113,215 @@ export default function PracticeHome({
     onQuizzesChange(savedQuizzes.filter(q => q.id !== id))
   }
 
-  function toggleCategory(id: string) {
-    setExpandedCategories(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
+  const filterSummary = useMemo(() => {
+    const parts: string[] = []
+    if (filterState.difficulty) parts.push(DIFFICULTY_LABELS[filterState.difficulty] ?? filterState.difficulty)
+    if (filterState.answerStatus !== 'all') parts.push(filterState.answerStatus)
+    if (filterState.cbVerifiedInactive) parts.push('CB verified')
+    if (filterState.questionLimit) parts.push(`Max ${filterState.questionLimit}`)
+    return parts.join(' · ')
+  }, [filterState])
 
-  function resetAllFilters() {
-    setDifficulty(undefined)
-    setAnswerStatus('all')
-    setCbVerifiedInactive(undefined)
-    setShuffled(true)
-    setQuestionLimit(undefined)
-  }
+  const mainColumn = (
+    <div
+      className="flex-1 min-w-0 overflow-y-auto studium-screen"
+      style={{
+        padding: 'var(--space-lg) var(--space-xl)',
+        paddingBottom: useWideSplit ? 'var(--space-xl)' : '5.5rem',
+      }}
+    >
+      {savedQuizzes.length > 0 && (
+        <section className="mb-6">
+          <SectionEyebrow>Continue</SectionEyebrow>
+          <div className="mt-3 flex flex-col gap-3 md:hidden">
+            {savedQuizzes.slice(0, 5).map(quiz => {
+              const answered = Object.values(quiz.answerStates).filter(s => s.hasSubmitted).length
+              return (
+                <ContinueQuizCard
+                  key={quiz.id}
+                  fullWidth
+                  title={describeFilters(quiz.filters)}
+                  answered={answered}
+                  total={quiz.questionIds.length}
+                  onResume={() => onResumeQuiz(quiz)}
+                  onDelete={() => handleDeleteQuiz(quiz.id)}
+                />
+              )
+            })}
+          </div>
+          <div className="mt-3 hidden md:flex gap-4 overflow-x-auto pb-1">
+            {savedQuizzes.slice(0, 5).map(quiz => {
+              const answered = Object.values(quiz.answerStates).filter(s => s.hasSubmitted).length
+              return (
+                <ContinueQuizCard
+                  key={quiz.id}
+                  title={describeFilters(quiz.filters)}
+                  answered={answered}
+                  total={quiz.questionIds.length}
+                  onResume={() => onResumeQuiz(quiz)}
+                  onDelete={() => handleDeleteQuiz(quiz.id)}
+                />
+              )
+            })}
+          </div>
+        </section>
+      )}
 
-  // Accuracy color
-  const accuracyColor = stats.accuracy === null ? 'var(--muted)'
-    : stats.accuracy >= 75 ? 'var(--success)'
-    : stats.accuracy >= 50 ? 'var(--warning)'
-    : 'var(--error)'
+      <header className="mb-5">
+        <h2 className="studium-page-title m-0">Browse by topic</h2>
+        <p className="studium-page-subtitle mt-1 mb-0">
+          {conceptCategories.length} topics · {matchingCount} questions
+        </p>
+      </header>
+
+      {conceptCategories.length === 0 ? (
+        <p className="text-center py-16 studium-page-subtitle">No questions match these filters</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {conceptCategories.map((cat, i) => (
+            <ConceptCard
+              key={cat.id}
+              category={cat}
+              accent={CARD_ACCENTS[i % CARD_ACCENTS.length]}
+              onPractice={() => handleStart(cat.id)}
+              onPracticeSkill={skillId => handleStart(cat.id, skillId)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
+  const startButton = (
+    <button
+      type="button"
+      onClick={() => handleStart()}
+      disabled={matchingCount === 0}
+      className="studium-btn-primary w-full"
+    >
+      <Play size={16} aria-hidden="true" />
+      Start {matchingCount}
+    </button>
+  )
+
+  if (useWideSplit) {
+    return (
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <aside
+          className="shrink-0 flex flex-col border-r studium-screen overflow-hidden"
+          style={{ width: PRACTICE_SIDEBAR_WIDTH_PX, borderColor: 'var(--border)' }}
+        >
+          <div className="px-5 pt-5 pb-3">
+            <h2 className="studium-page-title m-0 text-[1.5rem]">Filters</h2>
+            <p className="mt-2 m-0 flex items-baseline gap-2">
+              <span
+                className="studium-stat-digit"
+                style={{ color: matchingCount > 0 ? 'var(--accent)' : 'var(--muted)', fontSize: '1.5rem' }}
+              >
+                {matchingCount}
+              </span>
+              <span className="studium-page-subtitle">
+                {matchingCount === 1 ? 'question matches' : 'questions match'}
+              </span>
+            </p>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
+            <PracticeFiltersPanel
+              filters={filterState}
+              onChange={patchFilters}
+              sidebar
+            />
+          </div>
+          <div
+            className="shrink-0 p-4 border-t"
+            style={{ borderColor: 'var(--border)', background: 'var(--card)' }}
+          >
+            {startButton}
+          </div>
+        </aside>
+        {mainColumn}
+      </div>
+    )
+  }
 
   return (
-    <div className="flex-1 overflow-y-auto" style={{ background: 'var(--bg)' }}>
-
-      {/* Filters — in document flow (scrolls with content) */}
-      <div className="border-b" style={{ borderColor: 'var(--border)' }}>
-        <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-5 py-2.5 w-full min-w-0">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 items-start">
-            <div className="space-y-2">
-              <div>
-                <h1 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Practice questions</h1>
-                <p className="text-[11px] mt-0.5" style={{ color: 'var(--muted)' }}>
-                  Filter quickly, then start. Topic-level practice is available below.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wide mr-1" style={{ color: 'var(--muted)' }}>
-                  Difficulty
-                </span>
-                <PillButton label="All" active={!difficulty} onClick={() => setDifficulty(undefined)} />
-                {Object.entries(DIFFICULTY_LABELS).map(([value, label]) => (
-                  <PillButton key={value} label={label} active={difficulty === value} onClick={() => setDifficulty(value)} />
-                ))}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wide mr-1" style={{ color: 'var(--muted)' }}>
-                  Status
-                </span>
-                <PillButton label="All" active={answerStatus === 'all'} onClick={() => setAnswerStatus('all')} />
-                <PillButton label="New" active={answerStatus === 'unanswered'} onClick={() => setAnswerStatus('unanswered')} />
-                <PillButton label="Wrong" active={answerStatus === 'incorrect'} onClick={() => setAnswerStatus('incorrect')} />
-                <PillButton label="Correct" active={answerStatus === 'correct'} onClick={() => setAnswerStatus('correct')} />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wide mr-1" style={{ color: 'var(--muted)' }}>
-                  {CB_VERIFIED.group}
-                </span>
-                <PillButton
-                  label={CB_VERIFIED.any}
-                  active={!cbVerifiedInactive}
-                  onClick={() => setCbVerifiedInactive(undefined)}
-                />
-                <PillButton
-                  label={CB_VERIFIED.only}
-                  active={cbVerifiedInactive === 'onlyVerifiedOffCBPracticeTests'}
-                  onClick={() => setCbVerifiedInactive(
-                    cbVerifiedInactive === 'onlyVerifiedOffCBPracticeTests' ? undefined : 'onlyVerifiedOffCBPracticeTests',
-                  )}
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wide mr-1" style={{ color: 'var(--muted)' }}>
-                  Question count
-                </span>
-                <PillButton label="No limit" active={!questionLimit} onClick={() => setQuestionLimit(undefined)} />
-                {[10, 20, 30, 50].map(n => (
-                  <PillButton key={n} label={String(n)} active={questionLimit === n} onClick={() => setQuestionLimit(n)} />
-                ))}
-              </div>
-            </div>
-
-            <div className="w-full lg:w-[250px] rounded-sm border p-2 space-y-2" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-              <button
-                type="button"
-                onClick={() => handleStart()}
-                disabled={matchingCount === 0}
-                className="w-full flex items-center justify-center gap-2 min-h-[2.2rem] px-3 rounded-sm text-xs font-semibold border transition-all disabled:opacity-40"
-                style={{ background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' }}
-              >
-                <Play size={13} aria-hidden="true" />
-                Start
-                <span className="tabular-nums opacity-80">({matchingCount})</span>
-              </button>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={resetAllFilters}
-                  className="flex items-center justify-center gap-1.5 min-h-[2.1rem] px-2.5 rounded-sm text-[11px] font-semibold border transition-all"
-                  style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}
-                >
-                  <RotateCcw size={12} />
-                  Reset
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShuffled(s => !s)}
-                  title={shuffled ? 'Random order' : 'Sequential order'}
-                  className="flex items-center justify-center gap-1.5 min-h-[2.1rem] px-2.5 rounded-sm text-[11px] font-semibold border transition-all"
-                  style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}
-                >
-                  {shuffled ? <Shuffle size={12} /> : <ArrowDownUp size={12} />}
-                  {shuffled ? 'Random' : 'In order'}
-                </button>
-              </div>
-
-              <div className="text-[11px] space-y-1" style={{ color: 'var(--muted)' }}>
-                {stats.accuracy !== null && (
-                  <div>
-                    Accuracy <span className="font-semibold" style={{ color: accuracyColor }}>{stats.accuracy}%</span>
-                  </div>
-                )}
-                <div>
-                  Answered <span className="font-semibold" style={{ color: 'var(--text)' }}>{stats.answered}</span> · Remaining{' '}
-                  <span className="font-semibold" style={{ color: 'var(--text)' }}>{stats.remaining}</span>
-                </div>
-                <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--bg)' }}>
-                  <div
-                    className="h-full transition-all"
-                    style={{
-                      width: `${matchingCount > 0 ? Math.round((stats.answered / matchingCount) * 100) : 0}%`,
-                      background: 'var(--accent)',
-                    }}
-                  />
-                </div>
-                <div className="text-[10px]">Sidecar: {cbVerifiedNotOnPracticeTestIds.size} IDs · {verifiedInBank} in bank</div>
-              </div>
-            </div>
+    <div className="flex flex-1 min-h-0 flex-col overflow-hidden relative">
+      <div
+        className="shrink-0 border-b px-4 py-3 flex items-center gap-3"
+        style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="text-base font-semibold" style={{ color: 'var(--text)' }}>Practice</div>
+          <div className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
+            <span style={{ color: matchingCount > 0 ? 'var(--accent)' : undefined, fontWeight: 600 }}>
+              {matchingCount}
+            </span>{' '}
+            match{matchingCount === 1 ? '' : 'es'}
           </div>
-        </div>
-      </div>
-
-      {/* ═══ CONTENT ═══ */}
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-5 py-4 space-y-4">
-
-        {/* Saved quizzes */}
-        {savedQuizzes.length > 0 && (
-          <div className="space-y-2.5">
-            <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
-              Continue where you left off
-            </div>
-            <div className="flex gap-2.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-              {savedQuizzes.map(quiz => {
-                const answered = Object.values(quiz.answerStates).filter(s => s.hasSubmitted).length
-                const correct  = Object.values(quiz.answerStates).filter(s => s.isCorrect).length
-                const pct = quiz.questionIds.length > 0 ? (answered / quiz.questionIds.length) * 100 : 0
-                return (
-                  <div key={quiz.id}
-                    className="rounded-sm border shrink-0 w-56 overflow-hidden"
-                    style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-                    <div className="h-px" style={{ background: 'var(--surface)' }}>
-                      <div className="h-full transition-all"
-                        style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--success)' : 'var(--accent)' }} />
-                    </div>
-                    <div className="p-3 space-y-2">
-                      <div className="text-xs leading-snug line-clamp-2" style={{ color: 'var(--text)' }}>
-                        {describeFilters(quiz.filters)}
-                      </div>
-                      <div className="text-[11px]" style={{ color: 'var(--muted)' }}>
-                        {answered}/{quiz.questionIds.length} answered
-                        {answered > 0 && (
-                          <span style={{ color: 'var(--success)' }}> · {correct} ✓</span>
-                        )}
-                      </div>
-                      <div className="flex gap-1.5">
-                        <button onClick={() => onResumeQuiz(quiz)}
-                          className="flex-1 py-1.5 rounded-sm text-xs font-semibold"
-                          style={{ background: 'var(--accent)', color: '#fff' }}>
-                          Resume
-                        </button>
-                        <button onClick={() => handleDeleteQuiz(quiz.id)}
-                          className="px-2 py-1.5 rounded-sm border"
-                          style={{ borderColor: 'var(--border)', color: 'var(--error)' }}
-                          aria-label="Delete quiz">
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Concept grid */}
-        <div className="space-y-2.5">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-              Browse by Topic
-            </h2>
-            <span className="text-xs" style={{ color: 'var(--muted)' }}>
-              {conceptCategories.length} topics · {matchingCount} questions
-            </span>
-          </div>
-
-          {conceptCategories.length === 0 ? (
-            <div className="text-center py-12 text-sm" style={{ color: 'var(--muted)' }}>
-              No questions match these filters
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
-              {conceptCategories.map((cat, i) => (
-                <ConceptCard
-                  key={cat.id}
-                  cat={cat}
-                  accent={CARD_ACCENTS[i % CARD_ACCENTS.length]}
-                  progress={progress}
-                  filteredQuestions={filteredQuestions}
-                  expanded={expandedCategories.has(cat.id)}
-                  onToggle={() => toggleCategory(cat.id)}
-                  onPractice={handleStart}
-                />
-              ))}
-            </div>
+          {filterSummary && (
+            <p className="text-xs mt-1 m-0 line-clamp-2" style={{ color: 'var(--muted)' }}>
+              {filterSummary}
+            </p>
           )}
         </div>
+        <button type="button" onClick={() => setShowFilterSheet(true)} className="studium-btn-secondary shrink-0">
+          <SlidersHorizontal size={16} aria-hidden="true" />
+          Filters
+        </button>
       </div>
 
+      {mainColumn}
+
+      <div
+        className="md:hidden fixed bottom-[calc(3.25rem+env(safe-area-inset-bottom))] left-0 right-0 z-20 border-t px-4 py-2 flex gap-2"
+        style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
+      >
+        <button type="button" onClick={() => setShowFilterSheet(true)} className="studium-btn-secondary px-3" aria-label="Filters">
+          <SlidersHorizontal size={18} aria-hidden="true" />
+        </button>
+        <div className="flex-1">{startButton}</div>
+      </div>
+
+      {showFilterSheet && (
+        <div className="fixed inset-0 z-40 flex flex-col md:hidden" role="dialog" aria-modal="true" aria-label="Filters">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40 border-0 cursor-pointer"
+            aria-label="Close filters"
+            onClick={() => setShowFilterSheet(false)}
+          />
+          <div
+            className="relative mt-auto max-h-[92vh] flex flex-col rounded-t-[var(--radius-sheet)] overflow-hidden studium-screen"
+            style={{ background: 'var(--bg)' }}
+          >
+            <div
+              className="flex items-center justify-between px-4 py-3 border-b shrink-0"
+              style={{ borderColor: 'var(--border)', background: 'var(--card)' }}
+            >
+              <h2 className="text-lg font-semibold m-0">Filters</h2>
+              <button type="button" onClick={() => setShowFilterSheet(false)} className="studium-btn-secondary px-3" aria-label="Done">
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <PracticeFiltersPanel filters={filterState} onChange={patchFilters} />
+            </div>
+            <div className="shrink-0 p-4 border-t" style={{ borderColor: 'var(--border)', background: 'var(--card)' }}>
+              <button
+                type="button"
+                className="studium-btn-primary w-full"
+                onClick={() => {
+                  handleStart()
+                  setShowFilterSheet(false)
+                }}
+                disabled={matchingCount === 0}
+              >
+                Start {matchingCount}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

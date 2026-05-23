@@ -19,7 +19,7 @@ enum LayoutMetrics {
     /// Centered column for vocab flashcards.
     static let vocabReadableMaxWidth: CGFloat = 760
 
-    // Practice sidebar / quiz pane spacing on macOS: see `MacStudiumDesign`.
+    // Practice sidebar / quiz pane spacing: see `StudiumDesignSystem`.
 
     /// Readable max width for quiz question column from the measured pane width (split or full-width).
     static func quizQuestionColumnMaxWidth(paneWidth: CGFloat) -> CGFloat {

@@ -6,8 +6,8 @@
 import SwiftUI
 
 enum FilterStyle {
-    static let chipCorner: CGFloat = 8
-    static let cardCorner: CGFloat = 12
+    static let chipCorner: CGFloat = StudiumDesignSystem.radiusChip
+    static let cardCorner: CGFloat = StudiumDesignSystem.radiusCard
     static let chipStrokeWidth: CGFloat = 1
 
     static func chipFill(selected: Bool, accent: Color, colorScheme: ColorScheme) -> Color {

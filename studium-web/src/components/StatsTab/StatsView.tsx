@@ -8,9 +8,8 @@ interface StatsViewProps {
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
   return (
-    <div className="rounded-sm p-3.5 border"
-      style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-      <div className="text-xl font-semibold" style={{ color: accent ?? 'var(--text)' }}>{value}</div>
+    <div className="studium-card p-4">
+      <div className="text-2xl font-bold tabular-nums" style={{ color: accent ?? 'var(--text)' }}>{value}</div>
       <div className="text-sm mt-0.5" style={{ color: 'var(--text)' }}>{label}</div>
       {sub && <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{sub}</div>}
     </div>
@@ -77,8 +76,8 @@ export default function StatsView({ questions, progress }: StatsViewProps) {
       : 'var(--error)'
 
   return (
-    <div className="flex-1 overflow-y-auto" style={{ background: 'var(--bg)' }}>
-      <div className="max-w-5xl mx-auto px-3 sm:px-4 lg:px-5 py-3.5 space-y-3.5">
+    <div className="flex-1 overflow-y-auto studium-screen">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
         {/* Overview grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
@@ -92,9 +91,8 @@ export default function StatsView({ questions, progress }: StatsViewProps) {
 
         {/* By Module */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-2.5">
-          <div className="rounded-sm border p-3.5 space-y-2.5"
-            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-            <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>By Module</div>
+          <div className="studium-card p-4 space-y-3">
+            <div className="text-base font-semibold" style={{ color: 'var(--text)' }}>By Module</div>
             {stats.byModule.map(m => (
               <div key={m.module} className="space-y-1">
                 <div className="flex justify-between text-sm">
@@ -107,9 +105,8 @@ export default function StatsView({ questions, progress }: StatsViewProps) {
           </div>
 
           {/* By Difficulty */}
-          <div className="rounded-sm border p-3.5 space-y-2.5"
-            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-            <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>By Difficulty</div>
+          <div className="studium-card p-4 space-y-3">
+            <div className="text-base font-semibold" style={{ color: 'var(--text)' }}>By Difficulty</div>
             {stats.byDifficulty.map(d => (
               <div key={d.difficulty} className="space-y-1">
                 <div className="flex justify-between text-sm">

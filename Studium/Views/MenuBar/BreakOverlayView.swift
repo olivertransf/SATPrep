@@ -79,7 +79,7 @@ struct BreakOverlayView: View {
                 pendingFooter
             }
         }
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(Color.systemGroupedBackground)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.45), radius: 32, y: 12)
     }

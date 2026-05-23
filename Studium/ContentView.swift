@@ -18,6 +18,7 @@ struct ContentView: View {
         guard ProgressManager.shared.isICloudSyncEnabled else { return }
         ProgressManager.shared.manualSync()
         QuizStateManager.shared.manualSync()
+        VocabBucketStore.shared.manualSync()
     }
 
     var body: some View {

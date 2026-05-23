@@ -302,7 +302,7 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
   const metaRow = (
     <div className="flex flex-wrap gap-2">
       <span className="px-2.5 py-1 rounded-md text-xs font-medium border"
-        style={{ borderColor: 'var(--border)', color: 'var(--muted)', background: 'var(--input)' }}>
+        style={{ borderColor: 'var(--border)', color: 'var(--muted)', background: 'var(--fill-tertiary)' }}>
         {question.module.charAt(0).toUpperCase() + question.module.slice(1)}
       </span>
       <span className="px-2.5 py-1 rounded-md text-xs font-medium border"
@@ -313,11 +313,11 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
         {question.difficulty === 'E' ? 'Easy' : question.difficulty === 'M' ? 'Medium' : 'Hard'}
       </span>
       <span className="px-2.5 py-1 rounded-md text-xs font-medium border truncate max-w-[240px]"
-        style={{ borderColor: 'var(--border)', color: 'var(--muted)', background: 'var(--input)' }}>
+        style={{ borderColor: 'var(--border)', color: 'var(--muted)', background: 'var(--fill-tertiary)' }}>
         {question.skillDesc}
       </span>
-      <span className="px-2.5 py-1 rounded-md text-xs font-mono border"
-        style={{ borderColor: 'var(--border)', color: 'var(--muted)', background: 'var(--input)' }}>
+      <span className="px-2.5 py-1 rounded-[10px] text-xs studium-mono border"
+        style={{ borderColor: 'var(--border)', color: 'var(--muted)', background: 'var(--fill-tertiary)' }}>
         {question.questionId}
       </span>
     </div>
@@ -366,7 +366,7 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
           else if (isSelected) { borderColor = 'var(--error)'; bgColor = 'rgba(239,68,68,0.08)'; textColor = 'var(--muted)'; labelColor = 'var(--error)' }
           else { bgColor = 'var(--input)'; textColor = 'var(--muted)'; labelColor = 'var(--muted)' }
         } else if (isSelected) {
-          borderColor = 'var(--accent)'; bgColor = 'rgba(99,102,241,0.1)'; labelColor = 'var(--accent)'
+          borderColor = 'var(--accent-chip-border)'; bgColor = 'var(--accent-chip-fill)'; labelColor = 'var(--accent)'
         }
 
         return (

@@ -12,6 +12,7 @@ struct SettingsView: View {
     @ObservedObject private var vocabBucketStore = VocabBucketStore.shared
     @AppStorage("appearanceMode") private var appearanceMode = "system"
     @AppStorage("htmlFontSize") private var htmlFontSize: Double = 16.0
+    @AppStorage("passageFontSize") private var passageFontSize: Double = 17.0
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -56,22 +57,21 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Passage text size")
+                                .font(.subheadline.weight(.medium))
+                            Spacer()
+                            Text("\(Int(passageFontSize)) pt")
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                        Slider(value: $passageFontSize, in: 13...22, step: 1)
+                            .tint(accent)
+                    }
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 } header: {
                     Text("Appearance")
-                }
-
-                Section {
-                    NavigationLink {
-                        StatsView(progressManager: progressManager, questionLoader: questionLoader)
-                    } label: {
-                        Label("Statistics", systemImage: "chart.bar.fill")
-                            .foregroundStyle(.primary)
-                    }
-                } header: {
-                    Text("Practice")
-                } footer: {
-                    Text("Accuracy, breakdowns, reset progress")
                 }
 
                 Section {
@@ -108,10 +108,18 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    NavigationLink {
+                        HelpView()
+                    } label: {
+                        Label("How to Use Studium", systemImage: "questionmark.circle")
+                    }
+                }
+
+                Section {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("1.0.0")
+                        Text(StudiumAppInfo.versionLabel)
                             .foregroundStyle(.secondary)
                     }
                 } header: {
@@ -305,13 +313,24 @@ struct SettingsView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
+                    FilterStripSectionTitle(text: "Help")
+                    FilterFormCard {
+                        NavigationLink {
+                            HelpView()
+                        } label: {
+                            Label("How to Use Studium", systemImage: "questionmark.circle")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .buttonStyle(.plain)
+                    }
+
                     FilterStripSectionTitle(text: "About")
                     FilterFormCard {
                         HStack {
                             Text("Version")
                                 .font(.subheadline)
                             Spacer()
-                            Text("1.0.0")
+                            Text(StudiumAppInfo.versionLabel)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }

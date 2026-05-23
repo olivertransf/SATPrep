@@ -44,6 +44,10 @@ class QuestionLoader: ObservableObject {
         loadQuestions()
     }
     
+    func reload() {
+        loadQuestions()
+    }
+
     func loadQuestions() {
         isLoading = true
         error = nil
@@ -89,11 +93,12 @@ class QuestionLoader: ObservableObject {
             .filter { !$0.content.displayAnswerOptions.isEmpty }
     }
 
-    /// Medium or hard MC questions across all modules (used by menu bar + break overlay).
+    /// Medium or hard MC English questions (used by menu bar + break overlay).
     func getMediumAndHardMCQuestions() -> [Question] {
         let hardIds = questionIdsByDifficulty["H"] ?? []
         let mediumIds = questionIdsByDifficulty["M"] ?? []
-        return hardIds.union(mediumIds)
+        let englishIds = questionIdsByModule["english"] ?? []
+        return hardIds.union(mediumIds).intersection(englishIds)
             .compactMap { questionsById[$0] }
             .filter { !$0.content.displayAnswerOptions.isEmpty }
     }

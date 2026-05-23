@@ -5,5 +5,6 @@ globs: Studium/Views/**/*.swift, Studium/Views/Components/FilterStyle.swift, Stu
 
 - Reuse **`FilterControls.swift`**: `FilterChipButton`, `FilterBadge` (read-only), `FilterOrderChoiceButton`, `FilterFormCard`, `FilterGroupHeading`, `FilterSubgroupLabel`, `FilterGroupBlock`, `FilterStripSectionTitle`, `ContinueSavedQuizCard`, and **`FilterPanelMetrics`** for corners/padding. Do not duplicate chip styling in new screens.
 - Use **`FilterStyle`** for fills/borders (see `FilterStyle.swift`): unselected → `tertiarySystemFill` + subtle primary border; selected → accent fill + accent border; label text **`.primary`**.
-- **Continue** saved-quiz cards: fixed width **`MacStudiumDesign.continueCardWidth`**, intrinsic height; **Resume** (`play.fill` in label) + **trash** icon; tap title/progress area also resumes (`onPlay` / `onDelete`).
-- **Practice filters:** wide shell uses a single-column chip stack in the left sidebar (`sidebarChipGridColumns`). Compact shell uses the same filter blocks stacked vertically (not a separate two-column filter grid).
+- **Continue** saved-quiz cards: fixed width **`StudiumDesignSystem.continueCardWidth`**, intrinsic height; **Resume** (`play.fill` in label) + **trash** icon; tap title/progress area also resumes (`onPlay` / `onDelete`).
+- **Full filters:** `PracticeFilterSheet.swift` (not the removed `FilterView.swift`).
+- **Practice filters:** wide shell uses `LazyVGrid` with 3–4 tall card-style chips per row (`FilterPanelMetrics.filterChipGridColumns`). Phone sheet uses 2 columns; iPad/mac sheet uses 3–4. Grid chips use `fillsGridCell: true` (rounded rect, min height from `filterChipMinHeight`).

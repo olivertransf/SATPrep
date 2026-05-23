@@ -5,6 +5,6 @@ alwaysApply: false
 ---
 
 - **Source of truth:** Web tokens live in `studium-web/src/index.css` (`:root` dark, `.light`). Native UI uses the same hex values via **Asset Catalog** colorsets: `StudiumBg`, `StudiumCard`, `StudiumSurface`, `StudiumFillTertiary`, `StudiumBorder`, plus `AccentColor` (`#007AFF`).
-- **Swift mapping:** `Studium/Views/Components/PlatformColors.swift` maps `Color.systemGroupedBackground` → `StudiumBg`, `secondarySystemGroupedBackground` / `systemBackground` → `StudiumCard`, `tertiarySystemGroupedBackground` → `StudiumSurface`, `tertiarySystemFill` → `StudiumFillTertiary`. Chip outlines use generated `Color.studiumBorder` from `StudiumBorder`.
-- **Quiz / reference HTML:** `HTMLContentView.buildHTMLString` body colors and monospace stack should track the same palette as the web app (see `buildHtml` / `index.css`).
-- **Typography:** `ContentView` applies `.fontDesign(.monospaced)` app-wide to mirror the web mono stack.
+- **Swift mapping:** `PlatformColors.swift` — `systemGroupedBackground` → `StudiumBg`, `systemBackground` → `StudiumCard`, `secondarySystemGroupedBackground` → `StudiumSurface`, `tertiarySystemGroupedBackground` → `StudiumSurface`, `tertiarySystemFill` → `StudiumFillTertiary`. Chip outlines use `Color.studiumBorder`.
+- **Quiz / reference HTML:** `buildHTMLString` / `StudiumHTMLBuilder` use SF Pro in HTML CSS; palette matches web. WKWebView loads with `StudiumHTMLBuilder.contentBaseURL` (CDN).
+- **Typography:** Native chrome uses system (SF Pro) via `StudiumDesignSystem`. Monospaced only for stats digits, question IDs, and optional vocab roots.

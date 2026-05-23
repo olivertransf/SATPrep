@@ -59,14 +59,14 @@ struct MenuBarWebView: NSViewRepresentable {
             selectedOptionId = id
         }
 
-        webView.loadHTMLString(html, baseURL: nil)
+        webView.loadHTMLString(html, baseURL: StudiumHTMLBuilder.contentBaseURL)
         return webView
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         if context.coordinator.loadedHTML != html {
             context.coordinator.loadedHTML = html
-            webView.loadHTMLString(html, baseURL: nil)
+            webView.loadHTMLString(html, baseURL: StudiumHTMLBuilder.contentBaseURL)
             return
         }
         guard let correctId = revealCorrectId, let selectedId = revealSelectedId else { return }
@@ -234,6 +234,7 @@ func buildQuestionHTML(for q: Question, fontSize: Double) -> String {
 struct MenuBarQuizView: View {
     @EnvironmentObject var breakMonitor: ScreenBreakMonitor
     @AppStorage("menuBarFontSize") private var menuBarFontSize: Double = 14.0
+    @Environment(\.openWindow) private var openWindow
 
     @State private var question: Question?
     @State private var selectedOptionId: String?
@@ -266,7 +267,7 @@ struct MenuBarQuizView: View {
             }
         }
         .frame(width: 620, height: 780)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(Color.systemGroupedBackground)
         .onAppear { loadQuestion() }
         .onReceive(QuestionLoader.shared.$isLoading) { loading in
             if !loading && question == nil { pickQuestion() }
@@ -288,6 +289,14 @@ struct MenuBarQuizView: View {
                 .buttonStyle(.plain)
                 .font(.caption)
                 .foregroundStyle(.blue)
+            Button("Open") {
+                NSApp.setActivationPolicy(.regular)
+                openWindow(id: "main")
+                NSApp.activate(ignoringOtherApps: true)
+            }
+            .buttonStyle(.plain)
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

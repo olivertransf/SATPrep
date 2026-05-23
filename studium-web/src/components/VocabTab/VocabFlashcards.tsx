@@ -30,7 +30,7 @@ const POS_OPTIONS: { value: PosFilter; label: string }[] = [
 ]
 
 const BUCKET_OPTIONS: { value: BucketFilter; label: string; accent: string; bg: string }[] = [
-  { value: 'learn',    label: 'Learning', accent: 'var(--accent)',  bg: 'rgba(99,102,241,0.12)' },
+  { value: 'learn',    label: 'Learning', accent: 'var(--accent)',  bg: 'var(--accent-chip-fill)' },
   { value: 'review',   label: 'Review',   accent: 'var(--warning)', bg: 'rgba(249,115,22,0.12)' },
   { value: 'mastered', label: 'Mastered', accent: 'var(--success)', bg: 'rgba(34,197,94,0.12)'  },
 ]
@@ -85,11 +85,11 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
   function goPrev() { setIndex(i => Math.max(0, i - 1)) }
 
   return (
-    <div className="flex-1 overflow-y-auto" style={{ background: 'var(--bg)' }}>
-      <div className="max-w-3xl mx-auto px-3 sm:px-4 lg:px-5 py-3.5 space-y-3.5">
+    <div className="flex-1 overflow-y-auto studium-screen">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
         {/* Bucket tabs */}
-        <div className="flex gap-1 p-1 rounded-sm border" style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
+        <div className="flex gap-1 p-1 studium-card">
           {BUCKET_OPTIONS.map(opt => {
             const count = words.filter(w =>
               (buckets[w.id] ?? 'learn') === opt.value &&
@@ -98,7 +98,7 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
             const active = bucketFilter === opt.value
             return (
               <button key={opt.value} onClick={() => updateBucketFilter(opt.value)}
-                className="flex-1 py-1.5 rounded-sm text-xs font-semibold uppercase tracking-wide transition-all"
+                className={['studium-chip flex-1 py-1.5 text-xs', bucketFilter === opt.value ? 'studium-chip--selected' : ''].join(' ')}
                 style={active
                   ? { background: opt.bg, color: opt.accent }
                   : { color: 'var(--muted)' }
@@ -112,12 +112,12 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
         {/* POS filter chips */}
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 sm:-mx-4 lg:mx-0 px-3 sm:px-4 lg:px-0">
           {POS_OPTIONS.map(opt => (
-            <button key={opt.value} onClick={() => updateFilter(opt.value)}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all border"
-              style={posFilter === opt.value
-                ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
-                : { background: 'transparent', color: 'var(--muted)', borderColor: 'var(--border)' }
-              }>
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => updateFilter(opt.value)}
+              className={['studium-chip shrink-0', posFilter === opt.value ? 'studium-chip--selected' : ''].join(' ')}
+            >
               {opt.label}
             </button>
           ))}
@@ -125,8 +125,7 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
 
         {/* Card or empty state */}
         {filtered.length === 0 ? (
-          <div className="rounded-sm p-8 text-center border"
-            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
+          <div className="studium-card p-8 text-center">
             <div className="text-4xl mb-3">📭</div>
             <div className="text-base font-semibold" style={{ color: 'var(--text)' }}>No cards here</div>
             <div className="text-sm mt-1" style={{ color: 'var(--muted)' }}>Try a different filter</div>
@@ -140,7 +139,7 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
 
             {/* Card — crossfade approach, no 3D transforms */}
             <div
-              className="relative rounded-sm border overflow-hidden cursor-pointer select-none"
+              className="relative studium-card overflow-hidden cursor-pointer select-none p-0"
               style={{ minHeight: '220px' }}
               onClick={() => setFlipped(f => !f)}
               onKeyDown={e => {
