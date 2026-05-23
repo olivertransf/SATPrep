@@ -9,6 +9,7 @@ import {
   unlockCloudSync,
 } from '../lib/syncAuth'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { isOffline } from '../lib/offlineFetch'
 import { flushCloudPush, pullCloudSync, scheduleCloudPush } from '../store/cloudSync'
 
 export interface CloudSyncMerged {
@@ -47,7 +48,7 @@ export function useCloudSync({ onMerged, enabled }: UseCloudSyncOptions) {
   }, [configured, refreshActive])
 
   useEffect(() => {
-    if (!enabled || !configured) return
+    if (!enabled || !configured || isOffline()) return
     let cancelled = false
 
     void (async () => {
@@ -78,7 +79,7 @@ export function useCloudSync({ onMerged, enabled }: UseCloudSyncOptions) {
     if (!enabled || !configured) return
 
     const pullOnFocus = () => {
-      if (document.visibilityState !== 'visible') return
+      if (document.visibilityState !== 'visible' || isOffline()) return
       void (async () => {
         if (!(await isCloudSyncActive())) return
         setSyncing(true)
@@ -100,6 +101,7 @@ export function useCloudSync({ onMerged, enabled }: UseCloudSyncOptions) {
     document.addEventListener('visibilitychange', pullOnFocus)
     window.addEventListener('focus', pullOnFocus)
     const flush = () => {
+      if (isOffline()) return
       void isCloudSyncActive().then(ok => {
         if (ok) void flushCloudPush()
       })
@@ -162,6 +164,7 @@ export function useCloudSync({ onMerged, enabled }: UseCloudSyncOptions) {
   }, [])
 
   const notifyLocalChange = useCallback(() => {
+    if (isOffline()) return
     void isCloudSyncActive().then(ok => {
       if (ok) scheduleCloudPush()
     })

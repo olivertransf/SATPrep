@@ -3,3 +3,4 @@ Studium/StudiumSync.plist
 
 # Web env
 studium-web/.env.local
+studium-web/.vercel

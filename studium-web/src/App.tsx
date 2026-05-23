@@ -14,6 +14,7 @@ import StatsView from './components/StatsTab/StatsView'
 import SettingsView from './components/SettingsTab/SettingsView'
 import ReferenceView from './components/ReferenceTab/ReferenceView'
 import { useCloudSync } from './hooks/useCloudSync'
+import { fetchJSON } from './lib/offlineFetch'
 import {
   BookOpen, Layers, Calculator, BarChart2, Settings, Sun, Moon, BookMarked,
 } from 'lucide-react'
@@ -52,6 +53,7 @@ export default function App() {
   const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>(loadAllQuizzes)
   const [activeQuiz, setActiveQuiz] = useState<SavedQuiz | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [cbVerifiedIds, setCbVerifiedIds] = useState<Set<string>>(() => new Set())
   const [htmlFontSize, setHtmlFontSize] = useState<number>(() => {
     const stored = localStorage.getItem('studium_html_font_size')
@@ -76,19 +78,36 @@ export default function App() {
   }
 
   useEffect(() => {
-    Promise.all([
-      fetch('/questions.json').then(r => r.json() as Promise<QuestionData>),
-      fetch('/vocab.json').then(r => r.json() as Promise<VocabData>),
-      fetch('/cb-verified-not-on-practice-tests.json')
-        .then(r => (r.ok ? r.json() : { questionIds: [] }) as Promise<{ questionIds?: string[] }>)
-        .catch(() => ({ questionIds: [] as string[] })),
-    ]).then(([qData, vData, verifiedManifest]) => {
-      setQuestions(qData.questions)
-      setVocabWords(vData.words)
-      const ids = verifiedManifest.questionIds ?? []
-      setCbVerifiedIds(new Set(ids.map(x => x.toLowerCase())))
-      setLoading(false)
-    })
+    let cancelled = false
+    void (async () => {
+      setLoadError(null)
+      try {
+        const [qData, vData, verifiedManifest] = await Promise.all([
+          fetchJSON<QuestionData>('/questions.json'),
+          fetchJSON<VocabData>('/vocab.json'),
+          fetchJSON<{ questionIds?: string[] }>('/cb-verified-not-on-practice-tests.json').catch(
+            () => ({ questionIds: [] as string[] }),
+          ),
+        ])
+        if (cancelled) return
+        setQuestions(qData.questions)
+        setVocabWords(vData.words)
+        const ids = verifiedManifest.questionIds ?? []
+        setCbVerifiedIds(new Set(ids.map(x => x.toLowerCase())))
+      } catch {
+        if (cancelled) return
+        setLoadError(
+          navigator.onLine
+            ? 'Could not load question bank. Try refreshing.'
+            : 'You are offline and the question bank is not cached yet. Open Studium once while online, then try again.',
+        )
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   function handleProgressChange(p: Record<string, QuestionProgress>) {
@@ -146,6 +165,24 @@ export default function App() {
             aria-hidden="true"
           />
           <div className="text-sm font-medium" style={{ color: 'var(--muted)' }}>Loading Studium…</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (loadError && questions.length === 0) {
+    return (
+      <div className="h-screen flex items-center justify-center studium-screen px-6">
+        <div className="text-center space-y-4 max-w-md">
+          <div className="text-base font-semibold" style={{ color: 'var(--text)' }}>Cannot load Studium</div>
+          <p className="text-sm" style={{ color: 'var(--muted)' }}>{loadError}</p>
+          <button
+            type="button"
+            className="studium-chip studium-chip--selected px-4 py-2 text-sm font-semibold"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
         </div>
       </div>
     )

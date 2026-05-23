@@ -25,21 +25,31 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Pre-cache everything: JS/CSS bundles + all public JSON data
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
+        // App shell + fonts; JSON is runtime-cached on first visit (questions.json is ~20MB).
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2,json}'],
+        globIgnores: ['**/questions.json'],
         additionalManifestEntries: [
-          { url: '/questions.json', revision: null },
           { url: '/vocab.json', revision: null },
           { url: '/cb-verified-not-on-practice-tests.json', revision: null },
         ],
+        navigateFallback: 'index.html',
         runtimeCaching: [
           {
-            // Cache the JSON data files at runtime too (first-visit + updates)
-            urlPattern: /\/(questions|vocab|cb-verified-not-on-practice-tests)\.json$/,
+            urlPattern: /\/questions\.json$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'studium-questions',
+              expiration: { maxEntries: 2, maxAgeSeconds: 60 * 60 * 24 * 90 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /\/(vocab|cb-verified-not-on-practice-tests)\.json$/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'studium-data',
               expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
           {
