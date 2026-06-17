@@ -14,7 +14,6 @@
     "sync-questions": "python3 ../scripts/sync_web_questions.py"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.78.0",
     "@types/katex": "^0.16.8",
     "katex": "^0.16.45",
     "lucide-react": "^1.7.0",

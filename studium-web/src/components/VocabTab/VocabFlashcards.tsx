@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { VocabWord } from '../../types'
-import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
+import {
+  ChevronLeft, ChevronRight, RotateCcw, BookOpen, CheckCircle2, Clock, GraduationCap, Shuffle,
+} from 'lucide-react'
 import { loadWordBucketsForUI, saveWordBucketsFromUI, type WebVocabBucket } from '../../store/vocabBuckets'
 
 interface VocabFlashcardsProps {
   words: VocabWord[]
-  onLocalChange?: () => void
 }
 
 type PosFilter = 'all' | 'noun' | 'verb' | 'adj' | 'adverb' | 'other'
@@ -15,21 +16,58 @@ const POS_KEY = 'studium_vocab_pos_filter'
 const BUCKET_FILTER_KEY = 'studium_vocab_bucket_filter'
 
 const POS_OPTIONS: { value: PosFilter; label: string }[] = [
-  { value: 'all',    label: 'All' },
-  { value: 'noun',   label: 'Nouns' },
-  { value: 'verb',   label: 'Verbs' },
-  { value: 'adj',    label: 'Adjectives' },
+  { value: 'all', label: 'All words' },
+  { value: 'noun', label: 'Nouns' },
+  { value: 'verb', label: 'Verbs' },
+  { value: 'adj', label: 'Adjectives' },
   { value: 'adverb', label: 'Adverbs' },
-  { value: 'other',  label: 'Other' },
+  { value: 'other', label: 'Other' },
 ]
 
-const BUCKET_OPTIONS: { value: BucketFilter; label: string; accent: string; bg: string }[] = [
-  { value: 'learn',    label: 'Learning', accent: 'var(--accent)',  bg: 'var(--accent-chip-fill)' },
-  { value: 'review',   label: 'Review',   accent: 'var(--warning)', bg: 'rgba(249,115,22,0.12)' },
-  { value: 'mastered', label: 'Mastered', accent: 'var(--success)', bg: 'rgba(34,197,94,0.12)'  },
+const BUCKET_OPTIONS: {
+  value: BucketFilter
+  label: string
+  description: string
+  accent: string
+  bg: string
+  Icon: React.ElementType
+}[] = [
+  {
+    value: 'learn',
+    label: 'Learning',
+    description: 'Words you are studying',
+    accent: 'var(--accent)',
+    bg: 'var(--accent-chip-fill)',
+    Icon: BookOpen,
+  },
+  {
+    value: 'review',
+    label: 'Review',
+    description: 'Words to revisit',
+    accent: 'var(--warning)',
+    bg: 'rgba(234, 88, 12, 0.1)',
+    Icon: Clock,
+  },
+  {
+    value: 'mastered',
+    label: 'Mastered',
+    description: 'Words you know well',
+    accent: 'var(--success)',
+    bg: 'rgba(22, 163, 74, 0.1)',
+    Icon: GraduationCap,
+  },
 ]
 
-export default function VocabFlashcards({ words, onLocalChange }: VocabFlashcardsProps) {
+function shuffleIds(ids: string[]): string[] {
+  const next = [...ids]
+  for (let i = next.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[next[i], next[j]] = [next[j], next[i]]
+  }
+  return next
+}
+
+export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
   const [buckets, setBuckets] = useState<Record<string, BucketFilter>>(loadWordBucketsForUI)
   const [posFilter, setPosFilter] = useState<PosFilter>(() => {
     return (localStorage.getItem(POS_KEY) as PosFilter) ?? 'all'
@@ -39,37 +77,64 @@ export default function VocabFlashcards({ words, onLocalChange }: VocabFlashcard
   })
   const [index, setIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
+  const [deckOrder, setDeckOrder] = useState<string[]>([])
 
-  const filtered = words.filter(w => {
-    const posMatch    = posFilter === 'all' || w.partOfSpeech === posFilter
+  const bucketCounts = useMemo(() => {
+    const counts: Record<BucketFilter, number> = { learn: 0, review: 0, mastered: 0 }
+    for (const w of words) {
+      if (posFilter !== 'all' && w.partOfSpeech !== posFilter) continue
+      const b = buckets[w.id] ?? 'learn'
+      counts[b] += 1
+    }
+    return counts
+  }, [words, buckets, posFilter])
+
+  const filtered = useMemo(() => words.filter(w => {
+    const posMatch = posFilter === 'all' || w.partOfSpeech === posFilter
     const bucketMatch = (buckets[w.id] ?? 'learn') === bucketFilter
     return posMatch && bucketMatch
-  })
+  }), [words, posFilter, bucketFilter, buckets])
+
+  const deck = useMemo(() => {
+    const byId = Object.fromEntries(filtered.map(w => [w.id, w]))
+    const order = deckOrder.length === filtered.length && deckOrder.every(id => byId[id])
+      ? deckOrder
+      : filtered.map(w => w.id)
+    return order.map(id => byId[id]).filter(Boolean)
+  }, [filtered, deckOrder])
 
   useEffect(() => {
+    setDeckOrder(filtered.map(w => w.id))
     setIndex(0)
     setFlipped(false)
-  }, [posFilter, bucketFilter])
+  }, [filtered])
 
   useEffect(() => { setFlipped(false) }, [index])
 
   useEffect(() => {
     const refresh = () => setBuckets(loadWordBucketsForUI())
-    window.addEventListener('studium-cloud-sync', refresh)
-    return () => window.removeEventListener('studium-cloud-sync', refresh)
+    window.addEventListener('studium-local-data-change', refresh)
+    return () => window.removeEventListener('studium-local-data-change', refresh)
   }, [])
 
-  const card = filtered[index]
+  const card = deck[index]
   const currentBucket = BUCKET_OPTIONS.find(b => b.value === bucketFilter)!
+  const progressPct = deck.length > 0 ? Math.round(((index + 1) / deck.length) * 100) : 0
+
+  function shuffleDeck() {
+    setDeckOrder(shuffleIds(filtered.map(w => w.id)))
+    setIndex(0)
+    setFlipped(false)
+  }
 
   function moveBucket(b: BucketFilter) {
     if (!card) return
     const next = { ...buckets, [card.id]: b }
     setBuckets(next)
     saveWordBucketsFromUI(next)
-    onLocalChange?.()
-    if (index < filtered.length - 1) setIndex(i => i + 1)
-    else if (filtered.length > 1) setIndex(0)
+    if (index < deck.length - 1) setIndex(i => i + 1)
+    else if (deck.length > 1) setIndex(0)
+    setFlipped(false)
   }
 
   function updateFilter(pos: PosFilter) {
@@ -82,166 +147,227 @@ export default function VocabFlashcards({ words, onLocalChange }: VocabFlashcard
     localStorage.setItem(BUCKET_FILTER_KEY, b)
   }
 
-  function goNext() { setIndex(i => Math.min(filtered.length - 1, i + 1)) }
+  function goNext() { setIndex(i => Math.min(deck.length - 1, i + 1)) }
   function goPrev() { setIndex(i => Math.max(0, i - 1)) }
 
   return (
     <div className="flex-1 overflow-y-auto studium-screen">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
 
-        {/* Bucket tabs */}
-        <div className="flex gap-1 p-1 studium-card">
-          {BUCKET_OPTIONS.map(opt => {
-            const count = words.filter(w =>
-              (buckets[w.id] ?? 'learn') === opt.value &&
-              (posFilter === 'all' || w.partOfSpeech === posFilter)
-            ).length
-            const active = bucketFilter === opt.value
-            return (
-              <button key={opt.value} onClick={() => updateBucketFilter(opt.value)}
-                className={['studium-chip flex-1 py-1.5 text-xs', bucketFilter === opt.value ? 'studium-chip--selected' : ''].join(' ')}
-                style={active
-                  ? { background: opt.bg, color: opt.accent }
-                  : { color: 'var(--muted)' }
-                }>
-                {opt.label} <span className="text-xs opacity-70">({count})</span>
-              </button>
-            )
-          })}
-        </div>
+        <header className="mb-6">
+          <p className="studium-eyebrow m-0">SAT vocabulary</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight m-0 mt-1" style={{ color: 'var(--text)' }}>
+            Flashcard practice
+          </h1>
+          <p className="studium-page-subtitle mt-2 mb-0">
+            {words.length.toLocaleString()} words · flip to reveal definitions, then sort into piles
+          </p>
+        </header>
 
-        {/* POS filter chips */}
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 sm:-mx-4 lg:mx-0 px-3 sm:px-4 lg:px-0">
-          {POS_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => updateFilter(opt.value)}
-              className={['studium-chip shrink-0', posFilter === opt.value ? 'studium-chip--selected' : ''].join(' ')}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 items-start">
 
-        {/* Card or empty state */}
-        {filtered.length === 0 ? (
-          <>
-            <div className="studium-card p-8 text-center">
-              <div className="text-base font-semibold" style={{ color: 'var(--text)' }}>No cards in this pile</div>
-              <div className="text-sm mt-2" style={{ color: 'var(--muted)' }}>
-                Switch study pile, part of speech, or move cards from another pile.
-              </div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--muted)' }}>
-                Try another pile
-              </div>
-              <div className="flex gap-2">
-                {BUCKET_OPTIONS.filter(o => o.value !== bucketFilter).map(opt => (
+          {/* Sidebar: deck + filters */}
+          <aside className="space-y-4">
+            <div className="space-y-2">
+              {BUCKET_OPTIONS.map(opt => {
+                const active = bucketFilter === opt.value
+                const count = bucketCounts[opt.value]
+                return (
                   <button
                     key={opt.value}
                     type="button"
                     onClick={() => updateBucketFilter(opt.value)}
-                    className="studium-chip flex-1 py-2 text-xs"
+                    className={['studium-deck-btn w-full text-left', active ? 'studium-deck-btn--active' : ''].join(' ')}
+                    style={active ? { borderColor: opt.accent, background: opt.bg } : undefined}
+                  >
+                    <opt.Icon size={18} style={{ color: active ? opt.accent : 'var(--muted)' }} aria-hidden="true" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm" style={{ color: 'var(--text)' }}>{opt.label}</div>
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{count} cards</div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="studium-card p-4 space-y-3">
+              <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
+                Part of speech
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {POS_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => updateFilter(opt.value)}
+                    className={['studium-chip text-xs px-3', posFilter === opt.value ? 'studium-chip--selected' : ''].join(' ')}
                   >
                     {opt.label}
                   </button>
                 ))}
               </div>
             </div>
-          </>
-        ) : (
-          <>
-            {/* Counter */}
-            <div className="text-center text-sm" style={{ color: 'var(--muted)' }}>
-              {index + 1} / {filtered.length}
-            </div>
+          </aside>
 
-            {/* Card — crossfade approach, no 3D transforms */}
-            <div
-              className="relative studium-card overflow-hidden cursor-pointer select-none p-0"
-              style={{ minHeight: '220px' }}
-              onClick={() => setFlipped(f => !f)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  setFlipped(f => !f)
-                }
-              }}
-              tabIndex={0}
-              role="button"
-              aria-label={flipped ? 'Tap to see word' : 'Tap to reveal definition'}
-            >
-              {/* Front */}
-              <div
-                className={`flip-card-side absolute inset-0 flex flex-col items-center justify-center p-6 rounded-sm ${flipped ? 'hidden-side' : 'visible-side'}`}
-                style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
-              >
-                <div className="text-3xl font-bold text-center" style={{ color: 'var(--text)' }}>
-                  {card.word}
+          {/* Main flashcard area */}
+          <div className="space-y-4 min-w-0">
+            {deck.length === 0 ? (
+              <div className="studium-card p-10 text-center space-y-4">
+                <div
+                  className="mx-auto flex items-center justify-center rounded-full"
+                  style={{ width: 56, height: 56, background: 'var(--fill-tertiary)' }}
+                >
+                  <CheckCircle2 size={28} style={{ color: 'var(--success)' }} aria-hidden="true" />
                 </div>
-                <div className="mt-2 text-sm italic" style={{ color: 'var(--muted)' }}>
-                  {card.partOfSpeech}
+                <div>
+                  <div className="text-lg font-semibold" style={{ color: 'var(--text)' }}>
+                    {bucketFilter === 'mastered' ? 'All caught up!' : 'No cards in this pile'}
+                  </div>
+                  <p className="text-sm mt-2 mb-0 max-w-sm mx-auto" style={{ color: 'var(--muted)' }}>
+                    {bucketFilter === 'learn'
+                      ? 'Try a different part of speech, or move words here from Review or Mastered.'
+                      : 'Switch to Learning to study new words, or change the part-of-speech filter.'}
+                  </p>
                 </div>
-                <div className="mt-6 text-xs flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
-                  <RotateCcw size={12} aria-hidden="true" />
-                  <span>tap to reveal</span>
-                </div>
+                {BUCKET_OPTIONS.filter(o => o.value !== bucketFilter).map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => updateBucketFilter(opt.value)}
+                    className="studium-btn-secondary"
+                  >
+                    Go to {opt.label}
+                  </button>
+                ))}
               </div>
-
-              {/* Back */}
-              <div
-                className={`flip-card-side absolute inset-0 flex flex-col items-center justify-center p-6 rounded-sm ${flipped ? 'visible-side' : 'hidden-side'}`}
-                style={{ background: currentBucket.bg, border: `1px solid ${currentBucket.accent}` }}
-              >
-                <div className="text-xl font-semibold text-center leading-snug" style={{ color: 'var(--text)' }}>
-                  {card.definition}
+            ) : (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                    Card {index + 1} of {deck.length}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={shuffleDeck}
+                      disabled={deck.length < 2}
+                      className="studium-btn-secondary px-3 min-h-[36px]"
+                      aria-label="Shuffle cards"
+                    >
+                      <Shuffle size={16} aria-hidden="true" />
+                      <span className="hidden sm:inline">Shuffle</span>
+                    </button>
+                    <div
+                      className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                      style={{ background: currentBucket.bg, color: currentBucket.accent }}
+                    >
+                      {currentBucket.label}
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-3 text-sm italic font-medium" style={{ color: currentBucket.accent }}>
-                  {card.word}
-                </div>
-                <div className="mt-4 text-xs flex items-center gap-1.5" style={{ color: currentBucket.accent, opacity: 0.8 }}>
-                  <RotateCcw size={12} aria-hidden="true" />
-                  <span>tap to flip back</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Prev / Next */}
-            <div className="flex gap-2.5">
-              <button
-                onClick={goPrev}
-                disabled={index === 0}
-                className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-sm border text-sm font-medium transition-all disabled:opacity-30"
-                style={{ background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--text)' }}>
-                <ChevronLeft size={16} /> Prev
-              </button>
-              <button
-                onClick={goNext}
-                disabled={index === filtered.length - 1}
-                className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-sm border text-sm font-medium transition-all disabled:opacity-30"
-                style={{ background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--text)' }}>
-                Next <ChevronRight size={16} />
-              </button>
-            </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{ width: `${progressPct}%`, background: 'var(--accent)' }}
+                  />
+                </div>
 
-            {/* Bucket move buttons */}
-            <div className="flex gap-2">
-              {BUCKET_OPTIONS.map(opt => (
-                <button key={opt.value}
-                  onClick={() => moveBucket(opt.value)}
-                  className="flex-1 py-2.5 rounded-sm text-sm font-semibold transition-all"
-                  style={bucketFilter === opt.value
-                    ? { background: opt.bg, color: opt.accent, border: `1px solid ${opt.accent}` }
-                    : { background: 'transparent', color: 'var(--muted)', border: '1px solid var(--border)' }
-                  }>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+                <div
+                  className="studium-flashcard relative cursor-pointer select-none"
+                  style={{ minHeight: '280px' }}
+                  onClick={() => setFlipped(f => !f)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setFlipped(f => !f)
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={flipped ? 'Tap to see word' : 'Tap to reveal definition'}
+                >
+                  <div
+                    className={`flip-card-side absolute inset-0 flex flex-col items-center justify-center p-8 ${flipped ? 'hidden-side' : 'visible-side'}`}
+                  >
+                    <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: 'var(--muted)' }}>
+                      Word
+                    </div>
+                    <div className="text-4xl sm:text-5xl font-bold text-center leading-tight" style={{ color: 'var(--text)' }}>
+                      {card.word}
+                    </div>
+                    <div className="mt-4 text-sm capitalize px-3 py-1 rounded-full" style={{ background: 'var(--fill-tertiary)', color: 'var(--muted)' }}>
+                      {card.partOfSpeech}
+                    </div>
+                    <div className="mt-8 text-xs flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
+                      <RotateCcw size={12} aria-hidden="true" />
+                      <span>Click or tap to reveal</span>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`flip-card-side absolute inset-0 flex flex-col items-center justify-center p-8 ${flipped ? 'visible-side' : 'hidden-side'}`}
+                    style={{ background: currentBucket.bg }}
+                  >
+                    <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: currentBucket.accent }}>
+                      Definition
+                    </div>
+                    <div className="text-xl sm:text-2xl font-medium text-center leading-relaxed max-w-md" style={{ color: 'var(--text)' }}>
+                      {card.definition}
+                    </div>
+                    <div className="mt-6 text-base font-semibold italic" style={{ color: currentBucket.accent }}>
+                      {card.word}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={goPrev}
+                    disabled={index === 0}
+                    className="studium-btn-secondary flex-1"
+                  >
+                    <ChevronLeft size={16} aria-hidden="true" />
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    disabled={index === deck.length - 1}
+                    className="studium-btn-secondary flex-1"
+                  >
+                    Next
+                    <ChevronRight size={16} aria-hidden="true" />
+                  </button>
+                </div>
+
+                <div className="studium-card p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--muted)' }}>
+                    Move to pile
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {BUCKET_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => moveBucket(opt.value)}
+                        className="studium-chip py-3 flex-col gap-1 min-h-[72px]"
+                        style={bucketFilter === opt.value
+                          ? { background: opt.bg, borderColor: opt.accent, color: opt.accent }
+                          : undefined
+                        }
+                      >
+                        <opt.Icon size={16} aria-hidden="true" />
+                        <span>{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -77,7 +77,12 @@ export default function StatsView({ questions, progress }: StatsViewProps) {
 
   return (
     <div className="flex-1 overflow-y-auto studium-screen">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+
+        <header className="mb-2">
+          <h1 className="studium-page-title m-0">Your progress</h1>
+          <p className="studium-page-subtitle mt-1 mb-0">Track accuracy across sections and difficulty levels</p>
+        </header>
 
         {/* Overview grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">

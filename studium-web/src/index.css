@@ -5,21 +5,22 @@
 }
 
 :root {
-  --bg: #0a0a0a;
-  --card: #111111;
-  --border: #242424;
-  --text: #f5f5f7;
-  --muted: #8a8a8a;
-  --accent: #007aff;
-  --accent-hover: #0066d6;
-  --surface: #171717;
-  --input: #1a1a1a;
-  --fill-tertiary: #1a1a1a;
-  --accent-chip-fill: rgba(0, 122, 255, 0.34);
-  --accent-chip-border: rgba(0, 122, 255, 0.85);
-  --success: #22c55e;
-  --error: #ef4444;
-  --warning: #f97316;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --surface: #f1f5f9;
+  --input: #f8fafc;
+  --fill-tertiary: #f1f5f9;
+  --accent-chip-fill: rgba(37, 99, 235, 0.1);
+  --accent-chip-border: rgba(37, 99, 235, 0.35);
+  --success: #16a34a;
+  --error: #dc2626;
+  --warning: #ea580c;
+  --hero-gradient: linear-gradient(135deg, rgba(37, 99, 235, 0.06) 0%, rgba(124, 58, 237, 0.04) 100%);
 
   --radius-chip: 10px;
   --radius-card: 14px;
@@ -33,26 +34,31 @@
   --space-xxl: 32px;
 
   --sidebar-width: 348px;
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
 }
 
 .light {
-  --bg: #f6f8fc;
-  --card: #ffffff;
-  --border: #e6e6e6;
-  --text: #0a0a0a;
-  --muted: #666666;
-  --accent: #007aff;
-  --accent-hover: #0066d6;
-  --surface: #f0f3f9;
-  --input: #f5f7fc;
-  --fill-tertiary: #f5f7fc;
-  --accent-chip-fill: rgba(0, 122, 255, 0.14);
-  --accent-chip-border: rgba(0, 122, 255, 0.85);
-  --success: #16a34a;
-  --error: #dc2626;
-  --warning: #ea580c;
+  /* light is default; class toggled off in dark mode */
+}
+
+html:not(.light) {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --border: #334155;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --surface: #1e293b;
+  --input: #1e293b;
+  --fill-tertiary: #334155;
+  --accent-chip-fill: rgba(59, 130, 246, 0.15);
+  --accent-chip-border: rgba(59, 130, 246, 0.45);
+  --success: #22c55e;
+  --error: #ef4444;
+  --warning: #f97316;
+  --hero-gradient: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(124, 58, 237, 0.08) 100%);
 }
 
 html {
@@ -63,7 +69,7 @@ body {
   margin: 0;
   font-family: var(--font-sans);
   font-size: 15px;
-  line-height: 1.45;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--bg);
@@ -81,7 +87,7 @@ body {
   color: #fff;
 }
 
-/* ─── Studium UI primitives (SwiftUI-aligned) ─── */
+/* ─── Studium UI primitives ─── */
 
 .studium-screen {
   background: var(--bg);
@@ -91,21 +97,22 @@ body {
 .studium-eyebrow {
   font-size: 0.8125rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--accent);
 }
 
 .studium-page-title {
-  font-size: 1.375rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.25;
   color: var(--text);
+  letter-spacing: -0.02em;
 }
 
 .studium-page-subtitle {
   font-size: 0.9375rem;
-  line-height: 1.4;
+  line-height: 1.5;
   color: var(--muted);
 }
 
@@ -118,24 +125,24 @@ body {
 
 .studium-card {
   background: var(--card);
-  border: 0.5px solid color-mix(in srgb, var(--border) 65%, transparent);
+  border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
-.light .studium-card {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+html:not(.light) .studium-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .studium-filter-card {
   background: var(--card);
-  border: 0.5px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border: 1px solid var(--border);
   border-radius: var(--radius-card);
   padding: var(--space-lg);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
 .studium-filter-card__title {
@@ -166,17 +173,18 @@ body {
   line-height: 1.2;
   text-align: center;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 .studium-chip:hover:not(.studium-chip--selected) {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: var(--card);
 }
 
 .studium-chip--selected {
   background: var(--accent-chip-fill);
   border-color: var(--accent-chip-border);
-  color: var(--text);
+  color: var(--accent);
 }
 
 .studium-chip--grid {
@@ -198,11 +206,15 @@ body {
   font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background 0.15s, opacity 0.15s, transform 0.1s;
 }
 
 .studium-btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
+}
+
+.studium-btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .studium-btn-primary:disabled {
@@ -229,6 +241,31 @@ body {
 
 .studium-btn-secondary:hover {
   background: var(--fill-tertiary);
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--border));
+}
+
+.studium-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-chip);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.studium-btn-ghost:hover {
+  background: var(--fill-tertiary);
+  color: var(--text);
+}
+
+.studium-btn-ghost--active {
+  background: var(--accent-chip-fill);
+  color: var(--accent);
 }
 
 .studium-nav-item {
@@ -236,7 +273,7 @@ body {
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-radius: var(--radius-chip);
   border: 1px solid transparent;
   background: transparent;
@@ -254,9 +291,213 @@ body {
 }
 
 .studium-nav-item--active {
-  color: var(--text);
+  color: var(--accent);
   background: var(--accent-chip-fill);
   border-color: var(--accent-chip-border);
+  font-weight: 600;
+}
+
+.studium-topnav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-chip);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.studium-topnav-item:hover {
+  color: var(--text);
+  background: var(--fill-tertiary);
+}
+
+.studium-topnav-item--active {
+  color: var(--accent);
+  background: var(--accent-chip-fill);
+  font-weight: 600;
+}
+
+.studium-quick-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.studium-quick-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.studium-quick-card__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+
+.studium-tool-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  background: var(--card);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.studium-tool-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--border));
+  background: var(--fill-tertiary);
+}
+
+.studium-flashcard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+html:not(.light) .studium-flashcard {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+
+.studium-deck-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.studium-deck-btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--border));
+}
+
+.studium-deck-btn--active {
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.studium-subject-tab {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  text-align: left;
+  color: var(--text);
+}
+
+.studium-subject-tab:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+
+.studium-subject-tab--active {
+  border-color: var(--accent-chip-border);
+  background: var(--accent-chip-fill);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+}
+
+.studium-search-input {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.studium-search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-chip-fill);
+}
+
+.studium-ref-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--ref-accent, var(--accent));
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.studium-ref-section__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--card);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.studium-ref-section:not(.studium-ref-section--open) .studium-ref-section__header:hover {
+  background: var(--fill-tertiary);
+}
+
+.studium-ref-section--open .studium-ref-section__header {
+  border-bottom: 1px solid var(--border);
+}
+
+.studium-ref-section--open .studium-ref-section__header:hover {
+  background: var(--card);
+}
+
+.studium-ref-section__body {
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface);
+}
+
+.studium-ref-entry {
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.studium-formula-block {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  text-align: center;
 }
 
 .studium-reading-panel {

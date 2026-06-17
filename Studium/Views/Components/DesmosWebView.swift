@@ -32,7 +32,7 @@ struct DesmosWebViewRepresentable: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
-        if let url = URL(string: "https://www.desmos.com/calculator") {
+        if let url = URL(string: "https://www.desmos.com/testing/collegeboard/graphing") {
             webView.load(URLRequest(url: url))
         }
         return webView
@@ -87,7 +87,7 @@ struct DesmosWebViewRepresentableMac: NSViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
         webView.setValue(false, forKey: "drawsBackground")
-        if let url = URL(string: "https://www.desmos.com/calculator") {
+        if let url = URL(string: "https://www.desmos.com/testing/collegeboard/graphing") {
             webView.load(URLRequest(url: url))
         }
         return DesmosWKContainer(webView: webView)

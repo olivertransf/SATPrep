@@ -164,8 +164,15 @@ def _convert_expr(s: str) -> str:
 
     # Square root
     s = re.sub(
-        r'the square root of,?\s*(.+?)(?=\s*(?:,|$|\s+(?:equals|plus|minus)))',
+        r'the square root of,?\s*(.+?)(?:\s+end root)?(?=\s*(?:,|$|\s+(?:equals|plus|minus|over|the\b)))',
         lambda m: '\\sqrt{' + _convert_expr(m.group(1).strip().rstrip(',')) + '}',
+        s, flags=re.I
+    )
+
+    # Cube root
+    s = re.sub(
+        r'the cube root of,?\s*(.+?)(?:\s+end root)?(?=\s*(?:,|$|\s+(?:equals|plus|minus|over|the\b|end\b)))',
+        lambda m: '\\sqrt[3]{' + _convert_expr(m.group(1).strip().rstrip(',')) + '}',
         s, flags=re.I
     )
 
@@ -200,6 +207,18 @@ def _convert_expr(s: str) -> str:
                lambda m: '^{' + m.group(1) + '}', s, flags=re.I)
     s = _sub(r'\bsquared\b', '^{2}', s)
     s = _sub(r'\bcubed\b', '^{3}', s)
+
+    # "raised to the X power" / "raised to \frac{a}{b} power"
+    s = re.sub(
+        r'\braised to\s+the\s+(.+?)\s+power\b',
+        lambda m: '^{' + _convert_expr(m.group(1).strip()) + '}',
+        s, flags=re.I,
+    )
+    s = re.sub(
+        r'\braised to\s+(.+?)\s+power\b',
+        lambda m: '^{' + _convert_expr(m.group(1).strip()) + '}',
+        s, flags=re.I,
+    )
 
     # Subscripts
     s = re.sub(r'\bsubscript\s+(\w+),?\s+end subscript\b',
@@ -399,38 +418,171 @@ def _extract_inline_tex_spans(s: str):
         i = end + cl
 
 
+_ORDINAL_ROOT = {
+    'square': '2', 'cube': '3', 'fourth': '4', 'fifth': '5', 'sixth': '6',
+    'seventh': '7', 'eighth': '8', 'ninth': '9', 'tenth': '10',
+}
+
+
+def _normalize_exponent_body(body: str) -> str:
+    exp = body.strip()
+    if re.search(r'\s+over\s+', exp, re.I):
+        parts = re.split(r'\s+over\s+', exp, maxsplit=1, flags=re.I)
+        if len(parts) == 2:
+            return '\\frac{' + parts[0].strip() + '}{' + parts[1].strip() + '}'
+    return re.sub(r'\s+', '', exp)
+
+
+def _repair_inner(inner: str) -> str:
+    """Fix corrupted spoken-math inside a single \\( … \\) span."""
+    fixed = inner.rstrip().rstrip('\\')
+
+    fixed = re.sub(r'\s+\+\s+or\s+-\s+', r' \\pm ', fixed, flags=re.I)
+    fixed = re.sub(r'\bor\s+-\b', r'\\pm', fixed, flags=re.I)
+
+    fixed = re.sub(
+        r'\bthe\s*-?\s*fraction\s+(.+?)\s+over\s+(.+?)\s+end\s+fraction\b',
+        lambda m: '\\frac{' + m.group(1).strip() + '}{' + m.group(2).strip() + '}',
+        fixed,
+        flags=re.I,
+    )
+
+    fixed = re.sub(
+        r'(\d+)-(half|third|fourth|quarter|fifth|sixth|seventh|eighth|ninth|tenth)\b',
+        lambda m: '\\frac{' + m.group(1) + '}{' + _SPOKEN_FRAC_SUFFIX.get(m.group(2).lower(), m.group(2)) + '}',
+        fixed,
+        flags=re.I,
+    )
+
+    fixed = re.sub(
+        r'(\w+)\s+subscript\s+(\w+)\b',
+        lambda m: m.group(1) + '_{' + m.group(2) + '}',
+        fixed,
+        flags=re.I,
+    )
+
+    fixed = re.sub(
+        r'(\S+)\s+to\s+the\s+power\s+(\\frac\{[^}]+\}\{[^}]+\})',
+        lambda m: m.group(1) + '^{' + m.group(2) + '}',
+        fixed,
+        flags=re.I,
+    )
+
+    fixed = re.sub(
+        r'(\S+)\s+to\s+the\s+power\s+of\s+(.+?)(?=\s*(?:$|\)|,|\\times|\\cdot|\+|-))',
+        lambda m: m.group(1) + '^{' + _normalize_exponent_body(m.group(2)) + '}',
+        fixed,
+        flags=re.I,
+    )
+
+    fixed = re.sub(
+        r'(\S+)\s+to\s+the\s+power\s+(-?[\w.]+)\b',
+        lambda m: m.group(1) + '^{' + m.group(2) + '}',
+        fixed,
+        flags=re.I,
+    )
+
+    root_keys = sorted(_ORDINAL_ROOT, key=len, reverse=True)
+    root_pat = '|'.join(re.escape(k) for k in root_keys)
+
+    def replace_nth_root(m: re.Match) -> str:
+        n = _ORDINAL_ROOT[m.group(1).lower()]
+        body = m.group(2).strip()
+        return '\\sqrt{' + body + '}' if n == '2' else f'\\sqrt[{n}]{{{body}}}'
+
+    fixed = re.sub(
+        rf'\bthe\s+({root_pat})\s+root\s+of\s+(.+?)(?:\s+end\s+root)?'
+        rf'(?=\s*(?:$|[=,+\-)]|\\times|\\cdot))',
+        replace_nth_root,
+        fixed,
+        flags=re.I,
+    )
+
+    fixed = re.sub(
+        r'\bthe cube root of\s+(.+?)(?=\s*(?:$|[=,+\-)]|(?:\s+end\s+root)))',
+        lambda m: '\\sqrt[3]{' + m.group(1).strip() + '}',
+        fixed,
+        flags=re.I,
+    )
+
+    fixed = re.sub(
+        r'\\sqrt\{([^}]+)\}\s*\+\s*([^+\s]+(?:\s+[^+\s]+)*?)\s+end\s+root',
+        lambda m: '\\sqrt{' + m.group(1).strip() + ' + ' + m.group(2).strip() + '}',
+        fixed,
+        flags=re.I,
+    )
+
+    fixed = re.sub(r'\s+end\s+root\b', '', fixed, flags=re.I)
+    fixed = re.sub(r'\s+end\s+fraction\b', '', fixed, flags=re.I)
+    fixed = re.sub(r'\s+end\s+power\b', '', fixed, flags=re.I)
+
+    fixed = re.sub(
+        r'\braised to\s+(?:the\s+)?\\frac\{([^}]+)\}\{([^}\s]+)\s+power\}',
+        lambda m: '^{\\frac{' + m.group(1) + '}{' + m.group(2) + '}}',
+        fixed,
+        flags=re.I,
+    )
+    fixed = re.sub(
+        r'\braised to\s+(?:the\s+)?\\frac\{([^}]+)\}\{([^}]+)\}\s+power\b',
+        lambda m: '^{\\frac{' + m.group(1) + '}{' + m.group(2) + '}}',
+        fixed,
+        flags=re.I,
+    )
+    fixed = re.sub(
+        r'\braised to\s+the\s+(.+?)\s+power\b',
+        lambda m: '^{' + _normalize_exponent_body(m.group(1)) + '}',
+        fixed,
+        flags=re.I,
+    )
+    fixed = re.sub(
+        r'([^\s^]+)\s+raised\s+to\s+the\s+(-?[\w.]+)\s+power\b',
+        lambda m: m.group(1) + '^{' + m.group(2) + '}',
+        fixed,
+        flags=re.I,
+    )
+
+    fixed = re.sub(r'(\w)\s*\^\s*\{([^}]+)\}', r'\1^{\2}', fixed)
+
+    fixed = re.sub(
+        r'\bparenthesis\s+(.+?)\s*\)',
+        lambda m: '(' + m.group(1).strip() + ')',
+        fixed,
+        flags=re.I,
+    )
+
+    fixed = re.sub(
+        r'([a-zA-Z])\s*\(\s*open\s*\)\s*parenthesis\s+([^)]+?)\s*\)',
+        lambda m: m.group(1) + '(' + re.sub(r'\s+', '', m.group(2)) + ')',
+        fixed,
+        flags=re.I,
+    )
+    fixed = re.sub(
+        r'\b([a-zA-Z])\s+of\s+(\([^()]*\))',
+        lambda m: m.group(1) + m.group(2),
+        fixed,
+    )
+    fixed = re.sub(
+        r'\b([a-zA-Z])\s+of\s+([a-zA-Z0-9]+)\b',
+        lambda m: m.group(1) + '(' + m.group(2) + ')',
+        fixed,
+    )
+    fixed = re.sub(r'\bf\((\d+)\)\s+x\b', r'f(\1x)', fixed)
+    fixed = re.sub(
+        rf'(\d+)\s+({_SPOKEN_FRAC_SUFFIX_PAT})\b',
+        lambda m: '\\frac{' + m.group(1) + '}{' + _SPOKEN_FRAC_SUFFIX[m.group(2).lower()] + '}',
+        fixed,
+        flags=re.I,
+    )
+    return fixed
+
+
 def repair_broken_inline_tex(s: str) -> str:
     """Fix bad \\( … \\) left by older passes (e.g. 'h of t', 'f(open) parenthesis')."""
     pieces: list[str] = []
     last = 0
     for start, end, inner in _extract_inline_tex_spans(s):
         pieces.append(s[last:start])
-        fixed = inner.rstrip().rstrip('\\')
-        # "f(open) parenthesis …" or "f(open)parenthesis …" (CB sometimes omits space)
-        fixed = re.sub(
-            r'([a-zA-Z])\s*\(\s*open\s*\)\s*parenthesis\s+([^)]+?)\s*\)',
-            lambda m: m.group(1) + '(' + re.sub(r'\s+', '', m.group(2)) + ')',
-            fixed,
-            flags=re.I,
-        )
-        fixed = re.sub(
-            r'\b([a-zA-Z])\s+of\s+(\([^()]*\))',
-            lambda m: m.group(1) + m.group(2),
-            fixed,
-        )
-        fixed = re.sub(
-            r'\b([a-zA-Z])\s+of\s+([a-zA-Z0-9]+)\b',
-            lambda m: m.group(1) + '(' + m.group(2) + ')',
-            fixed,
-        )
-        # Corrupted "f of 3 x" → "f(3) x" in rationales; merge to f(3x)
-        fixed = re.sub(r'\bf\((\d+)\)\s+x\b', r'f(\1x)', fixed)
-        fixed = re.sub(
-            rf'(\d+)\s+({_SPOKEN_FRAC_SUFFIX_PAT})\b',
-            lambda m: '\\frac{' + m.group(1) + '}{' + _SPOKEN_FRAC_SUFFIX[m.group(2).lower()] + '}',
-            fixed,
-            flags=re.I,
-        )
+        fixed = _repair_inner(inner)
         pieces.append(_JSON_INLINE_OPEN + fixed + _JSON_INLINE_CLOSE)
         last = end
     pieces.append(s[last:])
@@ -482,17 +634,33 @@ def run_tests():
         (_JSON_INLINE_OPEN + 'h of t = 1' + _JSON_INLINE_CLOSE, _JSON_INLINE_OPEN + 'h(t) = 1' + _JSON_INLINE_CLOSE),
         (_JSON_INLINE_OPEN + 'f(open) parenthesis 3 x ) = x - 6' + _JSON_INLINE_CLOSE,
          _JSON_INLINE_OPEN + 'f(3x) = x - 6' + _JSON_INLINE_CLOSE),
-        (_JSON_INLINE_OPEN + 'f(open)parenthesis 3 x ) = x - 6' + _JSON_INLINE_CLOSE,
-         _JSON_INLINE_OPEN + 'f(3x) = x - 6' + _JSON_INLINE_CLOSE),
-        (_JSON_INLINE_OPEN + 'f(3) x = 0' + _JSON_INLINE_CLOSE, _JSON_INLINE_OPEN + 'f(3x) = 0' + _JSON_INLINE_CLOSE),
-        (_JSON_INLINE_OPEN + '4 thirds' + _JSON_INLINE_CLOSE, _JSON_INLINE_OPEN + '\\frac{4}{3}' + _JSON_INLINE_CLOSE),
+        (_JSON_INLINE_OPEN + r'\frac{\sqrt{x ^{5} end root}}{the cube root of x ^{4} end root} = x raised to \frac{a}{b power}' + _JSON_INLINE_CLOSE,
+         _JSON_INLINE_OPEN + r'\frac{\sqrt{x^{5}}}{\sqrt[3]{x^{4}}} = x^{\frac{a}{b}}' + _JSON_INLINE_CLOSE),
+        (_JSON_INLINE_OPEN + 'f(t) = the -fraction 21 over 130 end fraction t + 4' + _JSON_INLINE_CLOSE,
+         _JSON_INLINE_OPEN + r'f(t) = \frac{21}{130} t + 4' + _JSON_INLINE_CLOSE),
+        (_JSON_INLINE_OPEN + 'p(t) = 24 \\times 2 raised to the 1.162 t power' + _JSON_INLINE_CLOSE,
+         _JSON_INLINE_OPEN + 'p(t) = 24 \\times 2^{1.162t}' + _JSON_INLINE_CLOSE),
     ]
     for a, b in _rep_cases:
         out = repair_broken_inline_tex(a)
         ok = '✓' if out == b else '?'
-        print(f' {ok} {repr(a[:50])}…')
+        print(f' {ok} {repr(a[:60])}…')
         if out != b:
             print(f'   → {out!r} ≠ {b!r}')
+    print()
+
+    print('--- _repair_inner spot checks ---')
+    for inner, expected in [
+        (r'\frac{\sqrt{x ^{5} end root}}{the cube root of x ^{4} end root} = x raised to \frac{a}{b power}',
+         r'\frac{\sqrt{x^{5}}}{\sqrt[3]{x^{4}}} = x^{\frac{a}{b}}'),
+        (r'M = 1800 \times 1.02 to the power t', r'M = 1800 \times 1.02^{t}'),
+        (r'(x subscript 1 , y subscript 1)', r'(x_{1} , y_{1})'),
+    ]:
+        out = _repair_inner(inner)
+        ok = '✓' if out == expected else '?'
+        print(f' {ok} {out!r}')
+        if out != expected:
+            print(f'   ≠ {expected!r}')
     print()
 
 

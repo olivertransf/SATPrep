@@ -2,11 +2,7 @@ import { useState } from 'react'
 import type { QuestionProgress } from '../../types'
 import { resetAll } from '../../store/progress'
 import { loadAllQuizzes } from '../../store/quiz'
-import { loadDeletedProgress, tombstoneAllQuizzes } from '../../store/deleted'
-import { pushCloudSync } from '../../store/cloudSync'
 import { Sun, Moon, AlertTriangle } from 'lucide-react'
-import type { useCloudSync } from '../../hooks/useCloudSync'
-import { CloudSyncSettings } from './CloudSyncSettings'
 
 interface SettingsViewProps {
   progress: Record<string, QuestionProgress>
@@ -16,7 +12,6 @@ interface SettingsViewProps {
   isDark: boolean
   fontSize: number
   onFontSizeChange: (size: number) => void
-  cloudSync: ReturnType<typeof useCloudSync>
 }
 
 function SettingRow({ label, sub, right }: { label: string; sub?: string; right: React.ReactNode }) {
@@ -33,7 +28,7 @@ function SettingRow({ label, sub, right }: { label: string; sub?: string; right:
 }
 
 export default function SettingsView({
-  progress, onProgressChange, onQuizzesChange, onToggleTheme, isDark, fontSize, onFontSizeChange, cloudSync,
+  progress, onProgressChange, onQuizzesChange, onToggleTheme, isDark, fontSize, onFontSizeChange,
 }: SettingsViewProps) {
   const [showConfirm, setShowConfirm] = useState(false)
 
@@ -41,36 +36,29 @@ export default function SettingsView({
   const seen = Object.values(progress).filter(p => p.seen).length
   const savedQuizCount = loadAllQuizzes().length
 
-  async function handleReset() {
-    const quizzes = loadAllQuizzes()
-    const deletedQuizzes = tombstoneAllQuizzes(quizzes)
+  function handleReset() {
     resetAll()
-    const deletedProgress = loadDeletedProgress()
     onProgressChange({})
     localStorage.removeItem('studium_saved_quizzes')
     localStorage.removeItem('studium_vocab_buckets')
     onQuizzesChange([])
-    window.dispatchEvent(new Event('studium-cloud-sync'))
+    window.dispatchEvent(new Event('studium-local-data-change'))
     setShowConfirm(false)
-    if (cloudSync.active) {
-      await pushCloudSync({
-        progress: {},
-        deleted_progress: deletedProgress,
-        saved_quizzes: [],
-        deleted_quizzes: deletedQuizzes,
-        vocab_buckets: { words: {}, roots: {} },
-      })
-    }
   }
 
   return (
     <div className="flex-1 overflow-y-auto studium-screen">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+
+        <header className="mb-2">
+          <h1 className="studium-page-title m-0">Settings</h1>
+          <p className="studium-page-subtitle mt-1 mb-0">Customize your study experience</p>
+        </header>
 
         <div className="studium-card overflow-hidden p-0">
           <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-            <div className="font-semibold" style={{ color: 'var(--text)' }}>Studium</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>SAT Prep Practice App</div>
+            <div className="font-semibold" style={{ color: 'var(--text)' }}>Your progress</div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>Saved in this browser</div>
           </div>
           <SettingRow label="Questions Attempted" right={
             <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{attempted}</span>
@@ -125,17 +113,10 @@ export default function SettingsView({
 
         <div className="studium-card overflow-hidden p-0">
           <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-            <div className="studium-eyebrow">Cloud sync</div>
-          </div>
-          <CloudSyncSettings sync={cloudSync} />
-        </div>
-
-        <div className="studium-card overflow-hidden p-0">
-          <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
             <div className="studium-eyebrow">Data</div>
           </div>
           <div className="px-4 py-2 border-b text-sm" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
-            Local cache in this browser. When cloud sync is on, Supabase is the backup across devices.
+            Progress is stored locally in your browser. Clearing site data will reset everything.
           </div>
           <div className="px-4 py-2">
             <button
@@ -150,7 +131,6 @@ export default function SettingsView({
 
       </div>
 
-      {/* Confirm modal */}
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.6)' }}>

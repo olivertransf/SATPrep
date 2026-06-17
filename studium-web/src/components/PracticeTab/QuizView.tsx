@@ -678,7 +678,7 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
               {actionArea}
               <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)', height: 300 }}>
                 <iframe
-                  src="https://www.desmos.com/calculator"
+                  src="https://www.desmos.com/testing/collegeboard/graphing"
                   className="w-full h-full border-0"
                   title="Desmos Graphing Calculator"
                   allow="fullscreen"
@@ -703,7 +703,7 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
               }}
             >
               <iframe
-                src="https://www.desmos.com/calculator"
+                src="https://www.desmos.com/testing/collegeboard/graphing"
                 className="flex-1 min-h-0 w-full border-0"
                 title="Desmos Graphing Calculator"
                 allow="fullscreen"

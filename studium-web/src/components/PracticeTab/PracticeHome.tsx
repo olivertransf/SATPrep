@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type {
   Question, QuestionProgress, FilterOptions, SavedQuiz,
 } from '../../types'
@@ -17,6 +17,8 @@ interface PracticeHomeProps {
   progress: Record<string, QuestionProgress>
   savedQuizzes: SavedQuiz[]
   cbVerifiedNotOnPracticeTestIds: Set<string>
+  initialModule?: 'math' | 'english'
+  onModulePresetConsumed?: () => void
   onStartQuiz: (filters: FilterOptions) => void
   onResumeQuiz: (quiz: SavedQuiz) => void
   onQuizzesChange: (quizzes: SavedQuiz[]) => void
@@ -49,6 +51,7 @@ function describeFilters(f: FilterOptions): string {
 
 export default function PracticeHome({
   questions, progress, savedQuizzes, cbVerifiedNotOnPracticeTestIds,
+  initialModule, onModulePresetConsumed,
   onStartQuiz, onResumeQuiz, onQuizzesChange,
 }: PracticeHomeProps) {
   const useWideSplit = useWidePracticeLayout()
@@ -57,14 +60,21 @@ export default function PracticeHome({
   const [filterState, setFilterState] = useState<PracticeFilterState>({
     answerStatus: 'all',
     shuffled: true,
+    module: initialModule,
   })
+
+  useEffect(() => {
+    if (!initialModule) return
+    setFilterState(prev => ({ ...prev, module: initialModule }))
+    onModulePresetConsumed?.()
+  }, [initialModule, onModulePresetConsumed])
 
   function patchFilters(patch: Partial<PracticeFilterState>) {
     setFilterState(prev => ({ ...prev, ...patch }))
   }
 
   const currentFilters: FilterOptions = useMemo(() => ({
-    module: undefined,
+    module: filterState.module,
     difficulty: filterState.difficulty,
     primaryClassCdDesc: undefined,
     skillDesc: undefined,
@@ -115,6 +125,8 @@ export default function PracticeHome({
 
   const filterSummary = useMemo(() => {
     const parts: string[] = []
+    if (filterState.module === 'math') parts.push('Math')
+    if (filterState.module === 'english') parts.push('Reading & Writing')
     if (filterState.difficulty) parts.push(DIFFICULTY_LABELS[filterState.difficulty] ?? filterState.difficulty)
     if (filterState.answerStatus !== 'all') parts.push(filterState.answerStatus)
     if (filterState.cbVerifiedInactive) parts.push('CB verified')
@@ -168,7 +180,7 @@ export default function PracticeHome({
       )}
 
       <header className="mb-5">
-        <h2 className="studium-page-title m-0">Browse by topic</h2>
+        <h2 className="studium-page-title m-0">Practice questions</h2>
         <p className="studium-page-subtitle mt-1 mb-0">
           {conceptCategories.length} topics · {matchingCount} questions
         </p>

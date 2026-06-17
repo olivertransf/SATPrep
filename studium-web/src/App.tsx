@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import type {
   Question, VocabWord, QuestionProgress, FilterOptions,
   SavedQuiz, QuestionData, VocabData,
 } from './types'
 import { loadProgress, saveProgress } from './store/progress'
-import { loadAllQuizzes, saveQuiz, generateQuizId } from './store/quiz'
+import { loadAllQuizzes, saveQuiz, generateQuizId, deleteQuiz } from './store/quiz'
 import { getFilteredQuestions } from './utils/questions'
+import HomeView from './components/HomeTab/HomeView'
 import PracticeHome from './components/PracticeTab/PracticeHome'
 import QuizView from './components/PracticeTab/QuizView'
 import VocabFlashcards from './components/VocabTab/VocabFlashcards'
@@ -13,28 +14,27 @@ import DesmosCalculator from './components/DesmosTab/DesmosCalculator'
 import StatsView from './components/StatsTab/StatsView'
 import SettingsView from './components/SettingsTab/SettingsView'
 import ReferenceView from './components/ReferenceTab/ReferenceView'
-import { useCloudSync } from './hooks/useCloudSync'
 import { fetchJSON } from './lib/offlineFetch'
 import {
-  BookOpen, Layers, Calculator, BarChart2, Settings, Sun, Moon, BookMarked,
+  Home, BookOpen, Layers, Calculator, BarChart2, Settings, Sun, Moon, BookMarked, Menu, X,
 } from 'lucide-react'
 
-type Tab = 'practice' | 'vocab' | 'reference' | 'desmos' | 'stats' | 'settings'
+type Tab = 'home' | 'practice' | 'vocab' | 'reference' | 'desmos' | 'stats' | 'settings'
 
-const TABS: { id: Tab; label: string; Icon: React.ElementType }[] = [
+const NAV_ITEMS: { id: Tab; label: string; Icon: React.ElementType }[] = [
+  { id: 'home', label: 'Home', Icon: Home },
   { id: 'practice', label: 'Practice', Icon: BookOpen },
   { id: 'vocab', label: 'Vocab', Icon: Layers },
   { id: 'reference', label: 'Reference', Icon: BookMarked },
   { id: 'desmos', label: 'Desmos', Icon: Calculator },
   { id: 'stats', label: 'Stats', Icon: BarChart2 },
-  { id: 'settings', label: 'Settings', Icon: Settings },
 ]
 
 function useDarkMode() {
   const [dark, setDark] = useState<boolean>(() => {
     const stored = localStorage.getItem('studium_theme')
     if (stored) return stored === 'dark'
-    return true
+    return false
   })
 
   useEffect(() => {
@@ -46,7 +46,9 @@ function useDarkMode() {
 }
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('practice')
+  const [tab, setTab] = useState<Tab>('home')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [practiceModulePreset, setPracticeModulePreset] = useState<'math' | 'english' | undefined>()
   const [questions, setQuestions] = useState<Question[]>([])
   const [vocabWords, setVocabWords] = useState<VocabWord[]>([])
   const [progress, setProgress] = useState<Record<string, QuestionProgress>>(loadProgress)
@@ -62,19 +64,19 @@ export default function App() {
   })
   const { dark, toggle } = useDarkMode()
 
-  const onCloudMerged = useCallback((data: { progress: Record<string, QuestionProgress>; savedQuizzes: SavedQuiz[] }) => {
-    setProgress(data.progress)
-    setSavedQuizzes(data.savedQuizzes)
-  }, [])
-
-  const cloudSync = useCloudSync({
-    enabled: !loading,
-    onMerged: onCloudMerged,
-  })
-
   function handleFontSizeChange(size: number) {
     setHtmlFontSize(size)
     localStorage.setItem('studium_html_font_size', String(size))
+  }
+
+  function navigateTo(tabId: Tab) {
+    setTab(tabId)
+    setMobileMenuOpen(false)
+  }
+
+  function handleStartSection(module: 'math' | 'english') {
+    setPracticeModulePreset(module)
+    navigateTo('practice')
   }
 
   useEffect(() => {
@@ -113,7 +115,6 @@ export default function App() {
   function handleProgressChange(p: Record<string, QuestionProgress>) {
     setProgress(p)
     saveProgress(p)
-    cloudSync.notifyLocalChange()
   }
 
   function handleStartQuiz(filters: FilterOptions) {
@@ -129,7 +130,6 @@ export default function App() {
     }
     saveQuiz(quiz)
     setSavedQuizzes(loadAllQuizzes())
-    cloudSync.notifyLocalChange()
     setActiveQuiz(quiz)
   }
 
@@ -139,8 +139,12 @@ export default function App() {
 
   function handleExitQuiz() {
     setSavedQuizzes(loadAllQuizzes())
-    cloudSync.notifyLocalChange()
     setActiveQuiz(null)
+  }
+
+  function handleDeleteQuiz(id: string) {
+    deleteQuiz(id)
+    setSavedQuizzes(loadAllQuizzes())
   }
 
   const quizQuestions = activeQuiz
@@ -178,7 +182,7 @@ export default function App() {
           <p className="text-sm" style={{ color: 'var(--muted)' }}>{loadError}</p>
           <button
             type="button"
-            className="studium-chip studium-chip--selected px-4 py-2 text-sm font-semibold"
+            className="studium-btn-primary px-6"
             onClick={() => window.location.reload()}
           >
             Retry
@@ -188,141 +192,182 @@ export default function App() {
     )
   }
 
-  const currentTabLabel = TABS.find(t => t.id === tab)?.label ?? ''
-
   return (
-    <div className="h-screen flex overflow-hidden studium-screen">
+    <div className="h-screen flex flex-col overflow-hidden studium-screen">
 
       {!activeQuiz && (
-        <aside
-          className="hidden md:flex flex-col w-[240px] shrink-0 border-r h-full"
+        <header
+          className="shrink-0 border-b z-30"
           style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
-          aria-label="Main navigation"
         >
-          <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
-            <div className="text-lg font-bold tracking-tight" style={{ color: 'var(--text)' }}>Studium</div>
-            <div className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>SAT Prep</div>
-          </div>
-
-          <nav className="flex-1 py-3 px-3 space-y-1" aria-label="Tabs">
-            {TABS.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTab(id)}
-                aria-current={tab === id ? 'page' : undefined}
-                className={['studium-nav-item', tab === id ? 'studium-nav-item--active' : ''].join(' ')}
-              >
-                <Icon size={18} aria-hidden="true" />
-                <span>{label}</span>
-              </button>
-            ))}
-          </nav>
-
-          <div className="px-3 py-4 border-t" style={{ borderColor: 'var(--border)' }}>
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center gap-4">
             <button
               type="button"
-              onClick={toggle}
-              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="studium-btn-secondary w-full"
+              onClick={() => navigateTo('home')}
+              className="flex items-center gap-2.5 shrink-0 border-0 bg-transparent cursor-pointer p-0"
             >
-              {dark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
-              <span>{dark ? 'Light mode' : 'Dark mode'}</span>
+              <div
+                className="flex items-center justify-center rounded-lg font-bold text-sm"
+                style={{ width: 32, height: 32, background: 'var(--accent)', color: '#fff' }}
+                aria-hidden="true"
+              >
+                S
+              </div>
+              <div className="text-left hidden sm:block">
+                <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>Studium</div>
+                <div className="text-xs leading-tight" style={{ color: 'var(--muted)' }}>SAT Prep</div>
+              </div>
             </button>
+
+            <nav className="hidden lg:flex items-center gap-1 flex-1" aria-label="Main navigation">
+              {NAV_ITEMS.map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => navigateTo(id)}
+                  aria-current={tab === id ? 'page' : undefined}
+                  className={['studium-topnav-item', tab === id ? 'studium-topnav-item--active' : ''].join(' ')}
+                >
+                  <Icon size={16} aria-hidden="true" />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </nav>
+
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={toggle}
+                aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+                className="studium-btn-ghost"
+              >
+                {dark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateTo('settings')}
+                aria-label="Settings"
+                aria-current={tab === 'settings' ? 'page' : undefined}
+                className={['studium-btn-ghost', tab === 'settings' ? 'studium-btn-ghost--active' : ''].join(' ')}
+              >
+                <Settings size={18} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="studium-btn-ghost lg:hidden"
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={mobileMenuOpen}
+                onClick={() => setMobileMenuOpen(o => !o)}
+              >
+                {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
           </div>
-        </aside>
+
+          {mobileMenuOpen && (
+            <nav
+              className="lg:hidden border-t px-4 py-3 flex flex-col gap-1"
+              style={{ borderColor: 'var(--border)', background: 'var(--card)' }}
+              aria-label="Mobile navigation"
+            >
+              {NAV_ITEMS.map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => navigateTo(id)}
+                  aria-current={tab === id ? 'page' : undefined}
+                  className={['studium-nav-item', tab === id ? 'studium-nav-item--active' : ''].join(' ')}
+                >
+                  <Icon size={18} aria-hidden="true" />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </nav>
+          )}
+        </header>
       )}
 
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden studium-screen">
+      <main className="flex-1 overflow-hidden flex flex-col min-h-0">
+        <div className="tab-content flex-1 overflow-hidden flex flex-col min-h-0">
+          {activeQuiz ? (
+            <QuizView
+              quiz={activeQuiz}
+              questions={quizQuestions}
+              progress={progress}
+              onProgressChange={handleProgressChange}
+              onExit={handleExitQuiz}
+              isDark={dark}
+              fontSize={htmlFontSize}
+            />
+          ) : tab === 'home' ? (
+            <HomeView
+              questions={questions}
+              progress={progress}
+              savedQuizzes={savedQuizzes}
+              onStartSection={handleStartSection}
+              onGoToPractice={() => navigateTo('practice')}
+              onGoToVocab={() => navigateTo('vocab')}
+              onGoToReference={() => navigateTo('reference')}
+              onGoToStats={() => navigateTo('stats')}
+              onResumeQuiz={handleResumeQuiz}
+              onDeleteQuiz={handleDeleteQuiz}
+            />
+          ) : tab === 'practice' ? (
+            <PracticeHome
+              questions={questions}
+              progress={progress}
+              savedQuizzes={savedQuizzes}
+              cbVerifiedNotOnPracticeTestIds={cbVerifiedIds}
+              initialModule={practiceModulePreset}
+              onModulePresetConsumed={() => setPracticeModulePreset(undefined)}
+              onStartQuiz={handleStartQuiz}
+              onResumeQuiz={handleResumeQuiz}
+              onQuizzesChange={setSavedQuizzes}
+            />
+          ) : tab === 'vocab' ? (
+            <VocabFlashcards words={vocabWords} />
+          ) : tab === 'reference' ? (
+            <ReferenceView />
+          ) : tab === 'desmos' ? (
+            <DesmosCalculator />
+          ) : tab === 'stats' ? (
+            <StatsView questions={questions} progress={progress} />
+          ) : (
+            <SettingsView
+              onQuizzesChange={setSavedQuizzes}
+              progress={progress}
+              onProgressChange={handleProgressChange}
+              onToggleTheme={toggle}
+              isDark={dark}
+              fontSize={htmlFontSize}
+              onFontSizeChange={handleFontSizeChange}
+            />
+          )}
+        </div>
+      </main>
 
-        {!activeQuiz && (
-          <header
-            className="md:hidden flex items-center justify-between px-4 py-3 border-b shrink-0"
-            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
-          >
-            <h1 className="text-lg font-semibold m-0" style={{ color: 'var(--text)' }}>{currentTabLabel}</h1>
+      {!activeQuiz && (
+        <nav
+          className="lg:hidden flex shrink-0 border-t"
+          style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
+          aria-label="Tabs"
+        >
+          {NAV_ITEMS.slice(0, 5).map(({ id, label, Icon }) => (
             <button
+              key={id}
               type="button"
-              onClick={toggle}
-              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="studium-btn-secondary px-3 min-h-[36px]"
+              onClick={() => navigateTo(id)}
+              aria-current={tab === id ? 'page' : undefined}
+              aria-label={label}
+              className="flex-1 flex flex-col items-center gap-0.5 py-2 min-h-[52px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+              style={tab === id ? { color: 'var(--accent)' } : { color: 'var(--muted)' }}
             >
-              {dark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+              <Icon size={22} aria-hidden="true" />
+              <span className="text-[11px] font-medium mobile-tab-label">{label}</span>
             </button>
-          </header>
-        )}
-
-        <main className="flex-1 overflow-hidden flex flex-col min-h-0">
-          <div className="tab-content flex-1 overflow-hidden flex flex-col min-h-0">
-            {activeQuiz ? (
-              <QuizView
-                quiz={activeQuiz}
-                questions={quizQuestions}
-                progress={progress}
-                onProgressChange={handleProgressChange}
-                onExit={handleExitQuiz}
-                isDark={dark}
-                fontSize={htmlFontSize}
-              />
-            ) : tab === 'practice' ? (
-              <PracticeHome
-                questions={questions}
-                progress={progress}
-                savedQuizzes={savedQuizzes}
-                cbVerifiedNotOnPracticeTestIds={cbVerifiedIds}
-                onStartQuiz={handleStartQuiz}
-                onResumeQuiz={handleResumeQuiz}
-                onQuizzesChange={quizzes => {
-                  setSavedQuizzes(quizzes)
-                  cloudSync.notifyLocalChange()
-                }}
-              />
-            ) : tab === 'vocab' ? (
-              <VocabFlashcards words={vocabWords} onLocalChange={cloudSync.notifyLocalChange} />
-            ) : tab === 'reference' ? (
-              <ReferenceView />
-            ) : tab === 'desmos' ? (
-              <DesmosCalculator />
-            ) : tab === 'stats' ? (
-              <StatsView questions={questions} progress={progress} />
-            ) : (
-              <SettingsView
-                onQuizzesChange={setSavedQuizzes}
-                progress={progress}
-                onProgressChange={handleProgressChange}
-                onToggleTheme={toggle}
-                isDark={dark}
-                fontSize={htmlFontSize}
-                onFontSizeChange={handleFontSizeChange}
-                cloudSync={cloudSync}
-              />
-            )}
-          </div>
-        </main>
-
-        {!activeQuiz && (
-          <nav
-            className="md:hidden flex shrink-0 border-t"
-            style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
-            aria-label="Tabs"
-          >
-            {TABS.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTab(id)}
-                aria-current={tab === id ? 'page' : undefined}
-                aria-label={label}
-                className="flex-1 flex flex-col items-center gap-0.5 py-2 min-h-[52px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
-                style={tab === id ? { color: 'var(--accent)' } : { color: 'var(--muted)' }}
-              >
-                <Icon size={22} aria-hidden="true" />
-                <span className="text-[11px] font-medium mobile-tab-label">{label}</span>
-              </button>
-            ))}
-          </nav>
-        )}
-      </div>
+          ))}
+        </nav>
+      )}
     </div>
   )
 }

@@ -45,7 +45,7 @@ export function loadVocabPayload(): VocabBucketsPayload {
 
 export function saveVocabPayload(payload: VocabBucketsPayload) {
   localStorage.setItem(VOCAB_KEY, JSON.stringify(payload))
-  window.dispatchEvent(new Event('studium-cloud-sync'))
+  window.dispatchEvent(new Event('studium-local-data-change'))
 }
 
 export function loadWordBucketsForUI(): Record<string, WebVocabBucket> {

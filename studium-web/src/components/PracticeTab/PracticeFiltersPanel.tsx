@@ -6,6 +6,7 @@ import { Shuffle, ArrowDownUp } from 'lucide-react'
 const DIFFICULTY_LABELS: Record<string, string> = { E: 'Easy', M: 'Medium', H: 'Hard' }
 
 export interface PracticeFilterState {
+  module?: 'math' | 'english'
   difficulty?: string
   answerStatus: AnswerStatus
   cbVerifiedInactive?: CBVerifiedInactiveFilter
@@ -24,6 +25,14 @@ export function PracticeFiltersPanel({ filters, onChange, sidebar }: PracticeFil
 
   return (
     <div className="flex flex-col gap-4">
+      <FilterFormCard title="Section">
+        <FilterChipGrid columns={cols}>
+          <FilterChip label="All" selected={!filters.module} onClick={() => onChange({ module: undefined })} fillsCell />
+          <FilterChip label="Math" selected={filters.module === 'math'} onClick={() => onChange({ module: 'math' })} fillsCell />
+          <FilterChip label="Reading & Writing" selected={filters.module === 'english'} onClick={() => onChange({ module: 'english' })} fillsCell />
+        </FilterChipGrid>
+      </FilterFormCard>
+
       <FilterFormCard title="Difficulty">
         <FilterChipGrid columns={cols}>
           <FilterChip label="All" selected={!filters.difficulty} onClick={() => onChange({ difficulty: undefined })} fillsCell />
