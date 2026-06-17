@@ -1,6 +1,10 @@
 # Local Supabase credentials (copy from StudiumSync.plist.example)
 Studium/StudiumSync.plist
 
+# Firebase / Google Sign-In (download from Firebase Console)
+Studium/GoogleService-Info.plist
+Studium/Info.plist
+
 # Web env
 studium-web/.env.local
 studium-web/.vercel

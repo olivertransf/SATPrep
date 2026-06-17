@@ -6,6 +6,10 @@
 import SwiftUI
 
 struct ReferenceView: View {
+    var onOpenSettings: () -> Void = {}
+
+    @EnvironmentObject private var authManager: StudiumAuthManager
+    @EnvironmentObject private var syncService: StudiumCloudSyncService
     @State private var selectedSubject = 0
     @State private var searchText = ""
     @State private var expandedSections: Set<String> = []
@@ -37,9 +41,16 @@ struct ReferenceView: View {
     var body: some View {
         NavigationStack {
             referenceMainScrollLayout
+                .navigationTitle("Reference")
+                .navAdaptiveTitle()
+                .toolbar {
+                    StudiumGlobalToolbar(
+                        authManager: authManager,
+                        syncService: syncService,
+                        onOpenSettings: onOpenSettings
+                    )
+                }
         }
-        .navigationTitle("Reference")
-        .navLargeTitle()
         .trackViewportWidth($viewportWidth)
         .onChange(of: searchText) { _, new in
             if !new.isEmpty {
@@ -80,12 +91,7 @@ struct ReferenceView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.secondary.opacity(0.14))
-        )
+        .studiumInsetField()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Search formulas and rules")
     }
@@ -98,7 +104,8 @@ struct ReferenceView: View {
                     .padding(.horizontal, referenceChipStripHorizontalPadding)
                     .padding(.vertical, referenceChipStripVerticalPadding)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.secondarySystemGroupedBackground)
+                    .background(Color.systemBackground)
+                    .overlay(alignment: .bottom) { Divider() }
                     .onChange(of: selectedSubject) { _, _ in expandedSections.removeAll() }
             }
 
@@ -106,7 +113,8 @@ struct ReferenceView: View {
                 .padding(.horizontal, referenceChipStripHorizontalPadding)
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.secondarySystemGroupedBackground)
+                .background(Color.systemBackground)
+                .overlay(alignment: .bottom) { Divider() }
 
             if isTwoColumn {
                 twoColumnScrollLayout
@@ -209,7 +217,12 @@ struct ReferenceView: View {
             FilterChipButton(title: "Math", isSelected: selectedSubject == 0, accent: .blue, fillsGridCell: true) {
                 selectedSubject = 0
             }
-            FilterChipButton(title: "Reading & Writing", isSelected: selectedSubject == 1, accent: .blue, fillsGridCell: true) {
+            FilterChipButton(
+                title: StudiumDesignSystem.isPhone ? "R&W" : "Reading & Writing",
+                isSelected: selectedSubject == 1,
+                accent: .blue,
+                fillsGridCell: true
+            ) {
                 selectedSubject = 1
             }
         }

@@ -1,5 +1,6 @@
 import type { QuestionProgress } from '../types'
-import { loadDeletedProgress, tombstoneAllProgress } from './deleted'
+import { loadDeletedProgress, tombstoneAllProgress, clearProgressTombstone } from './deleted'
+import { notifyLocalDataChanged } from '../lib/localDataEvents'
 
 const KEY = 'studium_progress'
 
@@ -15,12 +16,14 @@ export function loadProgress(): Record<string, QuestionProgress> {
 
 export function saveProgress(progress: Record<string, QuestionProgress>): void {
   localStorage.setItem(KEY, JSON.stringify(progress))
+  notifyLocalDataChanged()
 }
 
 export function markSeen(
   progress: Record<string, QuestionProgress>,
   questionId: string
 ): Record<string, QuestionProgress> {
+  clearProgressTombstone(questionId)
   const existing = progress[questionId] ?? { seen: false }
   return {
     ...progress,
@@ -33,6 +36,7 @@ export function markAnswered(
   questionId: string,
   correct: boolean
 ): Record<string, QuestionProgress> {
+  clearProgressTombstone(questionId)
   const existing = progress[questionId] ?? { seen: false }
   return {
     ...progress,
@@ -44,6 +48,7 @@ export function resetAll(): Record<string, QuestionProgress> {
   const existing = loadProgress()
   tombstoneAllProgress(existing)
   localStorage.removeItem(KEY)
+  notifyLocalDataChanged()
   return {}
 }
 

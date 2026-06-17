@@ -176,7 +176,6 @@ struct QuizBottomBar: View {
     let canGoPrevious: Bool
     let canGoNext: Bool
     let showSubmit: Bool
-    let nextLabel: String
     let onPrevious: () -> Void
     let onSubmit: () -> Void
     let onNext: () -> Void
@@ -202,16 +201,12 @@ struct QuizBottomBar: View {
             }
 
             Button(action: onNext) {
-                HStack(spacing: 4) {
-                    Text(nextLabel)
-                    Image(systemName: "chevron.right")
-                }
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: StudiumDesignSystem.minTapTarget)
+                Image(systemName: "chevron.right")
+                    .frame(minWidth: StudiumDesignSystem.minTapTarget, minHeight: StudiumDesignSystem.minTapTarget)
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(!canGoNext && !showSubmit)
-            .accessibilityLabel(nextLabel)
+            .buttonStyle(.bordered)
+            .disabled(!canGoNext && showSubmit)
+            .accessibilityLabel("Next question")
         }
         .padding(.horizontal, StudiumDesignSystem.spacingLG)
         .padding(.vertical, StudiumDesignSystem.spacingSM)
@@ -219,27 +214,94 @@ struct QuizBottomBar: View {
     }
 }
 
-// MARK: - Bundle version
-
 // MARK: - Card chrome
 
-extension View {
-    /// Standard raised card on `systemGroupedBackground` (Settings-style).
-    func studiumElevatedCard(
-        padding: CGFloat = StudiumDesignSystem.spacingLG,
-        cornerRadius: CGFloat = StudiumDesignSystem.radiusCard
-    ) -> some View {
-        self
+private struct StudiumElevatedCardModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    let padding: CGFloat
+    let cornerRadius: CGFloat
+    let showsShadow: Bool
+
+    func body(content: Content) -> some View {
+        content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.systemBackground)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(Color.studiumSeparator.opacity(0.4), lineWidth: 0.5)
+                    .strokeBorder(Color.studiumSeparator.opacity(colorScheme == .dark ? 0.55 : 0.85), lineWidth: 0.5)
+            )
+            .shadow(
+                color: showsShadow ? FilterStyle.elevatedShadowColor(colorScheme: colorScheme) : .clear,
+                radius: 3,
+                y: 1
             )
     }
 }
+
+extension View {
+    /// Standard raised card on `systemGroupedBackground` (Settings-style).
+    func studiumElevatedCard(
+        padding: CGFloat = StudiumDesignSystem.spacingLG,
+        cornerRadius: CGFloat = StudiumDesignSystem.radiusCard,
+        showsShadow: Bool = true
+    ) -> some View {
+        modifier(StudiumElevatedCardModifier(padding: padding, cornerRadius: cornerRadius, showsShadow: showsShadow))
+    }
+
+    /// Inset search / text field chrome used on Reference and similar screens.
+    func studiumInsetField(cornerRadius: CGFloat = 10) -> some View {
+        self
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color.tertiarySystemFill)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(Color.studiumSeparator.opacity(0.45), lineWidth: 0.5)
+            )
+    }
+    /// Subtle upward shadow for sticky footers on grouped backgrounds.
+    func studiumTopEdgeShadow() -> some View {
+        modifier(StudiumTopEdgeShadowModifier())
+    }
+}
+
+private struct StudiumTopEdgeShadowModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.shadow(
+            color: FilterStyle.elevatedShadowColor(colorScheme: colorScheme),
+            radius: 6,
+            y: -2
+        )
+    }
+}
+
+// MARK: - Icon badge
+
+struct StudiumIconBadge: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    let systemImage: String
+    let tint: Color
+    var size: CGFloat = 44
+    var cornerRadius: CGFloat = 10
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(size >= 44 ? .title2 : .title3)
+            .foregroundStyle(tint)
+            .frame(width: size, height: size)
+            .background(FilterStyle.iconBadgeFill(tint: tint, colorScheme: colorScheme))
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    }
+}
+
+// MARK: - Bundle version (moved below card chrome; version enum follows)
 
 // MARK: - Quiz environment
 
@@ -278,6 +340,7 @@ struct QuizReadingBlock: View {
                 compact: compactHTML,
                 fontSizeOverride: fontSizeOverride,
                 contentProfile: profile,
+                embedded: true,
                 textHighlightingEnabled: textHighlightingEnabled
             )
             .frame(maxWidth: .infinity, alignment: .leading)

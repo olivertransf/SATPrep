@@ -2,13 +2,14 @@
 //  StudiumApp.swift
 //  Studium
 //
-//  Created by Oliver Tran on 12/23/25.
-//
 
 import SwiftUI
 #if os(macOS)
 import AppKit
+#endif
+import GoogleSignIn
 
+#if os(macOS)
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         NSApp.setActivationPolicy(.accessory)
@@ -20,18 +21,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.setActivationPolicy(.regular)
         }
     }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            _ = GIDSignIn.sharedInstance.handle(url)
+        }
+    }
 }
 #endif
 
 @main
 struct StudiumApp: App {
+    @StateObject private var authManager = StudiumAuthManager.shared
+    @StateObject private var syncService = StudiumCloudSyncService.shared
+
     init() {
+        StudiumFirebaseBootstrap.configureIfNeeded()
         StudiumLegacyDataCleanup.runIfNeeded()
     }
 
-    // "system" | "light" | "dark"  — default follows the OS
-    @AppStorage("appearanceMode") private var appearanceMode = "system"
-    @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("appearanceMode") private var appearanceMode = "light"
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(StudiumIOSAppDelegate.self) private var iosAppDelegate
+    #endif
     #if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var breakMonitor = ScreenBreakMonitor()
@@ -51,7 +63,13 @@ struct StudiumApp: App {
         WindowGroup(id: "main") {
             ContentView()
                 .preferredColorScheme(preferredScheme)
+                .environmentObject(authManager)
+                .environmentObject(syncService)
                 .environmentObject(breakMonitor)
+                .onAppear { StudiumSyncLifecycle.start(authManager: authManager) }
+                .onOpenURL { url in
+                    _ = GIDSignIn.sharedInstance.handle(url)
+                }
                 .onChange(of: breakMonitor.needsBreak) { _, needsBreak in
                     if needsBreak && menuBarFullScreenBreak {
                         BreakOverlayManager.shared.show(breakMonitor: breakMonitor)
@@ -59,13 +77,12 @@ struct StudiumApp: App {
                 }
         }
         .defaultSize(width: 1100, height: 760)
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active { syncAllManagers() }
-        }
 
         MenuBarExtra {
             MenuBarQuizView()
                 .environmentObject(breakMonitor)
+                .environmentObject(authManager)
+                .environmentObject(syncService)
         } label: {
             Image(systemName: "circle.fill")
                 .symbolRenderingMode(.palette)
@@ -76,14 +93,13 @@ struct StudiumApp: App {
         WindowGroup {
             ContentView()
                 .preferredColorScheme(preferredScheme)
-        }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active { syncAllManagers() }
+                .environmentObject(authManager)
+                .environmentObject(syncService)
+                .onAppear { StudiumSyncLifecycle.start(authManager: authManager) }
+                .onOpenURL { url in
+                    _ = GIDSignIn.sharedInstance.handle(url)
+                }
         }
         #endif
-    }
-
-    private func syncAllManagers() {
-        StudiumCloudSyncService.shared.syncIfNeeded()
     }
 }

@@ -161,17 +161,13 @@ class QuizStateManager: ObservableObject {
             savedQuizzes.append(updatedState)
         }
         
-        // Sort by most recent
         savedQuizzes.sort { $0.lastSaved > $1.lastSaved }
-        
-        // Save to UserDefaults
+        savedQuizzes = Array(savedQuizzes.prefix(10))
+
         if let encoded = try? JSONEncoder().encode(savedQuizzes) {
             UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
         }
-        
-        Task { @MainActor in
-            StudiumCloudSyncService.shared.schedulePush()
-        }
+        StudiumLocalDataNotify.changed()
     }
     
     func loadQuizState(id: String) -> QuizState? {
@@ -193,9 +189,28 @@ class QuizStateManager: ObservableObject {
         if let encoded = try? JSONEncoder().encode(savedQuizzes) {
             UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
         }
-        
-        Task { @MainActor in
-            StudiumCloudSyncService.shared.schedulePush()
+        StudiumLocalDataNotify.changed()
+    }
+
+    func exportQuizzesForSync() -> [QuizState] {
+        savedQuizzes
+    }
+
+    func exportDeletedQuizzesForSync() -> [String: Date] {
+        deletedQuizTimestamps
+    }
+
+    func applyFromSync(quizzes: [QuizState], deleted: [String: Date]) {
+        savedQuizzes = quizzes
+            .filter { !$0.questionIds.isEmpty }
+            .sorted { $0.lastSaved > $1.lastSaved }
+        savedQuizzes = Array(savedQuizzes.prefix(10))
+        deletedQuizTimestamps = deleted
+        if let encoded = try? JSONEncoder().encode(savedQuizzes) {
+            UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
+        }
+        if let encoded = try? JSONEncoder().encode(deletedQuizTimestamps) {
+            UserDefaults.standard.set(encoded, forKey: deletedQuizzesKey)
         }
     }
     
@@ -209,10 +224,7 @@ class QuizStateManager: ObservableObject {
             UserDefaults.standard.set(encoded, forKey: deletedQuizzesKey)
         }
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)
-
-        Task { @MainActor in
-            StudiumCloudSyncService.shared.schedulePush()
-        }
+        StudiumLocalDataNotify.changed()
     }
     
     // Legacy support - get the most recent quiz
@@ -224,29 +236,6 @@ class QuizStateManager: ObservableObject {
     func clearQuizState() {
         if let first = savedQuizzes.first {
             deleteQuizState(id: first.id)
-        }
-    }
-    
-    // MARK: - Cloud sync
-
-    func exportSavedQuizzes() -> [QuizState] { savedQuizzes }
-
-    func exportDeletedQuizzes() -> [String: Date] { deletedQuizTimestamps }
-
-    func applyCloudSync(quizzes: [QuizState], deleted: [String: Date]) {
-        savedQuizzes = quizzes.sorted { $0.lastSaved > $1.lastSaved }
-        deletedQuizTimestamps = deleted
-        if let encoded = try? JSONEncoder().encode(savedQuizzes) {
-            UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
-        }
-        if let encoded = try? JSONEncoder().encode(deletedQuizTimestamps) {
-            UserDefaults.standard.set(encoded, forKey: deletedQuizzesKey)
-        }
-    }
-
-    func manualSync() {
-        Task { @MainActor in
-            await StudiumCloudSyncService.shared.pullAndMerge()
         }
     }
 }

@@ -2,125 +2,203 @@
 //  StudiumSyncWireModels.swift
 //  Studium
 //
-//  JSON shapes stored in Supabase `studium_sync` (aligned with studium-web).
-//
 
+import FirebaseFirestore
 import Foundation
 
-struct StudiumSyncRowWire: Codable {
-    var id: String
-    var progress: [String: WireQuestionProgress]
-    var deleted_progress: [String: Double]
-    var saved_quizzes: [WireSavedQuiz]
-    var deleted_quizzes: [String: Double]
-    var vocab_buckets: WireVocabBuckets?
-    var updated_at: String?
+/// Firestore payload shape — matches `studium-web` `users/{uid}/sync/data`.
+struct StudiumSyncPayloadWire: Codable, Sendable {
+    var progress: [String: QuestionProgressWire]
+    var deletedProgress: [String: Double]
+    var savedQuizzes: [QuizStateWire]
+    var deletedQuizzes: [String: Double]
+    var vocabBuckets: VocabBucketsWire
+    var clientUpdatedAt: Double
+
+    static let empty = StudiumSyncPayloadWire(
+        progress: [:],
+        deletedProgress: [:],
+        savedQuizzes: [],
+        deletedQuizzes: [:],
+        vocabBuckets: .empty,
+        clientUpdatedAt: 0
+    )
 }
 
-struct WireQuestionProgress: Codable {
+struct QuestionProgressWire: Codable, Sendable {
     var seen: Bool
     var correct: Bool?
     var lastAttempted: Double?
 }
 
-struct WireSavedQuiz: Codable {
-    var id: String
-    var questionIds: [String]
-    var currentIndex: Int
-    var filters: FilterOptions
-    var answerStates: [String: WireAnswerState]
-    var lastSaved: Double
-}
-
-struct WireAnswerState: Codable {
+struct QuestionAnswerStateWire: Codable, Sendable {
     var selectedAnswerId: String?
     var hasSubmitted: Bool
     var isCorrect: Bool?
 }
 
-struct WireVocabBuckets: Codable {
-    var words: [String: String]?
-    var roots: [String: String]?
-    var wordTimestamps: [String: Double]?
-    var rootTimestamps: [String: Double]?
+struct QuizStateWire: Codable, Sendable {
+    var id: String
+    var questionIds: [String]
+    var currentIndex: Int
+    var filters: FilterOptions
+    var answerStates: [String: QuestionAnswerStateWire]
+    var lastSaved: Double
 }
 
-enum StudiumSyncWireCodec {
-    static func ms(from date: Date?) -> Double? {
-        date.map { $0.timeIntervalSince1970 * 1000 }
+struct VocabBucketsWire: Codable, Sendable {
+    var words: [String: String]
+    var roots: [String: String]
+    var wordTimestamps: [String: Double]
+    var rootTimestamps: [String: Double]
+
+    static let empty = VocabBucketsWire(
+        words: [:],
+        roots: [:],
+        wordTimestamps: [:],
+        rootTimestamps: [:]
+    )
+}
+
+enum StudiumSyncWireError: Error {
+    case invalidPayload
+}
+
+nonisolated enum StudiumSyncWireCodec {
+    static func ms(_ date: Date) -> Double {
+        date.timeIntervalSince1970 * 1000
     }
 
-    static func date(fromMs ms: Double?) -> Date? {
-        guard let ms else { return nil }
-        return Date(timeIntervalSince1970: ms / 1000)
+    static func date(fromMs ms: Double) -> Date {
+        Date(timeIntervalSince1970: ms / 1000)
     }
 
-    static func wireProgress(from local: [String: QuestionProgress]) -> [String: WireQuestionProgress] {
-        local.mapValues { p in
-            WireQuestionProgress(
+    static func firestoreData(from payload: StudiumSyncPayloadWire) throws -> [String: Any] {
+        let encoder = JSONEncoder()
+        let json = try encoder.encode(payload)
+        guard let object = try JSONSerialization.jsonObject(with: json) as? [String: Any] else {
+            throw StudiumSyncWireError.invalidPayload
+        }
+        return object
+    }
+
+    static func payload(from data: [String: Any]) throws -> StudiumSyncPayloadWire {
+        let normalized = normalizeFirestoreValue(data) as? [String: Any] ?? [:]
+        let json = try JSONSerialization.data(withJSONObject: normalized)
+        let decoder = JSONDecoder()
+        return try decoder.decode(StudiumSyncPayloadWire.self, from: json)
+    }
+
+    private static func normalizeFirestoreValue(_ value: Any) -> Any {
+        switch value {
+        case let timestamp as Timestamp:
+            return timestamp.dateValue().timeIntervalSince1970 * 1000
+        case let number as NSNumber:
+            if CFGetTypeID(number) == CFBooleanGetTypeID() {
+                return number.boolValue
+            }
+            return number.doubleValue.truncatingRemainder(dividingBy: 1) == 0
+                ? number.int64Value
+                : number.doubleValue
+        case let dict as [String: Any]:
+            return dict.mapValues(normalizeFirestoreValue)
+        case let array as [Any]:
+            return array.map(normalizeFirestoreValue)
+        default:
+            return value
+        }
+    }
+
+    static func progressToWire(_ progress: [String: QuestionProgress]) -> [String: QuestionProgressWire] {
+        progress.mapValues { p in
+            QuestionProgressWire(
                 seen: p.seen,
                 correct: p.correct,
-                lastAttempted: ms(from: p.lastAttempted)
+                lastAttempted: p.lastAttempted.map(ms)
             )
         }
     }
 
-    static func localProgress(from wire: [String: WireQuestionProgress]) -> [String: QuestionProgress] {
+    static func progressFromWire(_ wire: [String: QuestionProgressWire]) -> [String: QuestionProgress] {
         wire.mapValues { w in
             QuestionProgress(
                 seen: w.seen,
                 correct: w.correct,
-                lastAttempted: date(fromMs: w.lastAttempted)
+                lastAttempted: w.lastAttempted.map(date(fromMs:))
             )
         }
     }
 
-    static func wireQuizzes(from local: [QuizState]) -> [WireSavedQuiz] {
-        local.map { q in
-            WireSavedQuiz(
-                id: q.id,
-                questionIds: q.questionIds,
-                currentIndex: q.currentIndex,
-                filters: q.filters,
-                answerStates: q.answerStates.mapValues { a in
-                    WireAnswerState(
-                        selectedAnswerId: a.selectedAnswerId,
-                        hasSubmitted: a.hasSubmitted,
-                        isCorrect: a.isCorrect
-                    )
-                },
-                lastSaved: ms(from: q.lastSaved) ?? 0
-            )
-        }
+    static func deletedToWire(_ map: [String: Date]) -> [String: Double] {
+        map.mapValues(ms)
     }
 
-    static func localQuizzes(from wire: [WireSavedQuiz]) -> [QuizState] {
-        wire.map { w in
-            var states: [String: QuestionAnswerState] = [:]
-            for (qid, a) in w.answerStates {
-                states[qid] = QuestionAnswerState(
-                    questionId: qid,
-                    selectedAnswerId: a.selectedAnswerId,
-                    hasSubmitted: a.hasSubmitted,
-                    isCorrect: a.isCorrect
+    static func deletedFromWire(_ wire: [String: Double]) -> [String: Date] {
+        wire.mapValues(date(fromMs:))
+    }
+
+    static func quizToWire(_ quiz: QuizState) -> QuizStateWire {
+        QuizStateWire(
+            id: quiz.id,
+            questionIds: quiz.questionIds,
+            currentIndex: quiz.currentIndex,
+            filters: quiz.filters,
+            answerStates: quiz.answerStates.mapValues { state in
+                QuestionAnswerStateWire(
+                    selectedAnswerId: state.selectedAnswerId,
+                    hasSubmitted: state.hasSubmitted,
+                    isCorrect: state.isCorrect
                 )
-            }
-            return QuizState(
-                id: w.id,
-                filters: w.filters,
-                currentIndex: w.currentIndex,
-                questionIds: w.questionIds,
-                answerStates: states,
-                lastSaved: date(fromMs: w.lastSaved) ?? Date()
+            },
+            lastSaved: ms(quiz.lastSaved)
+        )
+    }
+
+    static func quizFromWire(_ wire: QuizStateWire) -> QuizState {
+        var answerStates: [String: QuestionAnswerState] = [:]
+        for (qid, w) in wire.answerStates {
+            answerStates[qid] = QuestionAnswerState(
+                questionId: qid,
+                selectedAnswerId: w.selectedAnswerId,
+                hasSubmitted: w.hasSubmitted,
+                isCorrect: w.isCorrect
             )
         }
+        return QuizState(
+            id: wire.id,
+            filters: wire.filters,
+            currentIndex: wire.currentIndex,
+            questionIds: wire.questionIds,
+            answerStates: answerStates,
+            lastSaved: date(fromMs: wire.lastSaved)
+        )
     }
 
-    static func wireDeleted(from local: [String: Date]) -> [String: Double] {
-        local.mapValues { $0.timeIntervalSince1970 * 1000 }
+    static func vocabToWire(
+        words: [String: String],
+        roots: [String: String],
+        wordTimestamps: [String: Date],
+        rootTimestamps: [String: Date]
+    ) -> VocabBucketsWire {
+        VocabBucketsWire(
+            words: words,
+            roots: roots,
+            wordTimestamps: wordTimestamps.mapValues(ms),
+            rootTimestamps: rootTimestamps.mapValues(ms)
+        )
     }
 
-    static func localDeleted(from wire: [String: Double]) -> [String: Date] {
-        wire.mapValues { Date(timeIntervalSince1970: $0 / 1000) }
+    static func vocabFromWire(_ wire: VocabBucketsWire) -> (
+        words: [String: String],
+        roots: [String: String],
+        wordTimestamps: [String: Date],
+        rootTimestamps: [String: Date]
+    ) {
+        (
+            words: wire.words,
+            roots: wire.roots,
+            wordTimestamps: wire.wordTimestamps.mapValues(date(fromMs:)),
+            rootTimestamps: wire.rootTimestamps.mapValues(date(fromMs:))
+        )
     }
 }

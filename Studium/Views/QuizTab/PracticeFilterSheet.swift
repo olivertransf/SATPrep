@@ -169,6 +169,16 @@ struct PracticeFilterPanel: View {
 
     var body: some View {
         FilterFormCard {
+            FilterGroupBlock(title: "Section", systemImage: "square.grid.2x2", tint: .blue) {
+                filterChipGrid {
+                    moduleChip("All", nil)
+                    moduleChip("Math", "math")
+                    moduleChip("Reading & Writing", "english")
+                }
+            }
+
+            panelDivider
+
             FilterGroupBlock(title: "Difficulty", systemImage: "chart.bar", tint: .orange) {
                 filterChipGrid {
                     difficultyChip("All", nil, .blue)
@@ -295,6 +305,12 @@ struct PracticeFilterPanel: View {
         }
     }
 
+    private func moduleChip(_ title: String, _ code: String?) -> some View {
+        FilterChipButton(title: title, isSelected: draft.module == code, accent: .blue, fillsGridCell: true) {
+            draft.module = (draft.module == code) ? nil : code
+        }
+    }
+
     private func filterChipGrid<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         LazyVGrid(columns: gridColumns, alignment: .leading, spacing: chipGridSpacing) {
             content()
@@ -331,7 +347,7 @@ struct PracticeFilterDraft: Equatable {
 
     func conceptFilterOptions() -> FilterOptions {
         FilterOptions(
-            module: nil,
+            module: module,
             primaryClassCdDesc: nil,
             skillDesc: skillDesc,
             difficulty: difficulty,
@@ -358,6 +374,9 @@ struct PracticeFilterDraft: Equatable {
 
     var summaryParts: [String] {
         var parts: [String] = []
+        if let module {
+            parts.append(module.lowercased() == "english" ? "Reading & Writing" : "Math")
+        }
         if let skillDesc { parts.append(skillDesc) }
         if let difficulty {
             switch difficulty {

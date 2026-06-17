@@ -21,6 +21,19 @@ struct FilterOptions: Codable, Equatable, Hashable {
     var shuffled: Bool
     var questionLimit: Int?
 
+    private enum CodingKeys: String, CodingKey {
+        case program
+        case module
+        case primaryClassCdDesc
+        case skillDesc
+        case difficulty
+        case answerStatus
+        case isBluebook
+        case cbVerifiedInactive
+        case shuffled
+        case questionLimit
+    }
+
     enum AnswerStatus: String, Codable, CaseIterable {
         case all = "All"
         case unanswered = "Unanswered"
@@ -97,6 +110,48 @@ struct FilterOptions: Codable, Equatable, Hashable {
             cbVerifiedInactive = Self.decodeCBVerified(raw)
         } else {
             cbVerifiedInactive = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(program, forKey: .program)
+        try c.encodeIfPresent(module, forKey: .module)
+        try c.encodeIfPresent(primaryClassCdDesc, forKey: .primaryClassCdDesc)
+        try c.encodeIfPresent(skillDesc, forKey: .skillDesc)
+        try c.encodeIfPresent(difficulty, forKey: .difficulty)
+        try c.encodeIfPresent(questionLimit, forKey: .questionLimit)
+        try c.encode(shuffled, forKey: .shuffled)
+        try c.encode(Self.encodeAnswerStatus(answerStatus), forKey: .answerStatus)
+        if let isBluebook, isBluebook != .all {
+            try c.encode(Self.encodeBluebook(isBluebook), forKey: .isBluebook)
+        }
+        if let cbVerifiedInactive {
+            try c.encode(Self.encodeCBVerified(cbVerifiedInactive), forKey: .cbVerifiedInactive)
+        }
+    }
+
+    private static func encodeAnswerStatus(_ status: AnswerStatus) -> String {
+        switch status {
+        case .all: return "all"
+        case .unanswered: return "unanswered"
+        case .incorrect: return "incorrect"
+        case .correct: return "correct"
+        }
+    }
+
+    private static func encodeBluebook(_ filter: BluebookFilter) -> String {
+        switch filter {
+        case .bluebook: return "bluebook"
+        case .notBluebook: return "notbluebook"
+        case .all: return "all"
+        }
+    }
+
+    private static func encodeCBVerified(_ filter: CBVerifiedInactiveFilter) -> String {
+        switch filter {
+        case .onlyVerifiedOffCBPracticeTests: return "onlyVerifiedOffCBPracticeTests"
+        case .ignore: return "any"
         }
     }
 

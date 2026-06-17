@@ -39,41 +39,33 @@ class ProgressManager: ObservableObject {
     }
     
     private func saveProgress() {
-        // Save locally first
         if let encoded = try? JSONEncoder().encode(progress) {
             UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
         }
-        
-        // Save deleted timestamps
         if let encoded = try? JSONEncoder().encode(deletedProgressTimestamps) {
             UserDefaults.standard.set(encoded, forKey: deletedProgressKey)
         }
-        
-        Task { @MainActor in
-            StudiumCloudSyncService.shared.schedulePush()
-        }
+        StudiumLocalDataNotify.changed()
     }
 
     // MARK: - Cloud sync
 
-    func exportProgress() -> [String: QuestionProgress] { progress }
+    func exportProgressForSync() -> [String: QuestionProgress] {
+        progress
+    }
 
-    func exportDeletedProgress() -> [String: Date] { deletedProgressTimestamps }
+    func exportDeletedProgressForSync() -> [String: Date] {
+        deletedProgressTimestamps
+    }
 
-    func applyCloudSync(progress: [String: QuestionProgress], deleted: [String: Date]) {
+    func applyFromSync(progress: [String: QuestionProgress], deleted: [String: Date]) {
         self.progress = progress
         deletedProgressTimestamps = deleted
         if let encoded = try? JSONEncoder().encode(progress) {
             UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
         }
-        if let encoded = try? JSONEncoder().encode(deletedProgressTimestamps) {
+        if let encoded = try? JSONEncoder().encode(deleted) {
             UserDefaults.standard.set(encoded, forKey: deletedProgressKey)
-        }
-    }
-
-    func manualSync() {
-        Task { @MainActor in
-            await StudiumCloudSyncService.shared.pullAndMerge()
         }
     }
     

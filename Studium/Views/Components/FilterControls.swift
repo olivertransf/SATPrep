@@ -167,6 +167,7 @@ struct FilterGroupBlock<Content: View>: View {
 
 /// Grouped card used across Filter sheet sections (and can wrap practice-style blocks).
 struct FilterFormCard<Content: View>: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.filterPanelDensity) private var filterPanelDensity
     @Environment(\.filterSidebarLayout) private var filterSidebarLayout
     @Environment(\.filterPhoneSheetLayout) private var filterPhoneSheetLayout
@@ -204,12 +205,12 @@ struct FilterFormCard<Content: View>: View {
         .clipShape(RoundedRectangle(cornerRadius: cardCorner, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: cardCorner, style: .continuous)
-                .strokeBorder(Color.studiumSeparator.opacity(filterSidebarLayout ? 0.25 : 0.35), lineWidth: 0.5)
+                .strokeBorder(Color.studiumSeparator.opacity(colorScheme == .dark ? 0.55 : 0.85), lineWidth: 0.5)
         )
         .shadow(
-            color: usesRelaxedFilterLayout ? Color.black.opacity(filterSidebarLayout ? 0.04 : 0.05) : .clear,
-            radius: 8,
-            y: 2
+            color: usesRelaxedFilterLayout ? FilterStyle.elevatedShadowColor(colorScheme: colorScheme) : .clear,
+            radius: 3,
+            y: 1
         )
     }
 }

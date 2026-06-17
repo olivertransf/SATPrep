@@ -30,6 +30,9 @@ struct PracticeHomeView: View {
     @ObservedObject var progressManager: ProgressManager
     @ObservedObject var quizStateManager: QuizStateManager
 
+    var initialModule: String? = nil
+    var onConsumeModulePreset: (() -> Void)? = nil
+
     var onStartQuiz: (FilterOptions) -> Void
     var onResumeQuiz: (QuizState) -> Void
 
@@ -91,7 +94,11 @@ struct PracticeHomeView: View {
         .background(Color.systemGroupedBackground)
         .trackViewportWidth($viewportWidth)
         .task(id: conceptFilters) { await recomputeConcepts() }
-        .onAppear { quizStateManager.loadAllQuizStates() }
+        .onAppear {
+            quizStateManager.loadAllQuizStates()
+            applyModulePresetIfNeeded()
+        }
+        .onChange(of: initialModule) { _, _ in applyModulePresetIfNeeded() }
         .sheet(isPresented: $showFilterSheet) {
             PracticeFilterSheet(
                 questionLoader: questionLoader,
@@ -189,7 +196,7 @@ struct PracticeHomeView: View {
             .padding(StudiumDesignSystem.practiceSidebarFooterPadding)
         }
         .background(Color.systemBackground)
-        .shadow(color: Color.black.opacity(0.06), radius: 6, y: -2)
+        .studiumTopEdgeShadow()
     }
 
     private var sidebarChipGridColumns: [GridItem] {
@@ -211,28 +218,54 @@ struct PracticeHomeView: View {
             Button {
                 showFilterSheet = true
             } label: {
-                HStack(spacing: StudiumDesignSystem.spacingSM) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
+                if StudiumDesignSystem.isPhone {
+                    HStack(spacing: StudiumDesignSystem.spacingSM) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(Color.accentColor)
+                        Text("Filters")
+                            .font(.subheadline.weight(.semibold))
+                        if matchingQuizCount > 0 {
                             Text("\(matchingQuizCount)")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(matchingQuizCount > 0 ? Color.accentColor : .secondary)
+                                .font(.caption.weight(.bold))
                                 .monospacedDigit()
-                            Text(matchingQuizCount == 1 ? "question" : "questions")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(Color.accentColor)
+                                .clipShape(Capsule())
                         }
-                        Text(filterSummaryLine)
-                            .font(.caption)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(.tertiary)
-                            .lineLimit(1)
                     }
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                } else {
+                    HStack(spacing: StudiumDesignSystem.spacingSM) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text("\(matchingQuizCount)")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(matchingQuizCount > 0 ? Color.accentColor : .secondary)
+                                    .monospacedDigit()
+                                Text(matchingQuizCount == 1 ? "question" : "questions")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text(filterSummaryLine)
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(1)
+                        }
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Filters, \(matchingQuizCount) matching")
@@ -250,17 +283,13 @@ struct PracticeHomeView: View {
 
     private var phoneHeaderStartButton: some View {
         Button(action: startQuizFromDraft) {
-            Label {
-                Text(matchingQuizCount > 0 ? "Start \(matchingQuizCount)" : "Start")
-            } icon: {
-                Image(systemName: "play.fill")
-            }
+            Image(systemName: "play.fill")
+                .font(.body.weight(.semibold))
         }
         .buttonStyle(.borderedProminent)
-        .controlSize(StudiumDesignSystem.primaryCTAControlSize)
+        .controlSize(.regular)
         .disabled(matchingQuizCount == 0)
-        .fixedSize()
-        .accessibilityLabel(matchingQuizCount > 0 ? "Start \(matchingQuizCount) questions" : "Start")
+        .accessibilityLabel(matchingQuizCount > 0 ? "Start \(matchingQuizCount) questions" : "Start quiz")
     }
 
     private var filterSummaryLine: String {
@@ -325,9 +354,12 @@ struct PracticeHomeView: View {
         VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingSM) {
             FilterStripSectionTitle(text: "Continue")
             if usePhoneContinueCards {
-                VStack(spacing: StudiumDesignSystem.spacingMD) {
-                    ForEach(quizStateManager.savedQuizzes.prefix(5)) { quiz in
-                        continueCard(for: quiz, phoneLayout: true)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: StudiumDesignSystem.spacingMD) {
+                        ForEach(quizStateManager.savedQuizzes.prefix(3)) { quiz in
+                            continueCard(for: quiz, phoneLayout: true)
+                                .frame(width: 260)
+                        }
                     }
                 }
             } else {
@@ -360,8 +392,10 @@ struct PracticeHomeView: View {
 
     private var browseTitleRow: some View {
         StudiumSectionHeader(
-            title: "Browse by concept",
-            subtitle: isComputingConcepts ? "Updating counts…" : "\(totalCount) questions"
+            title: StudiumDesignSystem.isPhone ? "Concepts" : "Browse by concept",
+            subtitle: StudiumDesignSystem.isPhone
+                ? (isComputingConcepts ? "Updating…" : "\(totalCount) Qs")
+                : (isComputingConcepts ? "Updating counts…" : "\(totalCount) questions")
         )
     }
 
@@ -532,5 +566,11 @@ struct PracticeHomeView: View {
             conceptCategories = categories
             isComputingConcepts = false
         }
+    }
+
+    private func applyModulePresetIfNeeded() {
+        guard let module = initialModule else { return }
+        filterDraft.module = module
+        onConsumeModulePreset?()
     }
 }

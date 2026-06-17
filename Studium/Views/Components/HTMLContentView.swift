@@ -220,20 +220,27 @@ func buildHTMLString(
     colorScheme: ColorScheme,
     fontSize: CGFloat = 16,
     compact: Bool = false,
-    profile: HTMLContentProfile = .standard
+    profile: HTMLContentProfile = .standard,
+    embedded: Bool = false
 ) -> String {
     let isDark = colorScheme == .dark
-    // Match studium-web `index.css` / `buildHtml` surfaces.
-    let bg          = isDark ? "#111111" : "#FFFFFF"
-    let fg          = isDark ? "#F5F5F7" : "#0A0A0A"
-    let border      = isDark ? "#242424" : "#E6E6E6"
-    let headerBg    = isDark ? "#171717" : "#F0F3F9"
-    let rowAlt      = isDark ? "#171717" : "#F6F8FC"
+    // Match studium-web `index.css` / semantic asset palette.
+    let bg          = embedded ? "transparent" : (isDark ? "#0f172a" : "#f8fafc")
+    let fg          = isDark ? "#f1f5f9" : "#0f172a"
+    let border      = isDark ? "#334155" : "#e2e8f0"
+    let headerBg    = isDark ? "#1e293b" : "#f0f3f9"
+    let rowAlt      = isDark ? "#1e293b" : "#f6f8fc"
     let bodyClass   = isDark ? "studysat-dark" : "studysat-light"
     let densityClass = compact ? "studium-html-compact" : "studium-html-comfortable"
+    let embeddedClass = embedded ? "studium-html-embedded" : ""
+    let colorSchemeMeta = isDark ? "dark" : "light"
     let highlightFill = isDark ? "rgba(202, 138, 4, 0.45)" : "#FDE68A"
+    let bodyPadding = embedded
+        ? (compact ? "0" : "0")
+        : (compact ? "3px 2px 6px" : "4px 2px 14px")
 
-    let processed = StudiumHTMLEntities.decode(content)
+    let processed = StudiumInlineMathRepair.repairHTML(
+        StudiumHTMLEntities.decode(content)
         .replacingOccurrences(of: "<span class=\"sr-only\">blank</span>", with: "", options: .caseInsensitive)
         .replacingOccurrences(of: "<span class=\"sr-only\">Blank</span>", with: "")
         .replacingOccurrences(of: "<span class=\"sr-only\">BLANK</span>", with: "")
@@ -243,6 +250,7 @@ func buildHTMLString(
         .replacingOccurrences(of: " blank,", with: " ______,", options: .caseInsensitive)
         .replacingOccurrences(of: " blank:", with: " ______:", options: .caseInsensitive)
         .replacingOccurrences(of: " blank;", with: " ______;", options: .caseInsensitive)
+    )
 
     // Swift \\\\( → HTML \\( → JS '\\(' = \(  ← correct MathJax inline delimiter
     return """
@@ -250,7 +258,7 @@ func buildHTMLString(
     <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no">
-        <meta name="color-scheme" content="light dark">
+        <meta name="color-scheme" content="\(colorSchemeMeta)">
         <script>
         window.MathJax = {
             tex: {
@@ -294,13 +302,14 @@ func buildHTMLString(
         <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { width: 100%; }
+        html { background-color: \(bg); }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif;
             font-size: \(fontSize)px;
             line-height: 1.7;
             color: \(fg);
             background-color: \(bg);
-            padding: \(compact ? "3px 2px 6px" : "4px 2px 14px");
+            padding: \(bodyPadding);
             word-wrap: break-word;
             overflow-x: hidden;
             -webkit-text-size-adjust: 100%;
@@ -315,9 +324,15 @@ func buildHTMLString(
             overflow-x: visible;
         }
         /* Comfortable question / explanation HTML: match passage inset (compact rows stay tight via studium-html-compact). */
-        body.studium-html-comfortable.studium-profile-quizfig {
+        body.studium-html-comfortable.studium-profile-quizfig:not(.studium-html-embedded) {
             padding: 12px 16px 16px !important;
             line-height: 1.65 !important;
+        }
+        body.studium-html-embedded {
+            background-color: transparent !important;
+        }
+        html:has(body.studium-html-embedded) {
+            background-color: transparent !important;
         }
         body.studium-highlight-mode {
             -webkit-user-select: text;
@@ -513,8 +528,12 @@ func buildHTMLString(
             overflow: visible !important;
         }
         /* Reading passages: roomier measure (font size comes from Swift `fontSize`). */
-        body.studium-profile-passage {
+        body.studium-profile-passage:not(.studium-html-embedded) {
             padding: 22px 28px 28px !important;
+            line-height: 1.82 !important;
+        }
+        body.studium-profile-passage.studium-html-embedded {
+            padding: 0 !important;
             line-height: 1.82 !important;
         }
         body.studium-profile-passage p { margin-bottom: 14px !important; }
@@ -540,7 +559,7 @@ func buildHTMLString(
         }
         </style>
     </head>
-    <body class="\(bodyClass) \(profile.rawValue) \(densityClass)">
+    <body class="\(bodyClass) \(profile.rawValue) \(densityClass) \(embeddedClass)">
         \(processed)
         <script>
         (function() {
@@ -658,6 +677,7 @@ private struct _HTMLUIRepresentable: UIViewRepresentable {
     let compact: Bool
     let fontSizeOverride: CGFloat?
     let contentProfile: HTMLContentProfile
+    let embedded: Bool
     let textHighlightingEnabled: Bool
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("htmlFontSize") private var storedFontSize: Double = 16.0
@@ -670,6 +690,7 @@ private struct _HTMLUIRepresentable: UIViewRepresentable {
         compact: Bool = false,
         fontSizeOverride: CGFloat? = nil,
         contentProfile: HTMLContentProfile = .standard,
+        embedded: Bool = false,
         textHighlightingEnabled: Bool = false,
         contentHeight: Binding<CGFloat?> = .constant(nil)
     ) {
@@ -679,6 +700,7 @@ private struct _HTMLUIRepresentable: UIViewRepresentable {
         self.compact = compact
         self.fontSizeOverride = fontSizeOverride
         self.contentProfile = contentProfile
+        self.embedded = embedded
         self.textHighlightingEnabled = textHighlightingEnabled
         self._contentHeight = contentHeight
     }
@@ -705,7 +727,8 @@ private struct _HTMLUIRepresentable: UIViewRepresentable {
                 colorScheme: colorScheme,
                 fontSize: fontPx,
                 compact: compact,
-                profile: contentProfile
+                profile: contentProfile,
+                embedded: embedded
             ),
             into: webView,
             coordinator: context.coordinator
@@ -753,6 +776,7 @@ private struct _HTMLNSRepresentable: NSViewRepresentable {
     let compact: Bool
     let fontSizeOverride: CGFloat?
     let contentProfile: HTMLContentProfile
+    let embedded: Bool
     let textHighlightingEnabled: Bool
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("htmlFontSize") private var storedFontSize: Double = 16.0
@@ -765,6 +789,7 @@ private struct _HTMLNSRepresentable: NSViewRepresentable {
         compact: Bool = false,
         fontSizeOverride: CGFloat? = nil,
         contentProfile: HTMLContentProfile = .standard,
+        embedded: Bool = false,
         textHighlightingEnabled: Bool = false,
         contentHeight: Binding<CGFloat?> = .constant(nil)
     ) {
@@ -774,6 +799,7 @@ private struct _HTMLNSRepresentable: NSViewRepresentable {
         self.compact = compact
         self.fontSizeOverride = fontSizeOverride
         self.contentProfile = contentProfile
+        self.embedded = embedded
         self.textHighlightingEnabled = textHighlightingEnabled
         self._contentHeight = contentHeight
     }
@@ -798,7 +824,8 @@ private struct _HTMLNSRepresentable: NSViewRepresentable {
                 colorScheme: colorScheme,
                 fontSize: fontPx,
                 compact: compact,
-                profile: contentProfile
+                profile: contentProfile,
+                embedded: embedded
             ),
             into: container.webView,
             coordinator: context.coordinator
@@ -827,6 +854,7 @@ struct HTMLContentView: View {
     var compact: Bool = false
     var fontSizeOverride: CGFloat? = nil
     var contentProfile: HTMLContentProfile = .standard
+    var embedded: Bool = false
     var fillViewport: Bool = false
     var textHighlightingEnabled: Bool = false
 
@@ -839,6 +867,7 @@ struct HTMLContentView: View {
         compact: Bool = false,
         fontSizeOverride: CGFloat? = nil,
         contentProfile: HTMLContentProfile = .standard,
+        embedded: Bool = false,
         fillViewport: Bool = false,
         textHighlightingEnabled: Bool = false
     ) {
@@ -848,6 +877,7 @@ struct HTMLContentView: View {
         self.compact = compact
         self.fontSizeOverride = fontSizeOverride
         self.contentProfile = contentProfile
+        self.embedded = embedded
         self.fillViewport = fillViewport
         self.textHighlightingEnabled = textHighlightingEnabled
     }
@@ -878,7 +908,7 @@ struct HTMLContentView: View {
             compact: compact,
             fontSizeOverride: fontSizeOverride,
             contentProfile: contentProfile,
-            textHighlightingEnabled: textHighlightingEnabled,
+            embedded: embedded, textHighlightingEnabled: textHighlightingEnabled,
             contentHeight: binding
         )
         #elseif os(macOS)
@@ -889,6 +919,7 @@ struct HTMLContentView: View {
             compact: compact,
             fontSizeOverride: fontSizeOverride,
             contentProfile: contentProfile,
+            embedded: embedded,
             textHighlightingEnabled: textHighlightingEnabled,
             contentHeight: binding
         )

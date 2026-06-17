@@ -2,8 +2,6 @@
 //  ContentView.swift
 //  Studium
 //
-//  Created by Oliver Tran on 12/23/25.
-//
 
 import SwiftUI
 #if os(macOS)
@@ -11,12 +9,9 @@ import AppKit
 #endif
 
 struct ContentView: View {
-    @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var authManager: StudiumAuthManager
     @Environment(\.colorScheme) private var colorScheme
-
-    private func syncIfNeeded() {
-        StudiumCloudSyncService.shared.syncIfNeeded()
-    }
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         MainTabView()
@@ -24,24 +19,16 @@ struct ContentView: View {
             .frame(minWidth: 720, minHeight: 520)
             #endif
             .onAppear {
-                syncIfNeeded()
                 #if os(macOS)
                 applyWindowBackground()
                 #endif
             }
-            .onChange(of: scenePhase) { _, phase in
-                switch phase {
-                case .active:
-                    syncIfNeeded()
-                case .background:
-                    Task { await StudiumCloudSyncService.shared.flushPush() }
-                default:
-                    break
-                }
-            }
             #if os(macOS)
             .onChange(of: colorScheme) { _, _ in applyWindowBackground() }
             #endif
+            .onChange(of: scenePhase) { _, phase in
+                StudiumSyncLifecycle.onScenePhase(phase, authManager: authManager)
+            }
     }
 
     #if os(macOS)
@@ -58,4 +45,6 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(StudiumAuthManager.shared)
+        .environmentObject(StudiumCloudSyncService.shared)
 }

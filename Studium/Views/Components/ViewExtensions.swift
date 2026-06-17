@@ -99,4 +99,22 @@ extension View {
         self
         #endif
     }
+
+    /// Quiz panes use `StudiumBg`; hide UIKit scroll chrome so split columns match.
+    func quizPaneBackground() -> some View {
+        self
+            .background(Color.systemGroupedBackground)
+            .clearScrollBackground()
+    }
+
+    /// Match navigation chrome to `StudiumBg` instead of system black in dark mode.
+    func studiumNavigationBarBackground() -> some View {
+        #if os(iOS)
+        self
+            .toolbarBackground(Color.systemGroupedBackground, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+        #else
+        self
+        #endif
+    }
 }

@@ -1,3 +1,5 @@
+import { notifyLocalDataChanged } from '../lib/localDataEvents'
+
 const DELETED_PROGRESS_KEY = 'studium_deleted_progress'
 const DELETED_QUIZZES_KEY = 'studium_deleted_quizzes'
 
@@ -11,6 +13,7 @@ export function loadDeletedProgress(): Record<string, number> {
 
 export function saveDeletedProgress(map: Record<string, number>) {
   localStorage.setItem(DELETED_PROGRESS_KEY, JSON.stringify(map))
+  notifyLocalDataChanged()
 }
 
 export function loadDeletedQuizzes(): Record<string, number> {
@@ -23,6 +26,14 @@ export function loadDeletedQuizzes(): Record<string, number> {
 
 export function saveDeletedQuizzes(map: Record<string, number>) {
   localStorage.setItem(DELETED_QUIZZES_KEY, JSON.stringify(map))
+  notifyLocalDataChanged()
+}
+
+export function clearProgressTombstone(questionId: string) {
+  const deleted = loadDeletedProgress()
+  if (!deleted[questionId]) return
+  delete deleted[questionId]
+  saveDeletedProgress(deleted)
 }
 
 export function tombstoneAllProgress(progress: Record<string, unknown>): Record<string, number> {

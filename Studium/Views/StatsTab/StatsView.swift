@@ -144,17 +144,14 @@ struct StatsView: View {
 
             // Stats row
             HStack(spacing: 0) {
-                statItem(value: "\(seen)", label: "Seen", color: .blue)
+                statItem(value: "\(seen)", label: "Seen", color: .accentColor)
                 Divider().frame(height: 40)
                 statItem(value: "\(attempted)", label: "Attempted", color: .orange)
                 Divider().frame(height: 40)
                 statItem(value: "\(total)", label: "Total", color: .secondary)
             }
         }
-        .padding()
-        .frame(maxWidth: .infinity)
-        .background(Color.secondarySystemGroupedBackground)
-        .cornerRadius(FilterStyle.cardCorner)
+        .studiumElevatedCard()
     }
 
     private func statItem(value: String, label: String, color: Color) -> some View {
@@ -250,9 +247,7 @@ struct StatsView: View {
                 }
             }
         }
-        .padding()
-        .background(Color.secondarySystemGroupedBackground)
-        .cornerRadius(FilterStyle.cardCorner)
+        .studiumElevatedCard()
     }
 
     // MARK: - Reset Progress
@@ -277,8 +272,7 @@ struct StatsView: View {
                 Divider().padding(.leading)
                 resetButton(title: "Reset by Difficulty", color: .orange) { showDifficultyPicker = true }
             }
-            .background(Color.secondarySystemGroupedBackground)
-            .cornerRadius(FilterStyle.cardCorner)
+            .studiumElevatedCard(padding: 0, showsShadow: true)
         }
     }
 
@@ -316,7 +310,7 @@ struct StatsView: View {
     private func resetMessage(for type: ResetType) -> String {
         switch type {
         case .all:
-            return "Are you sure you want to reset all progress? This cannot be undone."
+            return "This will clear all question progress, saved quizzes, and vocab buckets. This cannot be undone."
         case .program(let program):
             return "Are you sure you want to reset progress for all \(program) questions?"
         case .module(let module):
@@ -334,7 +328,7 @@ struct StatsView: View {
         guard let resetType = resetType else { return }
         switch resetType {
         case .all:
-            progressManager.resetAllProgress()
+            StudiumLocalDataReset.resetAll()
         case .program(let program):
             progressManager.resetProgress(byProgram: program, questionLoader: questionLoader)
         case .module(let module):

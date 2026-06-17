@@ -1,5 +1,6 @@
 import type { SavedQuiz } from '../types'
 import { tombstoneQuiz } from './deleted'
+import { notifyLocalDataChanged } from '../lib/localDataEvents'
 
 const KEY = 'studium_saved_quizzes'
 
@@ -16,12 +17,14 @@ export function loadAllQuizzes(): SavedQuiz[] {
 export function saveQuiz(quiz: SavedQuiz): void {
   const all = loadAllQuizzes().filter(q => q.id !== quiz.id)
   localStorage.setItem(KEY, JSON.stringify([quiz, ...all].slice(0, 10)))
+  notifyLocalDataChanged()
 }
 
 export function deleteQuiz(id: string): void {
   tombstoneQuiz(id)
   const all = loadAllQuizzes().filter(q => q.id !== id)
   localStorage.setItem(KEY, JSON.stringify(all))
+  notifyLocalDataChanged()
 }
 
 export function generateQuizId(): string {

@@ -6,13 +6,35 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4A31635E2FE3000D0077EB03 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 4A31635D2FE3000D0077EB03 /* FirebaseAnalytics */; };
+		4A3163602FE3000D0077EB03 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4A31635F2FE3000D0077EB03 /* FirebaseAuth */; };
+		4A3163622FE3000D0077EB03 /* FirebaseAuthCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 4A3163612FE3000D0077EB03 /* FirebaseAuthCombine-Community */; };
+		4A3163642FE3000D0077EB03 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 4A3163632FE3000D0077EB03 /* FirebaseFirestore */; };
+		4A3163662FE3000D0077EB03 /* FirebaseFirestoreCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 4A3163652FE3000D0077EB03 /* FirebaseFirestoreCombine-Community */; };
+		4A3163692FE301000077EB03 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 4A3163682FE301000077EB03 /* GoogleSignIn */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		4A2A532D2EFB123100A364D1 /* Studium.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Studium.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4A31636A2FE301100077EB03 /* Exceptions for "Studium" folder in "Studium" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4A2A532C2EFB123100A364D1 /* Studium */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		4A2A532F2EFB123100A364D1 /* Studium */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4A31636A2FE301100077EB03 /* Exceptions for "Studium" folder in "Studium" target */,
+			);
 			path = Studium;
 			sourceTree = "<group>";
 		};
@@ -23,6 +45,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4A31635E2FE3000D0077EB03 /* FirebaseAnalytics in Frameworks */,
+				4A3163642FE3000D0077EB03 /* FirebaseFirestore in Frameworks */,
+				4A3163622FE3000D0077EB03 /* FirebaseAuthCombine-Community in Frameworks */,
+				4A3163662FE3000D0077EB03 /* FirebaseFirestoreCombine-Community in Frameworks */,
+				4A3163602FE3000D0077EB03 /* FirebaseAuth in Frameworks */,
+				4A3163692FE301000077EB03 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +93,12 @@
 			);
 			name = Studium;
 			packageProductDependencies = (
+				4A31635D2FE3000D0077EB03 /* FirebaseAnalytics */,
+				4A31635F2FE3000D0077EB03 /* FirebaseAuth */,
+				4A3163612FE3000D0077EB03 /* FirebaseAuthCombine-Community */,
+				4A3163632FE3000D0077EB03 /* FirebaseFirestore */,
+				4A3163652FE3000D0077EB03 /* FirebaseFirestoreCombine-Community */,
+				4A3163682FE301000077EB03 /* GoogleSignIn */,
 			);
 			productName = Studium;
 			productReference = 4A2A532D2EFB123100A364D1 /* Studium.app */;
@@ -94,6 +128,10 @@
 			);
 			mainGroup = 4A2A53242EFB123100A364D1;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4A31635C2FE3000D0077EB03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				4A3163672FE301000077EB03 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4A2A532E2EFB123100A364D1 /* Products */;
 			projectDirPath = "";
@@ -260,6 +298,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Studium/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Studium;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -277,6 +316,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
+				OTHER_SWIFT_FLAGS = "-Xcc -Wno-incomplete-umbrella";
 				PRODUCT_BUNDLE_IDENTIFIER = com.olivertran.Studium;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -309,6 +349,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Studium/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Studium;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -326,6 +367,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
+				OTHER_SWIFT_FLAGS = "-Xcc -Wno-incomplete-umbrella";
 				PRODUCT_BUNDLE_IDENTIFIER = com.olivertran.Studium;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -365,6 +407,58 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4A31635C2FE3000D0077EB03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.15.0;
+			};
+		};
+		4A3163672FE301000077EB03 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4A31635D2FE3000D0077EB03 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A31635C2FE3000D0077EB03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		4A31635F2FE3000D0077EB03 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A31635C2FE3000D0077EB03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		4A3163612FE3000D0077EB03 /* FirebaseAuthCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A31635C2FE3000D0077EB03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseAuthCombine-Community";
+		};
+		4A3163632FE3000D0077EB03 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A31635C2FE3000D0077EB03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		4A3163652FE3000D0077EB03 /* FirebaseFirestoreCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A31635C2FE3000D0077EB03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseFirestoreCombine-Community";
+		};
+		4A3163682FE301000077EB03 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4A3163672FE301000077EB03 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4A2A53252EFB123100A364D1 /* Project object */;
 }

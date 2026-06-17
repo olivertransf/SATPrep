@@ -138,6 +138,7 @@ struct QuizView: View {
         .trackViewportWidth($quizViewportWidth)
         .navigationTitle("Quiz")
         .navInlineTitle()
+        .studiumNavigationBarBackground()
         .toolbar {
             ToolbarItem(placement: quizToolbarLeadingPlacement) {
                 Button(action: saveAndExit) {
@@ -190,13 +191,6 @@ struct QuizView: View {
             questionJumperSheet
                 .presentationDetentsMediumLarge()
         }
-        #if os(iOS)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if usePhoneBottomBar, !questions.isEmpty, currentQuestion != nil {
-                phoneQuizBottomBar
-            }
-        }
-        #endif
         // Keyboard shortcuts (iOS 17+ / macOS 14+)
         .onKeyPress(.leftArrow)  { previousQuestion(); return .handled }
         .onKeyPress(.rightArrow) { nextQuestion();     return .handled }
@@ -297,15 +291,43 @@ struct QuizView: View {
         )
     }
 
-    private var phoneQuizBottomBar: some View {
-        QuizBottomBar(
-            canGoPrevious: currentIndex > 0,
-            canGoNext: currentIndex < questions.count - 1,
-            showSubmit: !hasSubmitted,
-            nextLabel: currentIndex < questions.count - 1 ? "Next" : "Finish",
-            onPrevious: { _ = previousQuestion() },
-            onSubmit: submitAnswer,
-            onNext: {
+    private var phoneQuizActionRow: some View {
+        let canSubmit = {
+            guard let question = currentQuestion else { return false }
+            let answerOptions = question.content.displayAnswerOptions
+            if answerOptions.isEmpty {
+                return !freeResponseText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+            return selectedAnswerId != nil
+        }()
+
+        return HStack(spacing: StudiumDesignSystem.spacingMD) {
+            Button {
+                _ = previousQuestion()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.semibold))
+                    .frame(minWidth: StudiumDesignSystem.minTapTarget, minHeight: StudiumDesignSystem.minTapTarget)
+            }
+            .buttonStyle(.bordered)
+            .disabled(currentIndex == 0)
+            .accessibilityLabel("Previous question")
+
+            if !hasSubmitted {
+                Button(action: submitAnswer) {
+                    Text("Submit answer")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: StudiumDesignSystem.minTapTarget)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!canSubmit)
+                .accessibilityLabel("Submit answer")
+            } else {
+                Spacer(minLength: 0)
+            }
+
+            Button {
                 if hasSubmitted {
                     if currentIndex < questions.count - 1 {
                         _ = nextQuestion()
@@ -313,8 +335,15 @@ struct QuizView: View {
                         saveAndExit()
                     }
                 }
+            } label: {
+                Image(systemName: currentIndex < questions.count - 1 ? "chevron.right" : "checkmark")
+                    .font(.body.weight(.semibold))
+                    .frame(minWidth: StudiumDesignSystem.minTapTarget, minHeight: StudiumDesignSystem.minTapTarget)
             }
-        )
+            .buttonStyle(.bordered)
+            .disabled(!hasSubmitted)
+            .accessibilityLabel(currentIndex < questions.count - 1 ? "Next question" : "Finish quiz")
+        }
     }
 
     // MARK: - Question Jumper
@@ -402,6 +431,7 @@ struct QuizView: View {
                 }
             }
         }
+        .background(Color.systemGroupedBackground)
     }
 
     // MARK: - Split-pane layout (macOS + iPad regular)
@@ -432,7 +462,7 @@ struct QuizView: View {
                         .padding(.vertical, StudiumDesignSystem.quizPanePaddingV)
                     }
                 }
-                .background(Color.systemGroupedBackground)
+                .quizPaneBackground()
             } right: {
                 // Right pane — question + answers + nav
                 ScrollView {
@@ -442,6 +472,7 @@ struct QuizView: View {
                         .frame(maxWidth: columnMax)
                         .frame(maxWidth: .infinity)
                 }
+                .quizPaneBackground()
                 .trackQuizDetailPaneWidth($quizDetailPaneWidth)
             }
         } else if isMath {
@@ -457,6 +488,7 @@ struct QuizView: View {
                         .frame(maxWidth: columnMax)
                         .frame(maxWidth: .infinity)
                 }
+                .quizPaneBackground()
                 .trackQuizDetailPaneWidth($quizDetailPaneWidth)
             }
         } else {
@@ -467,6 +499,7 @@ struct QuizView: View {
                     .frame(maxWidth: columnMax)
                     .frame(maxWidth: .infinity)
             }
+            .quizPaneBackground()
             .trackQuizDetailPaneWidth($quizDetailPaneWidth)
         }
     }
@@ -496,7 +529,7 @@ struct QuizView: View {
             .frame(maxWidth: min(geometry.size.width, StudiumDesignSystem.readableMaxWidth))
             .frame(maxWidth: .infinity, alignment: .center)
         }
-        .background(Color.systemGroupedBackground)
+        .quizPaneBackground()
     }
 
     // MARK: - Shared question + answers content
@@ -559,7 +592,12 @@ struct QuizView: View {
                 freeResponseInputView(question: question)
             }
 
-            if !hasSubmitted {
+            if usePhoneBottomBar {
+                if hasSubmitted {
+                    resultBanner(question: question)
+                }
+                phoneQuizActionRow
+            } else if !hasSubmitted {
                 let canSubmit = answerOptions.isEmpty
                     ? !freeResponseText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     : selectedAnswerId != nil
@@ -771,7 +809,8 @@ struct QuizView: View {
                 allowInteraction: false,
                 compact: true,
                 fontSizeOverride: quizBlockHTMLFontOverride,
-                contentProfile: .quizFigures
+                contentProfile: .quizFigures,
+                embedded: true
             )
             .frame(minWidth: 1)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -810,19 +849,27 @@ struct QuizView: View {
     ) -> some View {
         let label = option.label ?? String(Character(UnicodeScalar(65 + index)!))
         let isStruckOut = struckOutOptionIds.contains(option.id)
+        let accent = Color.accentColor
 
         let borderColor: Color = {
             if showResult && isCorrect { return .green }
             if showResult && isSelected && !isCorrect { return .red }
-            if isSelected { return .blue }
-            return Color.systemGray4
+            if isSelected { return FilterStyle.chipBorder(selected: true, accent: accent) }
+            return Color.studiumBorder.opacity(0.85)
         }()
 
         let bgColor: Color = {
-            if showResult && isCorrect { return .green.opacity(0.10) }
-            if showResult && isSelected && !isCorrect { return .red.opacity(0.10) }
-            if isSelected { return .blue.opacity(0.08) }
+            if showResult && isCorrect { return .green.opacity(colorScheme == .dark ? 0.18 : 0.10) }
+            if showResult && isSelected && !isCorrect { return .red.opacity(colorScheme == .dark ? 0.18 : 0.10) }
+            if isSelected { return FilterStyle.chipFill(selected: true, accent: accent, colorScheme: colorScheme) }
             return Color.systemBackground
+        }()
+
+        let letterBadgeFill: Color = {
+            if showResult && isCorrect { return .green }
+            if showResult && isSelected && !isCorrect { return .red }
+            if isSelected { return accent }
+            return Color.tertiarySystemFill
         }()
 
         return Button(action: {
@@ -843,7 +890,7 @@ struct QuizView: View {
                         height: useSplitPaneQuizLayout ? 40 : 32,
                         alignment: .center
                     )
-                    .background(isSelected ? (showResult ? (isCorrect ? Color.green : Color.red) : Color.blue) : Color.systemGray5)
+                    .background(letterBadgeFill)
                     .foregroundColor(isSelected ? .white : .primary)
                     .clipShape(Circle())
 

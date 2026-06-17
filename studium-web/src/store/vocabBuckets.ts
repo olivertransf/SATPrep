@@ -1,3 +1,5 @@
+import { notifyLocalDataChanged } from '../lib/localDataEvents'
+
 export type WebVocabBucket = 'learn' | 'review' | 'mastered'
 
 export type VocabBucketsPayload = {
@@ -45,7 +47,7 @@ export function loadVocabPayload(): VocabBucketsPayload {
 
 export function saveVocabPayload(payload: VocabBucketsPayload) {
   localStorage.setItem(VOCAB_KEY, JSON.stringify(payload))
-  window.dispatchEvent(new Event('studium-local-data-change'))
+  notifyLocalDataChanged()
 }
 
 export function loadWordBucketsForUI(): Record<string, WebVocabBucket> {

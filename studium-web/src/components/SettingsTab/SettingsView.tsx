@@ -2,7 +2,12 @@ import { useState } from 'react'
 import type { QuestionProgress } from '../../types'
 import { resetAll } from '../../store/progress'
 import { loadAllQuizzes } from '../../store/quiz'
-import { Sun, Moon, AlertTriangle } from 'lucide-react'
+import { tombstoneAllQuizzes } from '../../store/deleted'
+import { saveVocabPayload } from '../../store/vocabBuckets'
+import { useAuth } from '../../context/AuthContext'
+import { useSync } from '../../context/SyncContext'
+import { notifyLocalDataChanged } from '../../lib/localDataEvents'
+import { Sun, Moon, AlertTriangle, Loader2, Cloud } from 'lucide-react'
 
 interface SettingsViewProps {
   progress: Record<string, QuestionProgress>
@@ -31,18 +36,22 @@ export default function SettingsView({
   progress, onProgressChange, onQuizzesChange, onToggleTheme, isDark, fontSize, onFontSizeChange,
 }: SettingsViewProps) {
   const [showConfirm, setShowConfirm] = useState(false)
+  const [authBusy, setAuthBusy] = useState(false)
+  const { user, loading: authLoading, configured, error: authError, signInWithGoogle, signOut, clearError } = useAuth()
+  const { status: syncStatus, lastSyncedAt, error: syncError, syncNow, canSync } = useSync()
 
   const attempted = Object.values(progress).filter(p => p.correct !== undefined).length
   const seen = Object.values(progress).filter(p => p.seen).length
   const savedQuizCount = loadAllQuizzes().length
 
   function handleReset() {
+    tombstoneAllQuizzes(loadAllQuizzes())
     resetAll()
     onProgressChange({})
     localStorage.removeItem('studium_saved_quizzes')
-    localStorage.removeItem('studium_vocab_buckets')
+    saveVocabPayload({ words: {}, roots: {}, wordTimestamps: {}, rootTimestamps: {} })
+    notifyLocalDataChanged()
     onQuizzesChange([])
-    window.dispatchEvent(new Event('studium-local-data-change'))
     setShowConfirm(false)
   }
 
@@ -55,10 +64,108 @@ export default function SettingsView({
           <p className="studium-page-subtitle mt-1 mb-0">Customize your study experience</p>
         </header>
 
+        {configured && (
+          <div className="studium-card overflow-hidden p-0">
+            <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+              <div className="font-semibold" style={{ color: 'var(--text)' }}>Account</div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+                {user ? 'Progress syncs to your account across devices' : 'Sign in to sync progress across devices'}
+              </div>
+            </div>
+            {authLoading ? (
+              <div className="px-4 py-4 flex items-center gap-2 text-sm" style={{ color: 'var(--muted)' }}>
+                <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                Loading account…
+              </div>
+            ) : user ? (
+              <>
+                <SettingRow
+                  label={user.displayName ?? 'Signed in'}
+                  sub={user.email ?? undefined}
+                  right={
+                    user.photoURL ? (
+                      <img
+                        src={user.photoURL}
+                        alt=""
+                        className="w-9 h-9 rounded-full"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : null
+                  }
+                />
+                {canSync && (
+                  <SettingRow
+                    label="Cloud sync"
+                    sub={
+                      syncStatus === 'syncing'
+                        ? 'Syncing…'
+                        : syncStatus === 'offline'
+                          ? 'Offline — changes save locally'
+                          : syncStatus === 'error'
+                            ? syncError ?? 'Sync failed'
+                            : lastSyncedAt
+                              ? `Last synced ${new Date(lastSyncedAt).toLocaleString()}`
+                              : 'Ready'
+                    }
+                    right={
+                      <button
+                        type="button"
+                        className="studium-btn-secondary min-h-[36px] gap-1.5"
+                        disabled={syncStatus === 'syncing'}
+                        onClick={() => void syncNow()}
+                      >
+                        {syncStatus === 'syncing'
+                          ? <Loader2 size={15} className="animate-spin" />
+                          : <Cloud size={15} />}
+                        Sync
+                      </button>
+                    }
+                  />
+                )}
+                <div className="px-4 py-2 border-t" style={{ borderColor: 'var(--border)' }}>
+                  <button
+                    type="button"
+                    className="studium-btn-secondary min-h-[36px]"
+                    disabled={authBusy}
+                    onClick={() => {
+                      setAuthBusy(true)
+                      void signOut().finally(() => setAuthBusy(false))
+                    }}
+                  >
+                    {authBusy ? <Loader2 size={15} className="animate-spin" /> : 'Sign out'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="px-4 py-3 space-y-2">
+                {authError && (
+                  <div className="text-sm" style={{ color: 'var(--error)' }} role="alert">
+                    {authError}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="studium-btn-primary min-h-[36px]"
+                  disabled={authBusy}
+                  onClick={() => {
+                    clearError()
+                    setAuthBusy(true)
+                    void signInWithGoogle().finally(() => setAuthBusy(false))
+                  }}
+                >
+                  {authBusy ? <Loader2 size={15} className="animate-spin" /> : 'Sign in with Google'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="studium-card overflow-hidden p-0">
           <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
             <div className="font-semibold" style={{ color: 'var(--text)' }}>Your progress</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>Saved in this browser</div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+              {user ? 'Synced to your account when signed in' : 'Saved in this browser only'}
+            </div>
           </div>
           <SettingRow label="Questions Attempted" right={
             <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{attempted}</span>
@@ -116,7 +223,9 @@ export default function SettingsView({
             <div className="studium-eyebrow">Data</div>
           </div>
           <div className="px-4 py-2 border-b text-sm" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
-            Progress is stored locally in your browser. Clearing site data will reset everything.
+            {user
+              ? 'Reset clears local data and syncs the reset to your account.'
+              : 'Progress is stored locally in your browser. Clearing site data will reset everything.'}
           </div>
           <div className="px-4 py-2">
             <button

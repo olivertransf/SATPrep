@@ -14,6 +14,7 @@ import DesmosCalculator from './components/DesmosTab/DesmosCalculator'
 import StatsView from './components/StatsTab/StatsView'
 import SettingsView from './components/SettingsTab/SettingsView'
 import ReferenceView from './components/ReferenceTab/ReferenceView'
+import AccountMenu from './components/Auth/AccountMenu'
 import { fetchJSON } from './lib/offlineFetch'
 import {
   Home, BookOpen, Layers, Calculator, BarChart2, Settings, Sun, Moon, BookMarked, Menu, X,
@@ -78,6 +79,15 @@ export default function App() {
     setPracticeModulePreset(module)
     navigateTo('practice')
   }
+
+  useEffect(() => {
+    function onSyncApplied() {
+      setProgress(loadProgress())
+      setSavedQuizzes(loadAllQuizzes())
+    }
+    window.addEventListener('studium-sync-applied', onSyncApplied)
+    return () => window.removeEventListener('studium-sync-applied', onSyncApplied)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -235,6 +245,7 @@ export default function App() {
             </nav>
 
             <div className="flex items-center gap-2 ml-auto">
+              <AccountMenu compact />
               <button
                 type="button"
                 onClick={toggle}

@@ -160,19 +160,19 @@ struct VocabFlashcardsView: View {
 
     private var narrowLayout: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingMD) {
                 deckPickerSection
-                studyPileSection
-                if deckKind == .words { wordTypeSection }
+                phoneStudyPilePicker
+                if deckKind == .words { phoneWordTypePicker }
                 if rowIndices.isEmpty {
                     emptyDeckCard
                 } else {
                     progressAndCardSection
-                    sortSection
+                    phoneSortSection
                     navButtons
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, StudiumDesignSystem.spacingMD)
             .padding(.bottom, 20)
             .readableContentFrame(maxWidth: LayoutMetrics.vocabReadableMaxWidth)
         }
@@ -180,11 +180,55 @@ struct VocabFlashcardsView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { shuffleDeck() } label: {
-                    Label("Shuffle", systemImage: "shuffle")
+                    Image(systemName: "shuffle")
                 }
                 .disabled(baseFilteredIndices.isEmpty)
+                .accessibilityLabel("Shuffle deck")
             }
         }
+    }
+
+    /// iPhone: segmented pile picker without extra card chrome.
+    private var phoneStudyPilePicker: some View {
+        Picker("Study pile", selection: $studyBucket) {
+            ForEach(VocabMemoryBucket.allCases) { b in
+                Text(b.title).tag(b)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    /// iPhone: horizontal chip strip for word type.
+    private var phoneWordTypePicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(WordSetFilter.allCases) { f in
+                    FilterChipButton(
+                        title: f.rawValue,
+                        isSelected: wordSetFilter == f,
+                        accent: accent,
+                        fillsGridCell: false
+                    ) { wordSetFilter = f }
+                }
+            }
+        }
+    }
+
+    /// iPhone: segmented bucket picker below the flashcard.
+    private var phoneSortSection: some View {
+        Picker("Move card to", selection: phoneSortBucketBinding) {
+            Text("Learn").tag(VocabMemoryBucket.learn)
+            Text("Review").tag(VocabMemoryBucket.review)
+            Text("Mastered").tag(VocabMemoryBucket.known)
+        }
+        .pickerStyle(.segmented)
+    }
+
+    private var phoneSortBucketBinding: Binding<VocabMemoryBucket> {
+        Binding(
+            get: { currentCardBucket },
+            set: { moveCurrentCard(to: $0) }
+        )
     }
 
     // MARK: - Section components
@@ -251,9 +295,11 @@ struct VocabFlashcardsView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text("Space or tap to flip")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                if isWide {
+                    Text("Space or tap to flip")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
 
             Button {
@@ -263,12 +309,12 @@ struct VocabFlashcardsView: View {
             } label: {
                 currentCardFace
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: isWide ? 380 : 280)
-                    .padding(24)
-                    .background(Color.secondarySystemGroupedBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: FilterStyle.cardCorner))
+                    .frame(minHeight: isWide ? 380 : 220)
+                    .padding(isWide ? 24 : 20)
+                    .background(Color.systemBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: FilterStyle.cardCorner, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: FilterStyle.cardCorner)
+                        RoundedRectangle(cornerRadius: FilterStyle.cardCorner, style: .continuous)
                             .strokeBorder(FilterStyle.chipBorder(selected: false, accent: accent), lineWidth: FilterStyle.chipStrokeWidth)
                     )
             }
@@ -297,27 +343,37 @@ struct VocabFlashcardsView: View {
     private var navButtons: some View {
         HStack(spacing: 12) {
             Button { goToPrevious() } label: {
-                Label("Previous", systemImage: "chevron.left")
-                    .labelStyle(.titleAndIcon)
-                    .font(.body.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
+                if isWide {
+                    Label("Previous", systemImage: "chevron.left")
+                        .labelStyle(.titleAndIcon)
+                } else {
+                    Image(systemName: "chevron.left")
+                }
             }
+            .font(.body.weight(.semibold))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
             .buttonStyle(.bordered)
-            .controlSize(.large)
+            .controlSize(isWide ? .large : .regular)
             .disabled(!canGoBack)
+            .accessibilityLabel("Previous card")
 
             Button { goToNext() } label: {
-                Label("Next", systemImage: "chevron.right")
-                    .labelStyle(.titleAndIcon)
-                    .font(.body.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
+                if isWide {
+                    Label("Next", systemImage: "chevron.right")
+                        .labelStyle(.titleAndIcon)
+                } else {
+                    Image(systemName: "chevron.right")
+                }
             }
+            .font(.body.weight(.semibold))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
             .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .controlSize(isWide ? .large : .regular)
             .tint(accent)
             .disabled(!canGoForward)
+            .accessibilityLabel("Next card")
         }
     }
 
@@ -342,12 +398,12 @@ struct VocabFlashcardsView: View {
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
-            .frame(minHeight: isWide ? 280 : 200)
-            .padding(24)
-            .background(Color.secondarySystemGroupedBackground)
-            .clipShape(RoundedRectangle(cornerRadius: FilterStyle.cardCorner))
+            .frame(minHeight: isWide ? 280 : 160)
+            .padding(isWide ? 24 : 16)
+            .background(Color.systemBackground)
+            .clipShape(RoundedRectangle(cornerRadius: FilterStyle.cardCorner, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: FilterStyle.cardCorner)
+                RoundedRectangle(cornerRadius: FilterStyle.cardCorner, style: .continuous)
                     .strokeBorder(Color.studiumBorder.opacity(0.6), lineWidth: FilterStyle.chipStrokeWidth)
             )
 
@@ -355,7 +411,17 @@ struct VocabFlashcardsView: View {
         }
     }
 
+    @ViewBuilder
     private var pileSwitcherHint: some View {
+        if isWide {
+            widePileSwitcherHint
+        } else {
+            phoneStudyPilePicker
+                .padding(.top, StudiumDesignSystem.spacingSM)
+        }
+    }
+
+    private var widePileSwitcherHint: some View {
         VStack(alignment: .leading, spacing: 8) {
             FilterStripSectionTitle(text: "Try another pile")
             FilterFormCard {
@@ -374,11 +440,14 @@ struct VocabFlashcardsView: View {
     }
 
     private var emptyDeckHint: String {
+        if !isWide {
+            return "Try another pile or word type above."
+        }
         switch deckKind {
         case .words:
-            "Try another part-of-speech set, switch Learn / Review / Known, or sort cards from another pile."
+            return "Try another part-of-speech set, switch Learn / Review / Known, or sort cards from another pile."
         case .roots:
-            "Switch Learn / Review / Known, or classify roots from another pile."
+            return "Switch Learn / Review / Known, or classify roots from another pile."
         }
     }
 

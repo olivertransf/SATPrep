@@ -62,6 +62,7 @@ struct SplitPaneView<Left: View, Right: View>: View {
                 .frame(maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.systemGroupedBackground)
         .background(
             GeometryReader { geo in
                 Color.clear.preference(key: _SplitContainerWidthKey.self, value: geo.size.width)

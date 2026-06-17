@@ -56,7 +56,8 @@ struct MathFormulaView: View {
         HTMLContentView(
             htmlContent: latex,
             isScrollable: false,
-            allowInteraction: false
+            allowInteraction: false,
+            embedded: true
         )
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(StudiumDesignSystem.spacingSM)
