@@ -309,35 +309,6 @@ html:not(.light) .studium-card {
   color: var(--accent);
 }
 
-.studium-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: var(--radius-chip);
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.9375rem;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-
-.studium-nav-item:hover {
-  color: var(--text);
-  background: var(--fill-tertiary);
-}
-
-.studium-nav-item--active {
-  color: var(--accent);
-  background: var(--accent-chip-fill);
-  border-color: var(--accent-chip-border);
-  font-weight: 600;
-}
-
 .studium-topnav-item {
   display: inline-flex;
   align-items: center;
@@ -443,30 +414,6 @@ html:not(.light) .studium-flashcard {
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
 }
 
-.studium-subject-tab {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 18px;
-  border-radius: var(--radius-card);
-  border: 1px solid var(--border);
-  background: var(--card);
-  cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-  text-align: left;
-  color: var(--text);
-}
-
-.studium-subject-tab:hover {
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
-}
-
-.studium-subject-tab--active {
-  border-color: var(--accent-chip-border);
-  background: var(--accent-chip-fill);
-  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.08);
-}
-
 .studium-segmented {
   display: flex;
   gap: var(--space-xs);
@@ -516,6 +463,59 @@ html:not(.light) .studium-flashcard {
   max-width: 28rem;
   width: 100%;
   box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+}
+
+.studium-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.studium-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.studium-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  overflow: hidden;
+  background: var(--bg);
+  outline: none;
+}
+
+.studium-sheet-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.studium-sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-lg);
+}
+
+.studium-sheet-footer {
+  flex-shrink: 0;
+  padding: var(--space-lg);
+  border-top: 1px solid var(--border);
+  background: var(--card);
 }
 
 .studium-bottom-nav {

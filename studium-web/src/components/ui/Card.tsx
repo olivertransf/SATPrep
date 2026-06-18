@@ -21,3 +21,17 @@ export function Card({ children, accent = 'none', padding = true, className = ''
     </div>
   )
 }
+
+interface CardHeaderProps {
+  title: string
+  subtitle?: string
+}
+
+export function CardHeader({ title, subtitle }: CardHeaderProps) {
+  return (
+    <div className="px-4 py-3 border-b border-[var(--border)]">
+      <div className="font-semibold text-[var(--text)]">{title}</div>
+      {subtitle && <div className="text-xs mt-0.5 text-[var(--muted)]">{subtitle}</div>}
+    </div>
+  )
+}

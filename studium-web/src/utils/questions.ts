@@ -4,6 +4,7 @@ import type {
   QuestionProgress,
 } from '../types'
 import { getCorrectAnswer, getDisplayAnswerOptions, isFreeResponse } from '../types'
+import { getProgressSummary } from '../lib/stats'
 
 function isBluebookTagged(q: Question): boolean {
   const ibn = q.ibn?.trim()
@@ -110,12 +111,14 @@ export function checkAnswer(question: Question, selectedId: string): boolean {
 
 export function getOverallStats(
   questions: Question[],
-  progress: Record<string, QuestionProgress>
+  progress: Record<string, QuestionProgress>,
 ) {
-  const total = questions.length
-  const seen = questions.filter(q => progress[q.questionId]?.seen).length
-  const answered = questions.filter(q => progress[q.questionId]?.correct !== undefined).length
-  const correct = questions.filter(q => progress[q.questionId]?.correct === true).length
-  const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0
-  return { total, seen, answered, correct, accuracy }
+  const summary = getProgressSummary(questions, progress)
+  return {
+    ...summary,
+    accuracy: summary.accuracy ?? 0,
+  }
 }
+
+// Re-export shared stats helpers for callers that import from utils/questions.
+export { getProgressSummary, getModuleBreakdown, getDifficultyBreakdown, moduleDisplayName } from '../lib/stats'

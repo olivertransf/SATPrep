@@ -1,38 +1,33 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type {
-  Question, QuestionProgress, FilterOptions, SavedQuiz,
+  Question, QuestionProgress, FilterOptions,
 } from '../../types'
 import { getFilteredQuestions } from '../../utils/questions'
-import { deleteQuiz } from '../../store/quiz'
 import { Play, SlidersHorizontal } from 'lucide-react'
 import { useWidePracticeLayout } from '../../hooks/useMediaQuery'
 import { PRACTICE_SIDEBAR_WIDTH_PX } from '../../design/tokens'
-import { SectionEyebrow } from '../ui/SectionEyebrow'
+import { quizFilterTags } from '../../lib/quizFilterTags'
 import { PracticeFiltersPanel, type PracticeFilterState } from './PracticeFiltersPanel'
-import { ContinueQuizCard } from './ContinueQuizCard'
 import { ConceptCard, type ConceptCategoryData } from './ConceptCard'
 import { PageHeader } from '../ui/PageHeader'
 import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
+import { BottomSheet } from '../ui/BottomSheet'
 
 interface PracticeHomeProps {
   questions: Question[]
   progress: Record<string, QuestionProgress>
-  savedQuizzes: SavedQuiz[]
   cbVerifiedNotOnPracticeTestIds: Set<string>
   initialModule?: 'math' | 'english'
   onModulePresetConsumed?: () => void
   onStartQuiz: (filters: FilterOptions) => string | null
-  onQuizzesChange: (quizzes: SavedQuiz[]) => void
 }
 
-import { quizFilterTags } from '../../lib/quizFilterTags'
-
 export default function PracticeHome({
-  questions, progress, savedQuizzes, cbVerifiedNotOnPracticeTestIds,
+  questions, progress, cbVerifiedNotOnPracticeTestIds,
   initialModule, onModulePresetConsumed,
-  onStartQuiz, onQuizzesChange,
+  onStartQuiz,
 }: PracticeHomeProps) {
   const navigate = useNavigate()
   const useWideSplit = useWidePracticeLayout()
@@ -100,11 +95,6 @@ export default function PracticeHome({
     if (id) navigate(`/practice/quiz/${id}`)
   }
 
-  function handleDeleteQuiz(id: string) {
-    deleteQuiz(id)
-    onQuizzesChange(savedQuizzes.filter(q => q.id !== id))
-  }
-
   const activeFilterBadges = useMemo(
     () => quizFilterTags(currentFilters).filter(tag => tag !== 'All questions'),
     [currentFilters],
@@ -121,37 +111,16 @@ export default function PracticeHome({
     </Button>
   )
 
-  const mainColumn = (
-    <div
-      className="flex-1 min-w-0 overflow-y-auto studium-screen px-4 sm:px-6 py-4 lg:py-6"
-      style={{ paddingBottom: useWideSplit ? undefined : '5.5rem' }}
-    >
-      {savedQuizzes.length > 0 && (
-        <section className="mb-6">
-          <SectionEyebrow>Continue</SectionEyebrow>
-          <div className="mt-3 flex flex-col gap-3">
-            {savedQuizzes.slice(0, 5).map(quiz => {
-              const answered = Object.values(quiz.answerStates).filter(s => s.hasSubmitted).length
-              return (
-                <ContinueQuizCard
-                  key={quiz.id}
-                  tags={quizFilterTags(quiz.filters)}
-                  answered={answered}
-                  total={quiz.questionIds.length}
-                  onResume={() => navigate(`/practice/quiz/${quiz.id}`)}
-                  onDelete={() => handleDeleteQuiz(quiz.id)}
-                />
-              )
-            })}
-          </div>
-        </section>
-      )}
+  const topicSummary = conceptCategories.length === 1
+    ? '1 topic'
+    : `${conceptCategories.length} topics`
 
-      <PageHeader
-        title="Practice questions"
-        subtitle={`${conceptCategories.length} topics · ${matchingCount} questions match`}
-      />
+  const matchSummary = matchingCount === 1
+    ? '1 question matches'
+    : `${matchingCount} questions match`
 
+  const browseContent = (
+    <>
       {activeFilterBadges.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
           {activeFilterBadges.map(b => (
@@ -186,6 +155,22 @@ export default function PracticeHome({
           ))}
         </div>
       )}
+    </>
+  )
+
+  const mainColumn = (
+    <div
+      className="flex-1 min-w-0 overflow-y-auto studium-screen px-4 sm:px-6 py-4 lg:py-6"
+      style={{ paddingBottom: useWideSplit ? undefined : '5.5rem' }}
+    >
+      {useWideSplit && (
+        <PageHeader
+          title="Practice questions"
+          subtitle={`${topicSummary} · ${matchSummary}`}
+        />
+      )}
+
+      {browseContent}
     </div>
   )
 
@@ -225,8 +210,11 @@ export default function PracticeHome({
         <div className="flex-1 min-w-0">
           <div className="text-base font-semibold text-[var(--text)]">Practice</div>
           <div className="text-sm mt-0.5 text-[var(--muted)]">
-            <span className={matchingCount > 0 ? 'text-[var(--accent)] font-semibold' : ''}>{matchingCount}</span>
-            {' '}{matchingCount === 1 ? 'question matches' : 'questions match'}
+            {topicSummary}
+            {' · '}
+            <span className={matchingCount > 0 ? 'text-[var(--accent)] font-semibold' : ''}>
+              {matchSummary}
+            </span>
           </div>
         </div>
         <Button variant="secondary" onClick={() => setShowFilterSheet(true)}>
@@ -241,42 +229,34 @@ export default function PracticeHome({
         {startButton}
       </div>
 
-      {showFilterSheet && (
-        <div className="fixed inset-0 z-40 flex flex-col md:hidden" role="dialog" aria-modal="true" aria-label="Filters">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40 border-0 cursor-pointer"
-            aria-label="Close filters"
-            onClick={() => setShowFilterSheet(false)}
-          />
-          <div className="relative mt-auto max-h-[92vh] flex flex-col rounded-t-[var(--radius-sheet)] overflow-hidden studium-screen bg-[var(--bg)]">
-            <div className="flex items-center justify-between px-4 py-3 border-b shrink-0 border-[var(--border)] bg-[var(--card)]">
-              <h2 className="text-lg font-semibold m-0">Filters</h2>
-              <Button variant="secondary" onClick={() => setShowFilterSheet(false)} aria-label="Close filters">
-                Done
-              </Button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 py-4">
-              <PracticeFiltersPanel filters={filterState} onChange={patchFilters} />
-            </div>
-            <div className="shrink-0 p-4 border-t border-[var(--border)] bg-[var(--card)] space-y-2">
-              <p className="text-sm text-center m-0 text-[var(--muted)]">
-                {matchingCount} {matchingCount === 1 ? 'question' : 'questions'} match
-              </p>
-              <Button
-                fullWidth
-                onClick={() => {
-                  startQuiz()
-                  setShowFilterSheet(false)
-                }}
-                disabled={matchingCount === 0}
-              >
-                {startButtonLabel}
-              </Button>
-            </div>
+      <BottomSheet
+        open={showFilterSheet}
+        onClose={() => setShowFilterSheet(false)}
+        title="Filters"
+        ariaLabel="Filters"
+        headerAction={(
+          <Button variant="secondary" onClick={() => setShowFilterSheet(false)} aria-label="Close filters">
+            Done
+          </Button>
+        )}
+        footer={(
+          <div className="space-y-2">
+            <p className="text-sm text-center m-0 text-[var(--muted)]">{matchSummary}</p>
+            <Button
+              fullWidth
+              onClick={() => {
+                startQuiz()
+                setShowFilterSheet(false)
+              }}
+              disabled={matchingCount === 0}
+            >
+              {startButtonLabel}
+            </Button>
           </div>
-        </div>
-      )}
+        )}
+      >
+        <PracticeFiltersPanel filters={filterState} onChange={patchFilters} />
+      </BottomSheet>
     </div>
   )
 }

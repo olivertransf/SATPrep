@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { WIDE_BREAKPOINT_PX } from '../design/tokens'
 
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => {
@@ -18,5 +19,5 @@ export function useMediaQuery(query: string): boolean {
 }
 
 export function useWidePracticeLayout(): boolean {
-  return useMediaQuery(`(min-width: ${900}px)`)
+  return useMediaQuery(`(min-width: ${WIDE_BREAKPOINT_PX}px)`)
 }

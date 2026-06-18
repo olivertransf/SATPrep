@@ -10,7 +10,6 @@ export const colors = {
 /** Mirrors `StudiumDesignSystem.swift` + `LayoutMetrics` for web layout. */
 export const WIDE_BREAKPOINT_PX = 900
 export const PRACTICE_SIDEBAR_WIDTH_PX = 348
-export const CONTINUE_CARD_WIDTH_PX = 300
 
 export const spacing = {
   xs: 4,

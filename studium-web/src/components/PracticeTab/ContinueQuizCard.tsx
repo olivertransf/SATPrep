@@ -69,9 +69,9 @@ export function ContinueQuizCard({
             </p>
           </div>
 
-          <button type="button" onClick={onResume} className="studium-btn-primary shrink-0">
+          <Button onClick={onResume} className="shrink-0">
             Resume
-          </button>
+          </Button>
         </div>
 
         {supportingTags.length > 0 && (
@@ -79,7 +79,7 @@ export function ContinueQuizCard({
             {supportingTags.map(tag => (
               <span
                 key={tag}
-                className="min-w-0 max-w-[11rem] truncate rounded-full px-2.5 py-1 text-xs font-medium text-[var(--muted)] bg-[var(--fill-secondary)]"
+                className="min-w-0 max-w-[11rem] truncate rounded-full px-2.5 py-1 text-xs font-medium text-[var(--muted)] bg-[var(--fill-tertiary)]"
               >
                 {tag}
               </span>

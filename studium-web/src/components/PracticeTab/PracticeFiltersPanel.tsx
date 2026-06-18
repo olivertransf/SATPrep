@@ -1,5 +1,5 @@
 import type { AnswerStatus, CBVerifiedInactiveFilter } from '../../types'
-import { FilterChip } from '../ui/FilterChip'
+import { Chip } from '../ui/Chip'
 import { FilterChipGrid, FilterFormCard } from '../ui/FilterFormCard'
 import { Shuffle, ArrowDownUp } from 'lucide-react'
 
@@ -27,17 +27,17 @@ export function PracticeFiltersPanel({ filters, onChange, sidebar }: PracticeFil
     <div className="flex flex-col gap-4">
       <FilterFormCard title="Section">
         <FilterChipGrid columns={cols}>
-          <FilterChip label="All" selected={!filters.module} onClick={() => onChange({ module: undefined })} fillsCell />
-          <FilterChip label="Math" selected={filters.module === 'math'} onClick={() => onChange({ module: 'math' })} fillsCell />
-          <FilterChip label="Reading & Writing" selected={filters.module === 'english'} onClick={() => onChange({ module: 'english' })} fillsCell />
+          <Chip label="All" selected={!filters.module} onClick={() => onChange({ module: undefined })} fillsCell />
+          <Chip label="Math" selected={filters.module === 'math'} onClick={() => onChange({ module: 'math' })} fillsCell />
+          <Chip label="Reading & Writing" selected={filters.module === 'english'} onClick={() => onChange({ module: 'english' })} fillsCell />
         </FilterChipGrid>
       </FilterFormCard>
 
       <FilterFormCard title="Difficulty">
         <FilterChipGrid columns={cols}>
-          <FilterChip label="All" selected={!filters.difficulty} onClick={() => onChange({ difficulty: undefined })} fillsCell />
+          <Chip label="All" selected={!filters.difficulty} onClick={() => onChange({ difficulty: undefined })} fillsCell />
           {Object.entries(DIFFICULTY_LABELS).map(([value, label]) => (
-            <FilterChip
+            <Chip
               key={value}
               label={label}
               selected={filters.difficulty === value}
@@ -58,7 +58,7 @@ export function PracticeFiltersPanel({ filters, onChange, sidebar }: PracticeFil
               ['correct', 'Correct'],
             ] as const
           ).map(([value, label]) => (
-            <FilterChip
+            <Chip
               key={value}
               label={label}
               selected={filters.answerStatus === value}
@@ -71,13 +71,13 @@ export function PracticeFiltersPanel({ filters, onChange, sidebar }: PracticeFil
 
       <FilterFormCard title="Question source">
         <FilterChipGrid columns={cols}>
-          <FilterChip
+          <Chip
             label="Any"
             selected={!filters.cbVerifiedInactive}
             onClick={() => onChange({ cbVerifiedInactive: undefined })}
             fillsCell
           />
-          <FilterChip
+          <Chip
             label="Extra official questions"
             selected={filters.cbVerifiedInactive === 'onlyVerifiedOffCBPracticeTests'}
             onClick={() =>
@@ -95,14 +95,14 @@ export function PracticeFiltersPanel({ filters, onChange, sidebar }: PracticeFil
 
       <FilterFormCard title="Question count">
         <FilterChipGrid columns={cols}>
-          <FilterChip
+          <Chip
             label="No limit"
             selected={!filters.questionLimit}
             onClick={() => onChange({ questionLimit: undefined })}
             fillsCell
           />
           {[10, 20, 30, 50].map(n => (
-            <FilterChip
+            <Chip
               key={n}
               label={String(n)}
               selected={filters.questionLimit === n}
@@ -115,42 +115,22 @@ export function PracticeFiltersPanel({ filters, onChange, sidebar }: PracticeFil
 
       <FilterFormCard title="Order">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <button
-            type="button"
+          <Chip
+            label="Random"
+            sublabel="Shuffle each session"
+            icon={<Shuffle size={14} aria-hidden="true" />}
+            selected={filters.shuffled}
             onClick={() => onChange({ shuffled: true })}
-            className={[
-              'studium-chip w-full min-h-[48px] justify-start px-3',
-              filters.shuffled ? 'studium-chip--selected' : '',
-            ].join(' ')}
-          >
-            <span className="flex items-center gap-2">
-              <Shuffle size={14} aria-hidden="true" />
-              <span className="text-left">
-                <span className="block text-sm font-semibold">Random</span>
-                <span className="block text-xs font-normal" style={{ color: 'var(--muted)' }}>
-                  Shuffle each session
-                </span>
-              </span>
-            </span>
-          </button>
-          <button
-            type="button"
+            className="w-full"
+          />
+          <Chip
+            label="In order"
+            sublabel="Stable sequence"
+            icon={<ArrowDownUp size={14} aria-hidden="true" />}
+            selected={!filters.shuffled}
             onClick={() => onChange({ shuffled: false })}
-            className={[
-              'studium-chip w-full min-h-[48px] justify-start px-3',
-              !filters.shuffled ? 'studium-chip--selected' : '',
-            ].join(' ')}
-          >
-            <span className="flex items-center gap-2">
-              <ArrowDownUp size={14} aria-hidden="true" />
-              <span className="text-left">
-                <span className="block text-sm font-semibold">In order</span>
-                <span className="block text-xs font-normal" style={{ color: 'var(--muted)' }}>
-                  Stable sequence
-                </span>
-              </span>
-            </span>
-          </button>
+            className="w-full"
+          />
         </div>
       </FilterFormCard>
     </div>

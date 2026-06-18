@@ -60,12 +60,10 @@ function AppRoutes() {
           <PracticeHome
             questions={questions}
             progress={progress}
-            savedQuizzes={savedQuizzes}
             cbVerifiedNotOnPracticeTestIds={cbVerifiedIds}
             initialModule={practiceModulePreset}
             onModulePresetConsumed={() => setPracticeModulePreset(undefined)}
             onStartQuiz={handleStartQuiz}
-            onQuizzesChange={setSavedQuizzes}
           />
         } />
         <Route path="study" element={<StudyHubRedirect />} />

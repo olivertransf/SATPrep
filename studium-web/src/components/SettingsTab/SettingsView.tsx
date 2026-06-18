@@ -9,6 +9,9 @@ import { useSync } from '../../context/SyncContext'
 import { notifyLocalDataChanged } from '../../lib/localDataEvents'
 import { Sun, Moon, AlertTriangle, Loader2, Cloud } from 'lucide-react'
 import { PageHeader } from '../ui/PageHeader'
+import { PageContainer } from '../ui/PageContainer'
+import { Card, CardHeader } from '../ui/Card'
+import { SettingRow } from '../ui/SettingRow'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 
@@ -22,18 +25,6 @@ interface SettingsViewProps {
   onFontSizeChange: (size: number) => void
   answerChoiceFontSize: number
   onAnswerChoiceFontSizeChange: (size: number) => void
-}
-
-function SettingRow({ label, sub, right }: { label: string; sub?: string; right: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between px-4 py-3 min-h-[52px] border-b last:border-0 border-[var(--border)]">
-      <div className="min-w-0 pr-4">
-        <div className="text-sm font-medium text-[var(--text)]">{label}</div>
-        {sub && <div className="text-xs mt-0.5 text-[var(--muted)]">{sub}</div>}
-      </div>
-      <div className="shrink-0">{right}</div>
-    </div>
-  )
 }
 
 export default function SettingsView({
@@ -69,153 +60,144 @@ export default function SettingsView({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto studium-screen">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-5">
-        <PageHeader title="Settings" subtitle="Account, appearance, and data" />
+    <PageContainer width="narrow" stackClassName="space-y-5">
+      <PageHeader title="Settings" subtitle="Account, appearance, and data" />
 
-        {configured && (
-          <section className="studium-card overflow-hidden p-0">
-            <div className="px-4 py-3 border-b border-[var(--border)]">
-              <div className="font-semibold text-[var(--text)]">Account & sync</div>
-              <div className="text-xs mt-0.5 text-[var(--muted)]">
-                {user ? 'Progress syncs across your devices' : 'Sign in to sync progress across devices'}
-              </div>
+      {configured && (
+        <Card padding={false} className="overflow-hidden">
+          <CardHeader
+            title="Account & sync"
+            subtitle={user ? 'Progress syncs across your devices' : 'Sign in to sync progress across devices'}
+          />
+          {authLoading ? (
+            <div className="px-4 py-4 flex items-center gap-2 text-sm text-[var(--muted)]">
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+              Loading account…
             </div>
-            {authLoading ? (
-              <div className="px-4 py-4 flex items-center gap-2 text-sm text-[var(--muted)]">
-                <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-                Loading account…
-              </div>
-            ) : user ? (
-              <>
+          ) : user ? (
+            <>
+              <SettingRow
+                label={user.displayName ?? 'Signed in'}
+                sub={user.email ?? undefined}
+                right={
+                  user.photoURL ? (
+                    <img src={user.photoURL} alt="" className="w-9 h-9 rounded-full" referrerPolicy="no-referrer" />
+                  ) : null
+                }
+              />
+              {canSync && (
                 <SettingRow
-                  label={user.displayName ?? 'Signed in'}
-                  sub={user.email ?? undefined}
+                  label="Cloud sync"
+                  sub={syncStatusText()}
                   right={
-                    user.photoURL ? (
-                      <img src={user.photoURL} alt="" className="w-9 h-9 rounded-full" referrerPolicy="no-referrer" />
-                    ) : null
+                    <Button variant="secondary" disabled={syncStatus === 'syncing'} onClick={() => void syncNow()}>
+                      {syncStatus === 'syncing' ? <Loader2 size={15} className="animate-spin" /> : <Cloud size={15} />}
+                      Sync now
+                    </Button>
                   }
                 />
-                {canSync && (
-                  <SettingRow
-                    label="Cloud sync"
-                    sub={syncStatusText()}
-                    right={
-                      <Button variant="secondary" disabled={syncStatus === 'syncing'} onClick={() => void syncNow()}>
-                        {syncStatus === 'syncing' ? <Loader2 size={15} className="animate-spin" /> : <Cloud size={15} />}
-                        Sync now
-                      </Button>
-                    }
-                  />
-                )}
-                <div className="px-4 py-3 border-t border-[var(--border)]">
-                  <Button variant="secondary" disabled={authBusy} onClick={() => { setAuthBusy(true); void signOut().finally(() => setAuthBusy(false)) }}>
-                    {authBusy ? <Loader2 size={15} className="animate-spin" /> : 'Sign out'}
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="px-4 py-3 space-y-2">
-                {authError && <div className="text-sm text-[var(--error)]" role="alert">{authError}</div>}
-                <Button
-                  disabled={authBusy}
-                  onClick={() => { clearError(); setAuthBusy(true); void signInWithGoogle().finally(() => setAuthBusy(false)) }}
-                >
-                  {authBusy ? <Loader2 size={15} className="animate-spin" /> : 'Sign in with Google'}
+              )}
+              <div className="px-4 py-3 border-t border-[var(--border)]">
+                <Button variant="secondary" disabled={authBusy} onClick={() => { setAuthBusy(true); void signOut().finally(() => setAuthBusy(false)) }}>
+                  {authBusy ? <Loader2 size={15} className="animate-spin" /> : 'Sign out'}
                 </Button>
               </div>
-            )}
-          </section>
-        )}
-
-        <section className="studium-card overflow-hidden p-0">
-          <div className="px-4 py-3 border-b border-[var(--border)]">
-            <div className="font-semibold text-[var(--text)]">Your progress</div>
-            <div className="text-xs mt-0.5 text-[var(--muted)]">Stored in this browser{user ? ' and synced to your account' : ''}</div>
-          </div>
-          <SettingRow label="Questions attempted" right={<span className="text-sm font-semibold text-[var(--text)]">{attempted}</span>} />
-          <SettingRow label="Questions seen" right={<span className="text-sm font-semibold text-[var(--text)]">{seen}</span>} />
-          <SettingRow label="Saved quizzes" right={<span className="text-sm font-semibold text-[var(--text)]">{savedQuizCount}</span>} />
-        </section>
-
-        <section className="studium-card overflow-hidden p-0">
-          <div className="px-4 py-3 border-b border-[var(--border)]">
-            <div className="font-semibold text-[var(--text)]">Appearance</div>
-            <div className="text-xs mt-0.5 text-[var(--muted)]">Theme and question text size</div>
-          </div>
-          <SettingRow
-            label={isDark ? 'Dark mode' : 'Light mode'}
-            sub="Switch between light and dark"
-            right={
-              <Button variant="secondary" onClick={onToggleTheme}>
-                {isDark ? <Sun size={15} aria-hidden="true" /> : <Moon size={15} aria-hidden="true" />}
-                {isDark ? 'Light' : 'Dark'}
+            </>
+          ) : (
+            <div className="px-4 py-3 space-y-2">
+              {authError && <div className="text-sm text-[var(--error)]" role="alert">{authError}</div>}
+              <Button
+                disabled={authBusy}
+                onClick={() => { clearError(); setAuthBusy(true); void signInWithGoogle().finally(() => setAuthBusy(false)) }}
+              >
+                {authBusy ? <Loader2 size={15} className="animate-spin" /> : 'Sign in with Google'}
               </Button>
-            }
-          />
-          <SettingRow
-            label="Question font size"
-            sub="Applies to questions and passages"
-            right={
-              <div className="flex items-center gap-3">
-                <span className="text-xs studium-mono w-8 text-right tabular-nums text-[var(--muted)]">{fontSize}px</span>
-                <input
-                  type="range"
-                  min={13}
-                  max={20}
-                  step={1}
-                  value={fontSize}
-                  onChange={e => onFontSizeChange(Number(e.target.value))}
-                  className="w-28 accent-[var(--accent)]"
-                  aria-label="Question font size"
-                />
-              </div>
-            }
-          />
-          <SettingRow
-            label="Answer choice font size"
-            sub="Applies to A, B, C, D options only"
-            right={
-              <div className="flex items-center gap-3">
-                <span className="text-xs studium-mono w-8 text-right tabular-nums text-[var(--muted)]">{answerChoiceFontSize}px</span>
-                <input
-                  type="range"
-                  min={13}
-                  max={20}
-                  step={1}
-                  value={answerChoiceFontSize}
-                  onChange={e => onAnswerChoiceFontSizeChange(Number(e.target.value))}
-                  className="w-28 accent-[var(--accent)]"
-                  aria-label="Answer choice font size"
-                />
-              </div>
-            }
-          />
-          <div className="px-4 py-3 border-t border-[var(--border)]">
-            <p className="text-sm m-0 text-[var(--text)]" style={{ fontSize: `${fontSize}px` }}>
-              Preview: The value of x is 12 when 2x + 3 = 27.
-            </p>
-            <p className="text-sm mt-2 mb-0 text-[var(--muted)]" style={{ fontSize: `${answerChoiceFontSize}px` }}>
-              A) 12 &nbsp; B) 15 &nbsp; C) 27 &nbsp; D) 30
-            </p>
-          </div>
-        </section>
-
-        <section className="studium-card overflow-hidden p-0">
-          <div className="px-4 py-3 border-b border-[var(--border)]">
-            <div className="font-semibold text-[var(--text)]">Data</div>
-            <div className="text-xs mt-0.5 text-[var(--muted)]">
-              {user ? 'Reset clears local data and syncs the reset to your account.' : 'Progress is stored locally in your browser.'}
             </div>
-          </div>
-          <div className="px-4 py-3">
-            <Button variant="destructive" onClick={() => setShowConfirm(true)}>
-              Reset all progress
+          )}
+        </Card>
+      )}
+
+      <Card padding={false} className="overflow-hidden">
+        <CardHeader
+          title="Your progress"
+          subtitle={`Stored in this browser${user ? ' and synced to your account' : ''}`}
+        />
+        <SettingRow label="Questions attempted" right={<span className="text-sm font-semibold text-[var(--text)]">{attempted}</span>} />
+        <SettingRow label="Questions seen" right={<span className="text-sm font-semibold text-[var(--text)]">{seen}</span>} />
+        <SettingRow label="Saved quizzes" right={<span className="text-sm font-semibold text-[var(--text)]">{savedQuizCount}</span>} />
+      </Card>
+
+      <Card padding={false} className="overflow-hidden">
+        <CardHeader title="Appearance" subtitle="Theme and question text size" />
+        <SettingRow
+          label={isDark ? 'Dark mode' : 'Light mode'}
+          sub="Switch between light and dark"
+          right={
+            <Button variant="secondary" onClick={onToggleTheme}>
+              {isDark ? <Sun size={15} aria-hidden="true" /> : <Moon size={15} aria-hidden="true" />}
+              {isDark ? 'Light' : 'Dark'}
             </Button>
-          </div>
-        </section>
-      </div>
+          }
+        />
+        <SettingRow
+          label="Question font size"
+          sub="Applies to questions and passages"
+          right={
+            <div className="flex items-center gap-3">
+              <span className="text-xs studium-mono w-8 text-right tabular-nums text-[var(--muted)]">{fontSize}px</span>
+              <input
+                type="range"
+                min={13}
+                max={20}
+                step={1}
+                value={fontSize}
+                onChange={e => onFontSizeChange(Number(e.target.value))}
+                className="w-28 accent-[var(--accent)]"
+                aria-label="Question font size"
+              />
+            </div>
+          }
+        />
+        <SettingRow
+          label="Answer choice font size"
+          sub="Applies to A, B, C, D options only"
+          right={
+            <div className="flex items-center gap-3">
+              <span className="text-xs studium-mono w-8 text-right tabular-nums text-[var(--muted)]">{answerChoiceFontSize}px</span>
+              <input
+                type="range"
+                min={13}
+                max={20}
+                step={1}
+                value={answerChoiceFontSize}
+                onChange={e => onAnswerChoiceFontSizeChange(Number(e.target.value))}
+                className="w-28 accent-[var(--accent)]"
+                aria-label="Answer choice font size"
+              />
+            </div>
+          }
+        />
+        <div className="px-4 py-3 border-t border-[var(--border)]">
+          <p className="text-sm m-0 text-[var(--text)]" style={{ fontSize: `${fontSize}px` }}>
+            Preview: The value of x is 12 when 2x + 3 = 27.
+          </p>
+          <p className="text-sm mt-2 mb-0 text-[var(--muted)]" style={{ fontSize: `${answerChoiceFontSize}px` }}>
+            A) 12 &nbsp; B) 15 &nbsp; C) 27 &nbsp; D) 30
+          </p>
+        </div>
+      </Card>
+
+      <Card padding={false} className="overflow-hidden">
+        <CardHeader
+          title="Data"
+          subtitle={user ? 'Reset clears local data and syncs the reset to your account.' : 'Progress is stored locally in your browser.'}
+        />
+        <div className="px-4 py-3">
+          <Button variant="destructive" onClick={() => setShowConfirm(true)}>
+            Reset all progress
+          </Button>
+        </div>
+      </Card>
 
       <Modal
         open={showConfirm}
@@ -235,6 +217,6 @@ export default function SettingsView({
           </p>
         </div>
       </Modal>
-    </div>
+    </PageContainer>
   )
 }
