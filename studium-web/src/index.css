@@ -9,18 +9,26 @@
   --card: #ffffff;
   --border: #e2e8f0;
   --text: #0f172a;
-  --muted: #64748b;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
+  --muted: #475569;
+  --accent: #007aff;
+  --accent-hover: #0066d6;
+  --math: #007aff;
+  --rw: #5856d6;
+  --on-accent: #ffffff;
+  --ring: rgba(0, 122, 255, 0.35);
+  --destructive: #dc2626;
+  --destructive-hover: #b91c1c;
   --surface: #f1f5f9;
   --input: #f8fafc;
   --fill-tertiary: #f1f5f9;
-  --accent-chip-fill: rgba(37, 99, 235, 0.1);
-  --accent-chip-border: rgba(37, 99, 235, 0.35);
+  --accent-chip-fill: rgba(0, 122, 255, 0.1);
+  --accent-chip-border: rgba(0, 122, 255, 0.35);
+  --math-chip-fill: rgba(0, 122, 255, 0.1);
+  --rw-chip-fill: rgba(88, 86, 214, 0.1);
   --success: #16a34a;
   --error: #dc2626;
   --warning: #ea580c;
-  --hero-gradient: linear-gradient(135deg, rgba(37, 99, 235, 0.06) 0%, rgba(124, 58, 237, 0.04) 100%);
+  --hero-gradient: linear-gradient(135deg, rgba(0, 122, 255, 0.06) 0%, rgba(88, 86, 214, 0.04) 100%);
 
   --radius-chip: 10px;
   --radius-card: 14px;
@@ -48,17 +56,24 @@ html:not(.light) {
   --border: #334155;
   --text: #f1f5f9;
   --muted: #94a3b8;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
+  --accent: #0a84ff;
+  --accent-hover: #409cff;
+  --math: #0a84ff;
+  --rw: #5e5ce6;
+  --ring: rgba(10, 132, 255, 0.45);
+  --destructive: #ef4444;
+  --destructive-hover: #dc2626;
   --surface: #1e293b;
   --input: #1e293b;
   --fill-tertiary: #334155;
-  --accent-chip-fill: rgba(59, 130, 246, 0.15);
-  --accent-chip-border: rgba(59, 130, 246, 0.45);
+  --accent-chip-fill: rgba(10, 132, 255, 0.15);
+  --accent-chip-border: rgba(10, 132, 255, 0.45);
+  --math-chip-fill: rgba(10, 132, 255, 0.15);
+  --rw-chip-fill: rgba(94, 92, 230, 0.15);
   --success: #22c55e;
   --error: #ef4444;
   --warning: #f97316;
-  --hero-gradient: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(124, 58, 237, 0.08) 100%);
+  --hero-gradient: linear-gradient(135deg, rgba(10, 132, 255, 0.1) 0%, rgba(94, 92, 230, 0.08) 100%);
 }
 
 html {
@@ -192,6 +207,32 @@ html:not(.light) .studium-card {
   min-height: 44px;
 }
 
+.studium-btn-destructive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-chip);
+  border: none;
+  background: var(--destructive);
+  color: var(--on-accent);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.studium-btn-destructive:hover:not(:disabled) {
+  background: var(--destructive-hover);
+}
+
+.studium-btn-destructive:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .studium-btn-primary {
   display: inline-flex;
   align-items: center;
@@ -202,7 +243,7 @@ html:not(.light) .studium-card {
   border-radius: var(--radius-chip);
   border: none;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
@@ -423,8 +464,116 @@ html:not(.light) .studium-flashcard {
 .studium-subject-tab--active {
   border-color: var(--accent-chip-border);
   background: var(--accent-chip-fill);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.08);
 }
+
+.studium-segmented {
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  border-radius: var(--radius-card);
+  background: var(--fill-tertiary);
+  border: 1px solid var(--border);
+}
+
+.studium-segmented__btn {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-chip);
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.studium-segmented__btn--active {
+  background: var(--card);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.studium-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.studium-modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sheet);
+  padding: var(--space-xl);
+  max-width: 28rem;
+  width: 100%;
+  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+}
+
+.studium-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.studium-quiz-option {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-chip);
+  padding: var(--space-md);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.studium-quiz-option:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.studium-quiz-option:disabled {
+  cursor: default;
+}
+
+.studium-quiz-option--selected {
+  border-color: var(--accent-chip-border);
+  background: var(--accent-chip-fill);
+}
+
+.studium-quiz-option--correct {
+  border-color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, var(--card));
+}
+
+.studium-quiz-option--wrong {
+  border-color: var(--error);
+  background: color-mix(in srgb, var(--error) 10%, var(--card));
+}
+
+.studium-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-chip-border);
+  background: var(--accent-chip-fill);
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.studium-text-math { color: var(--math); }
+.studium-text-rw { color: var(--rw); }
+.studium-bg-math-chip { background: var(--math-chip-fill); color: var(--math); }
+.studium-bg-rw-chip { background: var(--rw-chip-fill); color: var(--rw); }
 
 .studium-search-input {
   border: 1px solid var(--border);

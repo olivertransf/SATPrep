@@ -297,6 +297,14 @@ struct MenuBarQuizView: View {
             .buttonStyle(.plain)
             .font(.caption)
             .foregroundStyle(.secondary)
+
+            Button("Quit") {
+                NSApplication.shared.terminate(nil)
+            }
+            .buttonStyle(.plain)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .help("Quit Studium")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

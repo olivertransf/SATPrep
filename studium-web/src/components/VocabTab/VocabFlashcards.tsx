@@ -3,6 +3,8 @@ import type { VocabWord } from '../../types'
 import {
   ChevronLeft, ChevronRight, RotateCcw, BookOpen, CheckCircle2, Clock, GraduationCap, Shuffle,
 } from 'lucide-react'
+import { PageHeader } from '../ui/PageHeader'
+import { Button } from '../ui/Button'
 import { loadWordBucketsForUI, saveWordBucketsFromUI, type WebVocabBucket } from '../../store/vocabBuckets'
 
 interface VocabFlashcardsProps {
@@ -14,6 +16,7 @@ type BucketFilter = WebVocabBucket
 
 const POS_KEY = 'studium_vocab_pos_filter'
 const BUCKET_FILTER_KEY = 'studium_vocab_bucket_filter'
+const SHUFFLE_MODE_KEY = 'studium_vocab_shuffle_mode'
 
 const POS_OPTIONS: { value: PosFilter; label: string }[] = [
   { value: 'all', label: 'All words' },
@@ -67,6 +70,10 @@ function shuffleIds(ids: string[]): string[] {
   return next
 }
 
+function orderDeckIds(ids: string[], shuffleMode: boolean): string[] {
+  return shuffleMode ? shuffleIds(ids) : ids
+}
+
 export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
   const [buckets, setBuckets] = useState<Record<string, BucketFilter>>(loadWordBucketsForUI)
   const [posFilter, setPosFilter] = useState<PosFilter>(() => {
@@ -74,6 +81,9 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
   })
   const [bucketFilter, setBucketFilter] = useState<BucketFilter>(() => {
     return (localStorage.getItem(BUCKET_FILTER_KEY) as BucketFilter) ?? 'learn'
+  })
+  const [shuffleMode, setShuffleMode] = useState<boolean>(() => {
+    return localStorage.getItem(SHUFFLE_MODE_KEY) === 'true'
   })
   const [index, setIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
@@ -95,19 +105,25 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
     return posMatch && bucketMatch
   }), [words, posFilter, bucketFilter, buckets])
 
+  const filteredIdsKey = useMemo(
+    () => filtered.map(w => w.id).sort().join('|'),
+    [filtered],
+  )
+
   const deck = useMemo(() => {
     const byId = Object.fromEntries(filtered.map(w => [w.id, w]))
-    const order = deckOrder.length === filtered.length && deckOrder.every(id => byId[id])
+    const baseIds = filtered.map(w => w.id)
+    const order = deckOrder.length === baseIds.length && deckOrder.every(id => byId[id])
       ? deckOrder
-      : filtered.map(w => w.id)
+      : orderDeckIds(baseIds, shuffleMode)
     return order.map(id => byId[id]).filter(Boolean)
-  }, [filtered, deckOrder])
+  }, [filtered, deckOrder, shuffleMode])
 
   useEffect(() => {
-    setDeckOrder(filtered.map(w => w.id))
+    setDeckOrder(orderDeckIds(filtered.map(w => w.id), shuffleMode))
     setIndex(0)
     setFlipped(false)
-  }, [filtered])
+  }, [filteredIdsKey, shuffleMode])
 
   useEffect(() => { setFlipped(false) }, [index])
 
@@ -121,10 +137,9 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
   const currentBucket = BUCKET_OPTIONS.find(b => b.value === bucketFilter)!
   const progressPct = deck.length > 0 ? Math.round(((index + 1) / deck.length) * 100) : 0
 
-  function shuffleDeck() {
-    setDeckOrder(shuffleIds(filtered.map(w => w.id)))
-    setIndex(0)
-    setFlipped(false)
+  function setShuffleModeEnabled(enabled: boolean) {
+    setShuffleMode(enabled)
+    localStorage.setItem(SHUFFLE_MODE_KEY, String(enabled))
   }
 
   function moveBucket(b: BucketFilter) {
@@ -132,8 +147,19 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
     const next = { ...buckets, [card.id]: b }
     setBuckets(next)
     saveWordBucketsFromUI(next)
-    if (index < deck.length - 1) setIndex(i => i + 1)
-    else if (deck.length > 1) setIndex(0)
+    const cardLeavesDeck = b !== bucketFilter
+    if (cardLeavesDeck) {
+      setFlipped(false)
+      return
+    }
+    if (index < deck.length - 1) {
+      setIndex(i => i + 1)
+    } else if (deck.length > 1) {
+      if (shuffleMode) {
+        setDeckOrder(shuffleIds(deck.map(w => w.id)))
+      }
+      setIndex(0)
+    }
     setFlipped(false)
   }
 
@@ -154,15 +180,11 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
     <div className="flex-1 overflow-y-auto studium-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
 
-        <header className="mb-6">
-          <p className="studium-eyebrow m-0">SAT vocabulary</p>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight m-0 mt-1" style={{ color: 'var(--text)' }}>
-            Flashcard practice
-          </h1>
-          <p className="studium-page-subtitle mt-2 mb-0">
-            {words.length.toLocaleString()} words · flip to reveal definitions, then sort into piles
-          </p>
-        </header>
+        <PageHeader
+          eyebrow="SAT vocabulary"
+          title="Flashcards"
+          subtitle={`${words.length.toLocaleString()} words · flip to reveal definitions, then sort into piles`}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 items-start">
 
@@ -182,8 +204,8 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
                   >
                     <opt.Icon size={18} style={{ color: active ? opt.accent : 'var(--muted)' }} aria-hidden="true" />
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm" style={{ color: 'var(--text)' }}>{opt.label}</div>
-                      <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{count} cards</div>
+                      <div className="font-semibold text-sm text-[var(--text)]">{opt.label} ({count})</div>
+                      <div className="text-xs mt-0.5 text-[var(--muted)]">{opt.description}</div>
                     </div>
                   </button>
                 )
@@ -191,7 +213,33 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
             </div>
 
             <div className="studium-card p-4 space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
+              <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                Card order
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShuffleModeEnabled(false)}
+                  className={['studium-chip w-full min-h-[44px]', !shuffleMode ? 'studium-chip--selected' : ''].join(' ')}
+                >
+                  In order
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShuffleModeEnabled(true)}
+                  disabled={filtered.length < 2}
+                  className={['studium-chip w-full min-h-[44px]', shuffleMode ? 'studium-chip--selected' : ''].join(' ')}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <Shuffle size={14} aria-hidden="true" />
+                    Shuffle
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="studium-card p-4 space-y-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                 Part of speech
               </div>
               <div className="flex flex-wrap gap-2">
@@ -243,26 +291,17 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
             ) : (
               <>
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-medium" style={{ color: 'var(--muted)' }}>
+                  <div className="text-sm font-medium text-[var(--muted)]">
                     Card {index + 1} of {deck.length}
+                    {shuffleMode && deck.length > 1 && (
+                      <span className="ml-2 text-xs font-semibold text-[var(--accent)]">· Shuffled</span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={shuffleDeck}
-                      disabled={deck.length < 2}
-                      className="studium-btn-secondary px-3 min-h-[36px]"
-                      aria-label="Shuffle cards"
-                    >
-                      <Shuffle size={16} aria-hidden="true" />
-                      <span className="hidden sm:inline">Shuffle</span>
-                    </button>
-                    <div
-                      className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                      style={{ background: currentBucket.bg, color: currentBucket.accent }}
-                    >
-                      {currentBucket.label}
-                    </div>
+                  <div
+                    className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                    style={{ background: currentBucket.bg, color: currentBucket.accent }}
+                  >
+                    {currentBucket.label}
                   </div>
                 </div>
 
@@ -343,25 +382,19 @@ export default function VocabFlashcards({ words }: VocabFlashcardsProps) {
                 </div>
 
                 <div className="studium-card p-4">
-                  <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--muted)' }}>
-                    Move to pile
+                  <div className="text-xs font-semibold uppercase tracking-wide mb-3 text-[var(--muted)]">
+                    How well do you know this word?
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {BUCKET_OPTIONS.map(opt => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => moveBucket(opt.value)}
-                        className="studium-chip py-3 flex-col gap-1 min-h-[72px]"
-                        style={bucketFilter === opt.value
-                          ? { background: opt.bg, borderColor: opt.accent, color: opt.accent }
-                          : undefined
-                        }
-                      >
-                        <opt.Icon size={16} aria-hidden="true" />
-                        <span>{opt.label}</span>
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <Button variant="secondary" fullWidth onClick={() => moveBucket('learn')}>
+                      Still learning
+                    </Button>
+                    <Button variant="secondary" fullWidth onClick={() => moveBucket('review')}>
+                      Review later
+                    </Button>
+                    <Button fullWidth onClick={() => moveBucket('mastered')}>
+                      Know it
+                    </Button>
                   </div>
                 </div>
               </>

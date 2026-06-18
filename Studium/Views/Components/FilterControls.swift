@@ -395,133 +395,121 @@ struct FilterOrderChoiceButton: View {
 // MARK: - Continue / saved quiz strip
 
 struct ContinueSavedQuizCard: View {
-    let title: String
+    let tags: [String]
     let answered: Int
     let total: Int
-    var usePhoneLayout: Bool = false
     let onPlay: () -> Void
     let onDelete: () -> Void
+
+    @State private var showDeleteConfirm = false
 
     private var progress: Double {
         total > 0 ? Double(answered) / Double(total) : 0
     }
 
-    private var progressLabel: String {
-        "\(answered) of \(total) answered"
+    private var title: String {
+        guard let firstTag = tags.first else { return "Practice set" }
+        if firstTag == "All Questions" { return "All practice" }
+        return firstTag
+    }
+
+    private var subtitle: String {
+        let detailTags = Array(tags.dropFirst())
+        if detailTags.isEmpty { return "Mixed SAT practice" }
+        return detailTags.prefix(2).joined(separator: " · ")
+    }
+
+    private var supportingTags: [String] {
+        Array(tags.dropFirst(3).prefix(3))
+    }
+
+    private var titleIcon: String {
+        title == "Math" ? "function" : (title == "Reading & Writing" ? "text.book.closed" : "square.grid.2x2")
+    }
+
+    private var tint: Color {
+        title == "Reading & Writing" ? .studiumSectionRW : .accentColor
     }
 
     var body: some View {
-        Group {
-            if usePhoneLayout {
-                phoneLayout
-            } else {
-                stripLayout
-            }
-        }
-        .studiumElevatedCard(padding: usePhoneLayout ? StudiumDesignSystem.spacingMD : StudiumDesignSystem.spacingLG)
-        .frame(maxWidth: usePhoneLayout ? .infinity : nil, alignment: .topLeading)
-        .frame(width: usePhoneLayout ? nil : StudiumDesignSystem.continueCardWidth, alignment: .topLeading)
-    }
+        VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingSM) {
+            HStack(alignment: .center, spacing: StudiumDesignSystem.spacingMD) {
+                StudiumIconBadge(systemImage: titleIcon, tint: tint, size: 38, cornerRadius: 10)
 
-    private var stripLayout: some View {
-        VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingMD) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(3)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .contentShape(Rectangle())
-                .onTapGesture { onPlay() }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
 
-            VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingSM) {
-                ProgressView(value: progress)
-                    .tint(Color.accentColor)
-                Text(progressLabel)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture { onPlay() }
-
-            stripActionRow
-        }
-    }
-
-    private var phoneLayout: some View {
-        VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingMD) {
-            VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingXS) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                HStack {
-                    Text(progressLabel)
-                        .font(.caption)
+                    Text(subtitle)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Spacer(minLength: 8)
-                    Text("\(Int((progress * 100).rounded()))%")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            }
-
-            StudiumProgressBar(fraction: progress)
-
-            phoneActionRow
-        }
-    }
-
-    private var stripActionRow: some View {
-        HStack(spacing: StudiumDesignSystem.spacingSM) {
-            Button(action: onPlay) {
-                Label("Resume", systemImage: "play.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(StudiumDesignSystem.primaryCTAControlSize)
-
-            deleteButton(compact: false)
-        }
-    }
-
-    private var phoneActionRow: some View {
-        HStack(spacing: StudiumDesignSystem.spacingSM) {
-            Button(action: onPlay) {
-                Label("Resume", systemImage: "play.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(StudiumDesignSystem.primaryCTAControlSize)
-
-            deleteButton(compact: true)
-        }
-    }
-
-    private func deleteButton(compact: Bool) -> some View {
-        Button(role: .destructive, action: onDelete) {
-            Group {
-                if compact {
-                    Image(systemName: "trash")
-                        .font(.subheadline.weight(.medium))
-                        .frame(
-                            width: StudiumDesignSystem.phoneIconButtonSize,
-                            height: StudiumDesignSystem.phoneIconButtonSize
-                        )
-                } else {
-                    Image(systemName: "trash")
+                .onLongPressGesture(minimumDuration: 0.5) {
+                    showDeleteConfirm = true
                 }
+
+                Spacer(minLength: 0)
+
+                resumeButton
+            }
+
+            if !supportingTags.isEmpty {
+                tagRow
+            }
+
+            ProgressView(value: progress)
+                .tint(tint)
+                .scaleEffect(x: 1, y: 0.8, anchor: .center)
+        }
+        .studiumElevatedCard(padding: StudiumDesignSystem.spacingMD, showsShadow: false)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive, action: onDelete) {
+                Label("Delete", systemImage: "trash")
             }
         }
-        .buttonStyle(.bordered)
+        .confirmationDialog(
+            "Delete this saved quiz?",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive, action: onDelete)
+            Button("Cancel", role: .cancel) {}
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Swipe left or long press details to delete")
+    }
+
+    private var resumeButton: some View {
+        Button(action: onPlay) {
+            Text("Resume")
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 2)
+        }
+        .buttonStyle(.borderedProminent)
         .controlSize(StudiumDesignSystem.primaryCTAControlSize)
-        .accessibilityLabel("Delete saved quiz")
+        .fixedSize()
+    }
+
+    private var tagRow: some View {
+        HStack(spacing: 6) {
+            ForEach(supportingTags, id: \.self) { tag in
+                Text(tag)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Color.secondary.opacity(0.08))
+                    .clipShape(Capsule())
+            }
+        }
+        .onLongPressGesture(minimumDuration: 0.5) {
+            showDeleteConfirm = true
+        }
     }
 }

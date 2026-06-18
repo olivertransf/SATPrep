@@ -85,8 +85,8 @@ struct QuizState: Codable, Identifiable {
         return !questionIds.isEmpty && currentIndex < questionIds.count
     }
     
-    // Helper to get a description of filters for display
-    func filterDescription() -> String {
+    // Helper to get filter tags for display
+    func filterTags() -> [String] {
         var parts: [String] = []
         if let program = filters.program {
             parts.append(program)
@@ -113,7 +113,12 @@ struct QuizState: Codable, Identifiable {
         if filters.cbVerifiedInactive == .onlyVerifiedOffCBPracticeTests {
             parts.append(QuestionBankFilterLabels.cbVerifiedChipOnly)
         }
-        return parts.isEmpty ? "All Questions" : parts.joined(separator: " • ")
+        return parts.isEmpty ? ["All Questions"] : parts
+    }
+
+    // Helper to get a description of filters for display
+    func filterDescription() -> String {
+        filterTags().joined(separator: " • ")
     }
 }
 

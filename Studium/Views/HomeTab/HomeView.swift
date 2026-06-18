@@ -106,8 +106,10 @@ struct HomeView: View {
     private var homeScrollContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: isPhone ? StudiumDesignSystem.spacingLG : StudiumDesignSystem.spacingXL) {
-                if !isPhone { header }
-                progressCard
+                if !isPhone {
+                    header
+                    progressCard
+                }
                 startPracticingSection
                 if !quizStateManager.savedQuizzes.isEmpty {
                     continueSection
@@ -222,10 +224,8 @@ struct HomeView: View {
 
     private var startPracticingSection: some View {
         VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingMD) {
-            if !isPhone {
-                Text("Start practicing")
-                    .font(.title3.weight(.semibold))
-            }
+            Text("Start practicing")
+                .font(isPhone ? .headline.weight(.semibold) : .title3.weight(.semibold))
 
             if isPhone {
                 VStack(spacing: StudiumDesignSystem.spacingSM) {
@@ -243,18 +243,12 @@ struct HomeView: View {
                         tint: .studiumSectionRW
                     ) { onStartSection("english") }
 
-                    Button(action: onGoToPractice) {
-                        HStack {
-                            Text("All practice")
-                                .font(.subheadline.weight(.semibold))
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .studiumElevatedCard(padding: StudiumDesignSystem.spacingMD, showsShadow: false)
-                    }
-                    .buttonStyle(.plain)
+                    phoneQuickStartRow(
+                        title: "All practice",
+                        detail: "Filters, topics, and custom sets",
+                        systemImage: "square.grid.2x2",
+                        tint: .accentColor
+                    ) { onGoToPractice() }
                 }
             } else {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: StudiumDesignSystem.spacingMD) {
@@ -273,15 +267,12 @@ struct HomeView: View {
                     ) { onStartSection("english") }
                 }
 
-                Button(action: onGoToPractice) {
-                    HStack {
-                        Text("Browse all practice")
-                        Spacer()
-                        Image(systemName: "arrow.right")
-                    }
-                    .font(.subheadline.weight(.semibold))
-                }
-                .buttonStyle(.bordered)
+                quickStartCard(
+                    title: "All practice",
+                    subtitle: "Filters, topics, and custom sets",
+                    systemImage: "square.grid.2x2",
+                    tint: .accentColor
+                ) { onGoToPractice() }
             }
         }
         .disabled(!bankIsReady)
@@ -289,9 +280,6 @@ struct HomeView: View {
 
     private func phoneSectionDetail(_ section: SectionStats) -> String {
         if questionLoader.isLoading && section.total == 0 { return "Loading…" }
-        if let accuracy = section.accuracy {
-            return "\(section.total.formatted()) Qs · \(accuracy)%"
-        }
         return "\(section.total.formatted()) questions"
     }
 
@@ -372,42 +360,29 @@ struct HomeView: View {
                     .font(isPhone ? .headline.weight(.semibold) : .title3.weight(.semibold))
                 Spacer()
                 if !isPhone {
-                    Button("All practice", action: onGoToPractice)
-                        .font(.subheadline.weight(.medium))
+                    Button(action: onGoToPractice) {
+                        HStack(spacing: 4) {
+                            Text("All practice")
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
 
-            if isPhone {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: StudiumDesignSystem.spacingMD) {
-                        ForEach(quizStateManager.savedQuizzes.prefix(3)) { quiz in
-                            let answered = quiz.answerStates.values.filter(\.hasSubmitted).count
-                            ContinueSavedQuizCard(
-                                title: quiz.filterDescription(),
-                                answered: answered,
-                                total: quiz.questionIds.count,
-                                usePhoneLayout: true,
-                                onPlay: { onResumeQuiz(quiz) },
-                                onDelete: { quizStateManager.deleteQuizState(id: quiz.id) }
-                            )
-                            .frame(width: 260)
-                        }
-                    }
-                }
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: StudiumDesignSystem.spacingMD) {
-                        ForEach(quizStateManager.savedQuizzes.prefix(3)) { quiz in
-                            let answered = quiz.answerStates.values.filter(\.hasSubmitted).count
-                            ContinueSavedQuizCard(
-                                title: quiz.filterDescription(),
-                                answered: answered,
-                                total: quiz.questionIds.count,
-                                onPlay: { onResumeQuiz(quiz) },
-                                onDelete: { quizStateManager.deleteQuizState(id: quiz.id) }
-                            )
-                        }
-                    }
+            VStack(spacing: StudiumDesignSystem.spacingSM) {
+                ForEach(quizStateManager.savedQuizzes.prefix(5)) { quiz in
+                    let answered = quiz.answerStates.values.filter(\.hasSubmitted).count
+                    ContinueSavedQuizCard(
+                        tags: quiz.filterTags(),
+                        answered: answered,
+                        total: quiz.questionIds.count,
+                        onPlay: { onResumeQuiz(quiz) },
+                        onDelete: { quizStateManager.deleteQuizState(id: quiz.id) }
+                    )
                 }
             }
         }

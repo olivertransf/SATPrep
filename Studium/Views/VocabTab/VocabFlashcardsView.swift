@@ -38,6 +38,7 @@ struct VocabFlashcardsView: View {
     @ObservedObject private var buckets = VocabBucketStore.shared
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
+    @AppStorage("studium_vocab_shuffle_mode") private var shuffleMode = false
     @State private var deckKind: VocabDeckKind = .words
     @State private var studyBucket: VocabMemoryBucket = .learn
     @State private var wordSetFilter: WordSetFilter = .all
@@ -74,35 +75,32 @@ struct VocabFlashcardsView: View {
         .navigationTitle("Vocab")
         .navAdaptiveTitle()
         .onAppear {
+            if shuffleMode, manualOrder == nil {
+                applyDeckOrder(resetPosition: false)
+            }
             restorePosition()
             validateManualOrder()
             clampPosition()
         }
         .onChange(of: deckKind) { _, _ in
-            manualOrder = nil
-            restorePosition()
-            clampPosition()
-            isFlipped = false
+            applyDeckOrder(resetPosition: true)
         }
         .onChange(of: studyBucket) { _, _ in
-            manualOrder = nil
-            restorePosition()
-            clampPosition()
-            isFlipped = false
+            applyDeckOrder(resetPosition: true)
         }
         .onChange(of: wordSetFilter) { _, _ in
             guard deckKind == .words else { return }
-            manualOrder = nil
-            restorePosition()
-            clampPosition()
-            isFlipped = false
+            applyDeckOrder(resetPosition: true)
+        }
+        .onChange(of: shuffleMode) { _, _ in
+            applyDeckOrder(resetPosition: true)
         }
         .onChange(of: store.words.count) { _, _ in
-            manualOrder = nil
+            applyDeckOrder(resetPosition: false)
             clampPosition()
         }
         .onChange(of: store.roots.count) { _, _ in
-            manualOrder = nil
+            applyDeckOrder(resetPosition: false)
             clampPosition()
         }
         .onReceive(buckets.objectWillChange) { _ in
@@ -127,7 +125,7 @@ struct VocabFlashcardsView: View {
                     deckPickerSection
                     studyPileSection
                     if deckKind == .words { wordTypeSection }
-                    shuffleButton
+                    cardOrderSection
                 }
                 .padding(20)
             }
@@ -164,6 +162,7 @@ struct VocabFlashcardsView: View {
                 deckPickerSection
                 phoneStudyPilePicker
                 if deckKind == .words { phoneWordTypePicker }
+                cardOrderSection
                 if rowIndices.isEmpty {
                     emptyDeckCard
                 } else {
@@ -177,13 +176,28 @@ struct VocabFlashcardsView: View {
             .readableContentFrame(maxWidth: LayoutMetrics.vocabReadableMaxWidth)
         }
         .background(Color.systemGroupedBackground)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { shuffleDeck() } label: {
-                    Image(systemName: "shuffle")
+    }
+
+    /// iPhone + iPad: persistent shuffle mode (not one-shot).
+    private var cardOrderSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            FilterStripSectionTitle(text: "Card order")
+            FilterFormCard {
+                HStack(spacing: 8) {
+                    FilterChipButton(
+                        title: "In order",
+                        isSelected: !shuffleMode,
+                        accent: accent,
+                        fillsGridCell: true
+                    ) { shuffleMode = false }
+                    FilterChipButton(
+                        title: "Shuffle",
+                        isSelected: shuffleMode,
+                        accent: accent,
+                        fillsGridCell: true
+                    ) { shuffleMode = true }
+                    .disabled(baseFilteredIndices.count < 2)
                 }
-                .disabled(baseFilteredIndices.isEmpty)
-                .accessibilityLabel("Shuffle deck")
             }
         }
     }
@@ -278,22 +292,17 @@ struct VocabFlashcardsView: View {
         }
     }
 
-    private var shuffleButton: some View {
-        Button { shuffleDeck() } label: {
-            Label("Shuffle", systemImage: "shuffle")
-                .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.bordered)
-        .disabled(baseFilteredIndices.isEmpty)
-    }
-
     private var progressAndCardSection: some View {
         VStack(spacing: 10) {
             HStack {
                 Text(progressLabel)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                if shuffleMode, rowIndices.count > 1 {
+                    Text("· Shuffled")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(accent)
+                }
                 Spacer()
                 if isWide {
                     Text("Space or tap to flip")
@@ -642,15 +651,28 @@ struct VocabFlashcardsView: View {
 
     private func validateManualOrder() {
         let base = Set(baseFilteredIndices)
-        if let m = manualOrder, Set(m) != base { manualOrder = nil }
+        guard let m = manualOrder, Set(m) != base else { return }
+        if shuffleMode, base.count > 1 {
+            manualOrder = baseFilteredIndices.sorted().shuffled()
+        } else {
+            manualOrder = nil
+        }
     }
 
-    private func shuffleDeck() {
+    private func applyDeckOrder(resetPosition: Bool) {
         let base = baseFilteredIndices.sorted()
-        manualOrder = base.shuffled()
-        position = 0
-        persistPosition()
-        isFlipped = false
+        if shuffleMode, base.count > 1 {
+            manualOrder = base.shuffled()
+        } else {
+            manualOrder = nil
+        }
+        if resetPosition {
+            position = 0
+            persistPosition()
+            isFlipped = false
+        } else {
+            validateManualOrder()
+        }
     }
 
     private func restorePosition() {
@@ -687,14 +709,32 @@ struct VocabFlashcardsView: View {
     private func moveCurrentCard(to bucket: VocabMemoryBucket) {
         guard position < rowIndices.count else { return }
         let idx = rowIndices[position]
+        let leavingPile = bucket != studyBucket
+
         switch deckKind {
         case .words: buckets.setWordBucket(id: store.words[idx].id, to: bucket)
         case .roots: buckets.setRootBucket(id: store.roots[idx].id, to: bucket)
         }
-        manualOrder = nil
-        let newBase = baseFilteredIndices.sorted()
-        position = min(position, max(0, newBase.count - 1))
+
         isFlipped = false
+
+        if leavingPile {
+            let newBase = baseFilteredIndices.sorted()
+            if shuffleMode, newBase.count > 1 {
+                manualOrder = newBase.shuffled()
+            } else {
+                manualOrder = nil
+            }
+            position = min(position, max(0, newBase.count - 1))
+        } else if position + 1 < rowIndices.count {
+            position += 1
+        } else if rowIndices.count > 1 {
+            if shuffleMode {
+                manualOrder = baseFilteredIndices.sorted().shuffled()
+            }
+            position = 0
+        }
+
         persistPosition()
     }
 }

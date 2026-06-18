@@ -1,34 +1,24 @@
 import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Question, QuestionProgress } from '../../types'
+import { PageHeader } from '../ui/PageHeader'
+import { StatBlock, ProgressBar } from '../ui/StatBlock'
+import { Button } from '../ui/Button'
+import { useAppData } from '../../context/AppDataContext'
 
 interface StatsViewProps {
   questions: Question[]
   progress: Record<string, QuestionProgress>
 }
 
-function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
-  return (
-    <div className="studium-card p-4">
-      <div className="text-2xl font-bold tabular-nums" style={{ color: accent ?? 'var(--text)' }}>{value}</div>
-      <div className="text-sm mt-0.5" style={{ color: 'var(--text)' }}>{label}</div>
-      {sub && <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{sub}</div>}
-    </div>
-  )
-}
-
-function ProgressBar({ value, max, accent }: { value: number; max: number; accent: string }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
-        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: accent }} />
-      </div>
-      <span className="text-xs w-9 text-right tabular-nums" style={{ color: 'var(--muted)' }}>{pct}%</span>
-    </div>
-  )
+function moduleDisplayName(module: string) {
+  return module.toLowerCase() === 'english' ? 'Reading & Writing' : 'Math'
 }
 
 export default function StatsView({ questions, progress }: StatsViewProps) {
+  const navigate = useNavigate()
+  const { setPracticeModulePreset } = useAppData()
+
   const stats = useMemo(() => {
     const total = questions.length
     const seen = questions.filter(q => progress[q.questionId]?.seen).length
@@ -43,14 +33,16 @@ export default function StatsView({ questions, progress }: StatsViewProps) {
       const cor = qs.filter(q => progress[q.questionId]?.correct === true)
       return {
         module: m,
+        label: moduleDisplayName(m),
         total: qs.length,
         answered: ans.length,
         correct: cor.length,
         accuracy: ans.length > 0 ? Math.round((cor.length / ans.length) * 100) : 0,
+        accent: m.toLowerCase() === 'english' ? 'var(--rw)' : 'var(--math)',
       }
     })
 
-    const difficulties = ['E', 'M', 'H']
+    const difficulties = ['E', 'M', 'H'] as const
     const byDifficulty = difficulties.map(d => {
       const qs = questions.filter(q => q.difficulty === d)
       const ans = qs.filter(q => progress[q.questionId]?.correct !== undefined)
@@ -75,48 +67,66 @@ export default function StatsView({ questions, progress }: StatsViewProps) {
       ? 'var(--warning)'
       : 'var(--error)'
 
+  const weakest = stats.byModule
+    .filter(m => m.answered > 0)
+    .sort((a, b) => a.accuracy - b.accuracy)[0]
+
   return (
     <div className="flex-1 overflow-y-auto studium-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+        <PageHeader
+          title="Progress"
+          subtitle="Track accuracy across sections and difficulty levels"
+        />
 
-        <header className="mb-2">
-          <h1 className="studium-page-title m-0">Your progress</h1>
-          <p className="studium-page-subtitle mt-1 mb-0">Track accuracy across sections and difficulty levels</p>
-        </header>
-
-        {/* Overview grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-          <StatCard label="Accuracy" value={`${stats.accuracy}%`}
-            accent={accuracyAccent}
-            sub={`${stats.correct} correct`} />
-          <StatCard label="Attempted" value={stats.answered} sub={`of ${stats.total} total`} />
-          <StatCard label="Seen" value={stats.seen} sub={`${stats.total > 0 ? Math.round((stats.seen / stats.total) * 100) : 0}%`} />
-          <StatCard label="Total" value={stats.total} />
+          <StatBlock label="Accuracy" value={`${stats.accuracy}%`} accent={accuracyAccent} sub={`${stats.correct} correct`} />
+          <StatBlock label="Attempted" value={stats.answered} sub={`of ${stats.total} total`} />
+          <StatBlock label="Seen" value={stats.seen} sub={`${stats.total > 0 ? Math.round((stats.seen / stats.total) * 100) : 0}% of bank`} />
+          <StatBlock label="Question bank" value={stats.total} />
         </div>
 
-        {/* By Module */}
+        {weakest && (
+          <div className="studium-card p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-[var(--text)]">Practice your weak areas</div>
+              <div className="text-sm text-[var(--muted)] mt-0.5">
+                {weakest.label} is at {weakest.accuracy}% accuracy ({weakest.answered} attempted)
+              </div>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setPracticeModulePreset(weakest.module.toLowerCase() === 'english' ? 'english' : 'math')
+                navigate('/practice')
+              }}
+            >
+              Practice {weakest.label}
+            </Button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-2.5">
           <div className="studium-card p-4 space-y-3">
-            <div className="text-base font-semibold" style={{ color: 'var(--text)' }}>By Module</div>
+            <div className="text-base font-semibold text-[var(--text)]">By section</div>
             {stats.byModule.map(m => (
               <div key={m.module} className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="font-medium capitalize" style={{ color: 'var(--text)' }}>{m.module}</span>
-                  <span style={{ color: 'var(--muted)' }}>{m.answered}/{m.total} · {m.accuracy}%</span>
+                  <span className="font-medium text-[var(--text)]">{m.label}</span>
+                  <span className="text-[var(--muted)]">{m.answered}/{m.total} · {m.accuracy}%</span>
                 </div>
-                <ProgressBar value={m.correct} max={m.answered || 1} accent="var(--accent)" />
+                <ProgressBar value={m.correct} max={m.answered || 1} accent={m.accent} />
               </div>
             ))}
           </div>
 
-          {/* By Difficulty */}
           <div className="studium-card p-4 space-y-3">
-            <div className="text-base font-semibold" style={{ color: 'var(--text)' }}>By Difficulty</div>
+            <div className="text-base font-semibold text-[var(--text)]">By difficulty</div>
             {stats.byDifficulty.map(d => (
               <div key={d.difficulty} className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="font-medium" style={{ color: d.accent }}>{d.label}</span>
-                  <span style={{ color: 'var(--muted)' }}>{d.answered}/{d.total} · {d.accuracy}%</span>
+                  <span className="text-[var(--muted)]">{d.answered}/{d.total} · {d.accuracy}%</span>
                 </div>
                 <ProgressBar value={d.correct} max={d.answered || 1} accent={d.accent} />
               </div>
@@ -125,9 +135,9 @@ export default function StatsView({ questions, progress }: StatsViewProps) {
         </div>
 
         {stats.answered === 0 && (
-          <div className="text-center py-8 text-sm" style={{ color: 'var(--muted)' }}>
-            Complete some questions to see your stats here
-          </div>
+          <p className="text-center py-8 text-sm text-[var(--muted)]">
+            Complete some questions to see your progress here.
+          </p>
         )}
       </div>
     </div>

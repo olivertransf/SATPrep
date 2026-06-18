@@ -69,7 +69,7 @@ export function PracticeFiltersPanel({ filters, onChange, sidebar }: PracticeFil
         </FilterChipGrid>
       </FilterFormCard>
 
-      <FilterFormCard title="CB verified pool">
+      <FilterFormCard title="Question source">
         <FilterChipGrid columns={cols}>
           <FilterChip
             label="Any"
@@ -78,7 +78,7 @@ export function PracticeFiltersPanel({ filters, onChange, sidebar }: PracticeFil
             fillsCell
           />
           <FilterChip
-            label="Verified off practice tests"
+            label="Extra official questions"
             selected={filters.cbVerifiedInactive === 'onlyVerifiedOffCBPracticeTests'}
             onClick={() =>
               onChange({

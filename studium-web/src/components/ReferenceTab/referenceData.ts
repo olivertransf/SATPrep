@@ -41,7 +41,7 @@ const providedFormulas: ReferenceSection = {
 const linearEquations: ReferenceSection = {
   id: 'linear-equations',
   title: 'Linear Equations & Graphs',
-  color: '#3b82f6',
+  color: '#007aff',
   entries: [
     { title: 'Slope',              formula: 'm = (y₂ − y₁) / (x₂ − x₁)', latex: 'm = \\dfrac{y_2 - y_1}{x_2 - x_1}',    tag: 'memorize' },
     { title: 'Slope-Intercept',    formula: 'y = mx + b',                  latex: 'y = mx + b',    detail: 'm = slope, b = y-intercept', tag: 'memorize' },
@@ -117,7 +117,7 @@ const functionsTransformations: ReferenceSection = {
 const systemsInequalities: ReferenceSection = {
   id: 'systems-inequalities',
   title: 'Systems & Inequalities',
-  color: '#6366f1',
+  color: '#5856d6',
   entries: [
     { title: 'System by Graphing',     formula: 'Intersection point(s) are solution(s)', tag: 'memorize' },
     { title: 'Linear System Outcomes', formula: 'One (intersect)  |  None (parallel)  |  Infinite (same line)', tag: 'memorize' },
@@ -183,7 +183,7 @@ const trigonometry: ReferenceSection = {
 const desmosPlaybook: ReferenceSection = {
   id: 'desmos-playbook',
   title: 'Desmos SAT Playbook',
-  color: '#3b82f6',
+  color: '#007aff',
   entries: [
     { title: 'Solve via Intersection', formula: 'Graph y = left side and y = right side; x-values at intersections are solutions.', tag: 'tip' },
     { title: 'System Solve',           formula: 'Enter each equation on its own line and click the intersection point(s).', tag: 'tip' },
@@ -200,7 +200,7 @@ const desmosPlaybook: ReferenceSection = {
 const sentenceBoundaries: ReferenceSection = {
   id: 'sentence-boundaries',
   title: 'Sentence Boundaries',
-  color: '#3b82f6',
+  color: '#007aff',
   entries: [
     { title: 'Independent Clause (IC)',    formula: 'Has subject + verb + complete thought', detail: 'Can stand alone as a sentence.', tag: 'rule' },
     { title: 'Dependent Clause (DC)',      formula: 'Has subject + verb but NOT a complete thought', detail: 'Introduced by: although, because, since, when, while, if, unless…', tag: 'rule' },
@@ -296,7 +296,7 @@ const modifiers: ReferenceSection = {
 const parallelStructure: ReferenceSection = {
   id: 'parallel-structure',
   title: 'Parallel Structure',
-  color: '#6366f1',
+  color: '#5856d6',
   entries: [
     { title: 'Core Rule',                   formula: 'Items in a list or comparison must have the same grammatical form.', tag: 'rule' },
     { title: 'Lists',                        formula: "WRONG: 'She likes hiking, swimming, and to run.'\nRIGHT: 'She likes hiking, swimming, and running.'", tag: 'rule' },

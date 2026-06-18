@@ -60,7 +60,8 @@ enum StudiumInlineMathRepair {
             "\\frac{\(m[1].trimmingCharacters(in: .whitespaces))}{\(m[2].trimmingCharacters(in: .whitespaces))}"
         }
 
-        fixed = replace(fixed, pattern: #"(\d+)-(half|third|fourth|quarter|fifth|sixth|seventh|eighth|ninth|tenth)\b"#, options: [.caseInsensitive]) { m in
+        let sufPatHyphen = fracSuffix.keys.sorted { $0.count > $1.count }.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
+        fixed = replace(fixed, pattern: "(\\d+)-(\(sufPatHyphen))\\b", options: [.caseInsensitive]) { m in
             let den = fracSuffix[m[2].lowercased()] ?? m[2]
             return "\\frac{\(m[1])}{\(den)}"
         }

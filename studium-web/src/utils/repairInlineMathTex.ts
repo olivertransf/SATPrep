@@ -53,8 +53,10 @@ function repairInner(inner: string): string {
     (_m, num: string, den: string) => `\\frac{${num.trim()}}{${den.trim()}}`,
   )
 
+  const sufKeysHyphen = Object.keys(SPOKEN_FRAC_SUFFIX).sort((a, b) => b.length - a.length)
+  const sufPatHyphen = sufKeysHyphen.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
   fixed = fixed.replace(
-    /(\d+)-(half|third|fourth|quarter|fifth|sixth|seventh|eighth|ninth|tenth)\b/gi,
+    new RegExp(`(\\d+)-(${sufPatHyphen})\\b`, 'gi'),
     (_m, num: string, word: string) => {
       const den = SPOKEN_FRAC_SUFFIX[word.toLowerCase()] ?? word
       return `\\frac{${num}}{${den}}`

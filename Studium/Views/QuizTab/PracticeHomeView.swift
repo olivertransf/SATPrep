@@ -40,7 +40,18 @@ struct PracticeHomeView: View {
     @State private var isComputingConcepts = false
 
     private var useWideSplit: Bool {
-        viewportWidth >= LayoutMetrics.macWideBreakpoint
+        #if os(iOS)
+        if StudiumDesignSystem.isPad { return false }
+        #endif
+        return viewportWidth >= LayoutMetrics.macWideBreakpoint
+    }
+
+    private var useIPadOptimizedLayout: Bool {
+        #if os(iOS)
+        StudiumDesignSystem.isPad && !useWideSplit
+        #else
+        false
+        #endif
     }
 
     private var conceptFilters: FilterOptions {
@@ -118,7 +129,7 @@ struct PracticeHomeView: View {
         }
         #if os(iOS)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !useWideSplit, !StudiumDesignSystem.isPhone {
+            if !useWideSplit, !StudiumDesignSystem.isPhone, !useIPadOptimizedLayout {
                 phoneStickyStartBar
             }
         }
@@ -207,8 +218,10 @@ struct PracticeHomeView: View {
 
     private var compactPracticeLayout: some View {
         VStack(spacing: 0) {
-            compactFilterHeader
-            Divider()
+            if !useIPadOptimizedLayout {
+                compactFilterHeader
+                Divider()
+            }
             practiceMainColumn
         }
     }
@@ -314,16 +327,23 @@ struct PracticeHomeView: View {
     private var practiceMainColumn: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: StudiumDesignSystem.practiceMainSectionSpacing) {
+                if useIPadOptimizedLayout {
+                    iPadPracticeSetupCard
+                }
                 if !quizStateManager.savedQuizzes.isEmpty {
                     continueSection
                 }
                 browseTitleRow
-                conceptSkillPicker
+                if !useIPadOptimizedLayout {
+                    conceptSkillPicker
+                }
                 conceptCardsGrid
             }
             .padding(.horizontal, StudiumDesignSystem.practiceMainPaddingH)
             .padding(.top, StudiumDesignSystem.practiceMainPaddingTop)
             .padding(.bottom, phoneMainBottomPadding)
+            .frame(maxWidth: useIPadOptimizedLayout ? 940 : nil, alignment: .top)
+            .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         #if os(iOS)
@@ -331,9 +351,61 @@ struct PracticeHomeView: View {
         #endif
     }
 
+    private var iPadPracticeSetupCard: some View {
+        VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingLG) {
+            HStack(alignment: .center, spacing: StudiumDesignSystem.spacingLG) {
+                StudiumIconBadge(systemImage: "slider.horizontal.3", tint: .accentColor, size: 48, cornerRadius: 12)
+
+                VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingXS) {
+                    Text("Build a practice set")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(.primary)
+                    Text(filterSummaryLine)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 0)
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(matchingQuizCount)")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundStyle(matchingQuizCount > 0 ? Color.accentColor : .secondary)
+                        .monospacedDigit()
+                    Text(matchingQuizCount == 1 ? "question" : "questions")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            HStack(spacing: StudiumDesignSystem.spacingMD) {
+                Button {
+                    showFilterSheet = true
+                } label: {
+                    Label("Filters", systemImage: "line.3.horizontal.decrease.circle")
+                        .font(.headline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+
+                Button(action: startQuizFromDraft) {
+                    Label(matchingQuizCount > 0 ? "Start \(matchingQuizCount)" : "Start", systemImage: "play.fill")
+                        .font(.headline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(matchingQuizCount == 0)
+            }
+        }
+        .studiumElevatedCard(padding: StudiumDesignSystem.spacingLG, showsShadow: false)
+    }
+
     private var phoneMainBottomPadding: CGFloat {
         #if os(iOS)
-        if useWideSplit || StudiumDesignSystem.isPhone {
+        if useWideSplit || StudiumDesignSystem.isPhone || useIPadOptimizedLayout {
             return StudiumDesignSystem.practiceMainPaddingBottom
         }
         return StudiumDesignSystem.practiceMainPaddingBottom + 56
@@ -342,35 +414,10 @@ struct PracticeHomeView: View {
         #endif
     }
 
-    private var usePhoneContinueCards: Bool {
-        #if os(iOS)
-        StudiumDesignSystem.isPhone && !useWideSplit
-        #else
-        false
-        #endif
-    }
-
     private var continueSection: some View {
         VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingSM) {
             FilterStripSectionTitle(text: "Continue")
-            if usePhoneContinueCards {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: StudiumDesignSystem.spacingMD) {
-                        ForEach(quizStateManager.savedQuizzes.prefix(3)) { quiz in
-                            continueCard(for: quiz, phoneLayout: true)
-                                .frame(width: 260)
-                        }
-                    }
-                }
-            } else {
-                continueHorizontalScroll
-            }
-        }
-    }
-
-    private var continueHorizontalScroll: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: StudiumDesignSystem.spacingMD) {
+            VStack(spacing: StudiumDesignSystem.spacingSM) {
                 ForEach(quizStateManager.savedQuizzes.prefix(5)) { quiz in
                     continueCard(for: quiz)
                 }
@@ -378,13 +425,12 @@ struct PracticeHomeView: View {
         }
     }
 
-    private func continueCard(for quiz: QuizState, phoneLayout: Bool = false) -> some View {
+    private func continueCard(for quiz: QuizState) -> some View {
         let answered = quiz.answerStates.values.filter { $0.hasSubmitted }.count
         return ContinueSavedQuizCard(
-            title: quiz.filterDescription(),
+            tags: quiz.filterTags(),
             answered: answered,
             total: quiz.questionIds.count,
-            usePhoneLayout: phoneLayout,
             onPlay: { onResumeQuiz(quiz) },
             onDelete: { quizStateManager.deleteQuizState(id: quiz.id) }
         )
@@ -392,11 +438,21 @@ struct PracticeHomeView: View {
 
     private var browseTitleRow: some View {
         StudiumSectionHeader(
-            title: StudiumDesignSystem.isPhone ? "Concepts" : "Browse by concept",
-            subtitle: StudiumDesignSystem.isPhone
-                ? (isComputingConcepts ? "Updating…" : "\(totalCount) Qs")
-                : (isComputingConcepts ? "Updating counts…" : "\(totalCount) questions")
+            title: useIPadOptimizedLayout
+                ? "Choose a topic"
+                : (StudiumDesignSystem.isPhone ? "Concepts" : "Browse by concept"),
+            subtitle: browseSubtitle
         )
+    }
+
+    private var browseSubtitle: String {
+        if isComputingConcepts {
+            return StudiumDesignSystem.isPhone ? "Updating…" : "Updating counts…"
+        }
+        if useIPadOptimizedLayout {
+            return "\(totalCount) matching questions · tap a skill for focused practice"
+        }
+        return StudiumDesignSystem.isPhone ? "\(totalCount) Qs" : "\(totalCount) questions"
     }
 
     private var conceptSkillOptions: [String] {
@@ -489,6 +545,8 @@ struct PracticeHomeView: View {
                     primaryAction: { showFilterSheet = true }
                 )
                 .padding(.vertical, 40)
+            } else if useIPadOptimizedLayout {
+                iPadConceptList(accentColors: accentColors)
             } else {
                 LazyVGrid(columns: conceptGridColumns, alignment: .leading, spacing: StudiumDesignSystem.conceptGridSpacing) {
                     ForEach(Array(conceptCategories.enumerated()), id: \.element.id) { index, category in
@@ -502,6 +560,81 @@ struct PracticeHomeView: View {
                 }
             }
         }
+    }
+
+    private func iPadConceptList(accentColors: [Color]) -> some View {
+        VStack(spacing: StudiumDesignSystem.spacingMD) {
+            ForEach(Array(conceptCategories.enumerated()), id: \.element.id) { index, category in
+                iPadConceptRow(
+                    category: category,
+                    accentColor: accentColors[index % accentColors.count]
+                )
+            }
+        }
+    }
+
+    private func iPadConceptRow(category: ConceptCategory, accentColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: StudiumDesignSystem.spacingMD) {
+            HStack(alignment: .center, spacing: StudiumDesignSystem.spacingMD) {
+                StudiumIconBadge(systemImage: "square.stack.3d.up.fill", tint: accentColor, size: 40, cornerRadius: 10)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(category.id)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                    Text("\(category.count) question\(category.count == 1 ? "" : "s")")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
+                Button { startConceptQuiz(categoryId: category.id) } label: {
+                    Label("Practice", systemImage: "play.fill")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+            }
+
+            VStack(spacing: 0) {
+                ForEach(category.skills.prefix(4)) { skill in
+                    Button { startConceptQuiz(categoryId: category.id, skill: skill.id) } label: {
+                        HStack(spacing: StudiumDesignSystem.spacingMD) {
+                            Text(skill.id)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                                .lineLimit(2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Text("\(skill.count)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(.vertical, 10)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    if skill.id != category.skills.prefix(4).last?.id {
+                        Divider()
+                    }
+                }
+
+                if category.skills.count > 4 {
+                    Text("\(category.skills.count - 4) more skills included in category practice")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, StudiumDesignSystem.spacingSM)
+                }
+            }
+        }
+        .studiumElevatedCard(padding: StudiumDesignSystem.spacingLG, showsShadow: false)
     }
 
     private var phoneConceptAccents: [Color] {

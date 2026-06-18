@@ -64,7 +64,8 @@ enum StudiumSyncWireError: Error {
     case invalidPayload
 }
 
-nonisolated enum StudiumSyncWireCodec {
+@MainActor
+enum StudiumSyncWireCodec {
     static func ms(_ date: Date) -> Double {
         date.timeIntervalSince1970 * 1000
     }

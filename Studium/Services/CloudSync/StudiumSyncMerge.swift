@@ -5,6 +5,7 @@
 
 import Foundation
 
+@MainActor
 enum StudiumSyncMerge {
   static func mergePayloads(local: StudiumSyncPayloadWire, remote: StudiumSyncPayloadWire) -> StudiumSyncPayloadWire {
     let progress = mergeProgress(

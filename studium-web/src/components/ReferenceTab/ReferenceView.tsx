@@ -1,14 +1,16 @@
 import { useState, useMemo, useId, type CSSProperties } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
-import { Search, ChevronDown, ChevronUp, Calculator, BookOpen } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp } from 'lucide-react'
 import { MATH_SECTIONS, RW_SECTIONS, type ReferenceSection, type ReferenceEntry, type EntryTag } from './referenceData'
+import { PageHeader } from '../ui/PageHeader'
+import { SegmentedControl } from '../ui/SegmentedControl'
 
 const TAG_STYLES: Record<EntryTag, { label: string; bg: string; color: string }> = {
   provided: { label: 'On test', bg: 'rgba(22, 163, 74, 0.12)', color: '#16a34a' },
   memorize: { label: 'Memorize', bg: 'var(--accent-chip-fill)', color: 'var(--accent)' },
   rule: { label: 'Rule', bg: 'rgba(234, 179, 8, 0.12)', color: '#ca8a04' },
-  tip: { label: 'Strategy', bg: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6' },
+  tip: { label: 'Strategy', bg: 'var(--accent-chip-fill)', color: 'var(--accent)' },
 }
 
 function TagBadge({ tag }: { tag: EntryTag }) {
@@ -118,7 +120,6 @@ export default function ReferenceView() {
   const searchId = useId()
 
   const allSections = subject === 'math' ? MATH_SECTIONS : RW_SECTIONS
-  const totalEntries = allSections.reduce((n, s) => n + s.entries.length, 0)
 
   const filteredSections = useMemo<ReferenceSection[]>(() => {
     const q = search.trim().toLowerCase()
@@ -151,44 +152,21 @@ export default function ReferenceView() {
     <div className="flex-1 overflow-y-auto studium-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-        <header>
-          <p className="studium-eyebrow m-0">Study sheets</p>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight m-0 mt-1" style={{ color: 'var(--text)' }}>
-            Reference guide
-          </h1>
-          <p className="studium-page-subtitle mt-2 mb-0">
-            Formulas, rules, and strategies for the Digital SAT
-          </p>
-        </header>
+        <PageHeader
+          eyebrow="Study sheets"
+          title="Reference guide"
+          subtitle="Formulas, rules, and strategies for the Digital SAT"
+        />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => { setSubject('math'); setSearch('') }}
-            className={['studium-subject-tab', subject === 'math' ? 'studium-subject-tab--active' : ''].join(' ')}
-          >
-            <Calculator size={22} style={{ color: subject === 'math' ? '#2563eb' : 'var(--muted)' }} aria-hidden="true" />
-            <div className="text-left">
-              <div className="font-semibold">Math</div>
-              <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                {MATH_SECTIONS.length} topics
-              </div>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setSubject('rw'); setSearch('') }}
-            className={['studium-subject-tab', subject === 'rw' ? 'studium-subject-tab--active' : ''].join(' ')}
-          >
-            <BookOpen size={22} style={{ color: subject === 'rw' ? '#7c3aed' : 'var(--muted)' }} aria-hidden="true" />
-            <div className="text-left">
-              <div className="font-semibold">Reading & Writing</div>
-              <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                {RW_SECTIONS.length} topics
-              </div>
-            </div>
-          </button>
-        </div>
+        <SegmentedControl
+          ariaLabel="Reference subject"
+          options={[
+            { value: 'math' as const, label: `Math (${MATH_SECTIONS.length} topics)` },
+            { value: 'rw' as const, label: `Reading & Writing (${RW_SECTIONS.length} topics)` },
+          ]}
+          value={subject}
+          onChange={v => { setSubject(v); setSearch('') }}
+        />
 
         <div className="relative">
           <label htmlFor={searchId} className="sr-only">Search reference</label>
@@ -203,7 +181,7 @@ export default function ReferenceView() {
             type="search"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={`Search ${totalEntries} formulas and rules…`}
+            placeholder="Search formulas, grammar rules…"
             className="studium-search-input w-full pl-11 pr-4 py-3 text-sm"
           />
         </div>

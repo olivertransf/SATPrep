@@ -16,6 +16,7 @@ struct SettingsView: View {
     @AppStorage("appearanceMode") private var appearanceMode = "light"
     @AppStorage("htmlFontSize") private var htmlFontSize: Double = 16.0
     @AppStorage("passageFontSize") private var passageFontSize: Double = 17.0
+    @AppStorage("answerChoiceFontSize") private var answerChoiceFontSize: Double = 15.0
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -75,6 +76,20 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Slider(value: $passageFontSize, in: 13...22, step: 1)
+                            .tint(accent)
+                    }
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Answer choice text size")
+                                .font(.subheadline.weight(.medium))
+                            Spacer()
+                            Text("\(Int(answerChoiceFontSize)) pt")
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                        Slider(value: $answerChoiceFontSize, in: 13...22, step: 1)
                             .tint(accent)
                     }
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -216,6 +231,29 @@ struct SettingsView: View {
                                     .font(.system(size: 13))
                                     .foregroundStyle(.secondary)
                                 Slider(value: $passageFontSize, in: 13...22, step: 1)
+                                    .tint(accent)
+                                Text("A")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Divider()
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Answer choice text size")
+                                    .font(.subheadline.weight(.medium))
+                                Spacer()
+                                Text("\(Int(answerChoiceFontSize)) pt")
+                                    .font(.subheadline.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            HStack(spacing: 10) {
+                                Text("A")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(.secondary)
+                                Slider(value: $answerChoiceFontSize, in: 13...22, step: 1)
                                     .tint(accent)
                                 Text("A")
                                     .font(.system(size: 20))

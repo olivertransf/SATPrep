@@ -35,6 +35,7 @@ struct QuizView: View {
     @State private var showQuestionJumper = false
     @AppStorage("htmlFontSize") private var htmlFontSize: Double = 16.0
     @AppStorage("passageFontSize") private var passageFontSize: Double = 17.0
+    @AppStorage("answerChoiceFontSize") private var answerChoiceFontSize: Double = 15.0
     @State private var showFontSizePopover = false
     @State private var strikeoutModeEnabled = false
     @State private var struckOutOptionIds: Set<String> = []
@@ -69,7 +70,9 @@ struct QuizView: View {
     /// Passage HTML body scale in the webview (split-pane and single-column share Mac baseline).
     private var passageHTMLFontPoints: CGFloat { CGFloat(passageFontSize) }
 
-    /// Stem, explanation, answer rows: optional bump on iPad single-column only.
+    private var answerChoiceHTMLFontPoints: CGFloat { CGFloat(answerChoiceFontSize) }
+
+    /// Stem, explanation: optional bump on iPad single-column only.
     private var quizBlockHTMLFontOverride: CGFloat? {
         #if os(iOS)
         useSplitPaneQuizLayout ? nil : (horizontalSizeClass == .regular ? 17 : nil)
@@ -230,6 +233,9 @@ struct QuizView: View {
 
             fontSizeRow(label: "Content", value: $htmlFontSize, min: 13, max: 22)
 
+            Divider()
+            fontSizeRow(label: "Choices", value: $answerChoiceFontSize, min: 13, max: 22)
+
             if useSplitPaneQuizLayout {
                 Divider()
                 fontSizeRow(label: "Passage", value: $passageFontSize, min: 13, max: 22)
@@ -237,6 +243,7 @@ struct QuizView: View {
 
             Button("Reset") {
                 htmlFontSize = 16
+                answerChoiceFontSize = 15
                 passageFontSize = 17
             }
             .font(.caption)
@@ -808,7 +815,7 @@ struct QuizView: View {
                 isScrollable: false,
                 allowInteraction: false,
                 compact: true,
-                fontSizeOverride: quizBlockHTMLFontOverride,
+                fontSizeOverride: answerChoiceHTMLFontPoints,
                 contentProfile: .quizFigures,
                 embedded: true
             )
@@ -817,7 +824,7 @@ struct QuizView: View {
             .allowsHitTesting(false)
         } else {
             Text(QuizOptionContent.plainText(from: option.content))
-                .font(.body)
+                .font(.system(size: answerChoiceHTMLFontPoints))
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)

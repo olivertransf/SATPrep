@@ -12,17 +12,20 @@ struct StudiumGlobalToolbar: ToolbarContent {
 
   #if os(macOS)
   private let macIconSize: CGFloat = 22
-  private let macIconSpacing: CGFloat = 10
+  private let macToolbarOuterPadding: CGFloat = 16
+  private let macToolbarIconSpacing: CGFloat = 14
   #endif
 
   var body: some ToolbarContent {
     #if os(macOS)
-    ToolbarItem(placement: .primaryAction) {
-      HStack(spacing: macIconSpacing) {
+    ToolbarItemGroup(placement: .primaryAction) {
+      HStack(spacing: macToolbarIconSpacing) {
         AccountToolbarButton(authManager: authManager, syncService: syncService)
+          .fixedSize()
         settingsButton
+          .fixedSize()
       }
-      .frame(minWidth: macIconSize * 2 + macIconSpacing)
+      .padding(.horizontal, macToolbarOuterPadding)
     }
     #else
     ToolbarItemGroup(placement: .topBarTrailing) {
@@ -37,7 +40,8 @@ struct StudiumGlobalToolbar: ToolbarContent {
       Image(systemName: "gearshape")
         #if os(macOS)
         .font(.system(size: 18, weight: .regular))
-        .frame(width: macIconSize, height: macIconSize)
+        .frame(width: macIconSize, height: macIconSize, alignment: .center)
+        .contentShape(Rectangle())
         #endif
     }
     .buttonStyle(.plain)

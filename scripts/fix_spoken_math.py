@@ -448,7 +448,7 @@ def _repair_inner(inner: str) -> str:
     )
 
     fixed = re.sub(
-        r'(\d+)-(half|third|fourth|quarter|fifth|sixth|seventh|eighth|ninth|tenth)\b',
+        rf'(\d+)-({_SPOKEN_FRAC_SUFFIX_PAT})\b',
         lambda m: '\\frac{' + m.group(1) + '}{' + _SPOKEN_FRAC_SUFFIX.get(m.group(2).lower(), m.group(2)) + '}',
         fixed,
         flags=re.I,

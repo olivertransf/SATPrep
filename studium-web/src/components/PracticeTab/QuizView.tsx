@@ -24,8 +24,12 @@ import {
   ChevronLeft,
   ChevronRight,
   GripVertical,
+  Type,
+  Minus,
+  Plus,
 } from 'lucide-react'
 import { HtmlBlock } from '../HtmlBlock'
+import { Button } from '../ui/Button'
 
 const PASSAGE_SPLIT_STORAGE_KEY = 'studium-passage-split-pct'
 const MATH_DESMOS_SPLIT_STORAGE_KEY = 'studium-math-desmos-split-pct'
@@ -70,9 +74,54 @@ interface QuizViewProps {
   onExit: () => void
   isDark: boolean
   fontSize: number
+  onFontSizeChange: (size: number) => void
+  answerChoiceFontSize: number
+  onAnswerChoiceFontSizeChange: (size: number) => void
 }
 
-export default function QuizView({ quiz, questions, progress, onProgressChange, onExit, isDark, fontSize }: QuizViewProps) {
+function FontSizeRow({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  onChange: (size: number) => void
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs font-medium w-14 shrink-0 text-[var(--muted)]">{label}</span>
+      <button
+        type="button"
+        className="p-1 rounded-md border border-[var(--border)] text-[var(--muted)] disabled:opacity-40"
+        disabled={value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))}
+        aria-label={`Decrease ${label.toLowerCase()} font size`}
+      >
+        <Minus size={14} aria-hidden="true" />
+      </button>
+      <span className="text-sm studium-mono w-10 text-center tabular-nums text-[var(--text)]">{value}px</span>
+      <button
+        type="button"
+        className="p-1 rounded-md border border-[var(--border)] text-[var(--muted)] disabled:opacity-40"
+        disabled={value >= max}
+        onClick={() => onChange(Math.min(max, value + 1))}
+        aria-label={`Increase ${label.toLowerCase()} font size`}
+      >
+        <Plus size={14} aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
+export default function QuizView({
+  quiz, questions, progress, onProgressChange, onExit, isDark, fontSize, onFontSizeChange,
+  answerChoiceFontSize, onAnswerChoiceFontSizeChange,
+}: QuizViewProps) {
   const [currentIndex, setCurrentIndex] = useState(quiz.currentIndex)
   const [answerStates, setAnswerStates] = useState<Record<string, QuestionAnswerState>>(quiz.answerStates)
   const [selectedId, setSelectedId] = useState<string | undefined>()
@@ -80,6 +129,7 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [showExplanation, setShowExplanation] = useState(false)
   const [showJumper, setShowJumper] = useState(false)
+  const [showFontPopover, setShowFontPopover] = useState(false)
   const [passagePanePct, setPassagePanePct] = useState(readInitialPassageSplitPct)
   const [splitDragging, setSplitDragging] = useState(false)
   const splitContainerRef = useRef<HTMLDivElement>(null)
@@ -305,7 +355,6 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
   }
 
   const answeredCount = Object.values(answerStates).filter(s => s.hasSubmitted).length
-  const correctCount  = Object.values(answerStates).filter(s => s.isCorrect).length
   const isCorrect     = hasSubmitted && question ? answerStates[question.questionId]?.isCorrect : undefined
   const answerOptions = question ? getDisplayAnswerOptions(question) : []
   const correctAnswer = question ? getCorrectAnswer(question) : []
@@ -324,10 +373,8 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
     return (
       <div className="flex flex-col items-center justify-center flex-1 p-8 text-center">
         <div className="text-xl font-semibold mb-2" style={{ color: 'var(--text)' }}>No questions found</div>
-        <button onClick={handleExit}
-          className="mt-4 px-5 py-2.5 rounded-xl font-semibold text-sm"
-          style={{ background: 'var(--accent)', color: '#fff' }}>
-          Go Back
+        <button type="button" onClick={handleExit} className="studium-btn-primary px-6">
+          Go back
         </button>
       </div>
     )
@@ -392,46 +439,40 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
       {answerOptions.map(opt => {
         const isSelected  = selectedId === opt.id
         const isCorrectOpt = hasSubmitted && correctAnswer.some(c => c.trim().toUpperCase() === opt.label?.toUpperCase())
-        let borderColor = 'var(--border)'
-        let bgColor = 'var(--card)'
-        let textColor = 'var(--text)'
-        let labelColor = 'var(--muted)'
-
-        if (hasSubmitted) {
-          if (isCorrectOpt) { borderColor = 'var(--success)'; bgColor = 'rgba(34,197,94,0.08)'; labelColor = 'var(--success)' }
-          else if (isSelected) { borderColor = 'var(--error)'; bgColor = 'rgba(239,68,68,0.08)'; textColor = 'var(--muted)'; labelColor = 'var(--error)' }
-          else { bgColor = 'var(--input)'; textColor = 'var(--muted)'; labelColor = 'var(--muted)' }
-        } else if (isSelected) {
-          borderColor = 'var(--accent-chip-border)'; bgColor = 'var(--accent-chip-fill)'; labelColor = 'var(--accent)'
-        }
 
         return (
-          <div key={opt.id}
+          <button
+            key={opt.id}
+            type="button"
             onClick={() => !hasSubmitted && setSelectedId(opt.id)}
-            role="button"
+            disabled={hasSubmitted}
             aria-pressed={isSelected}
-            aria-disabled={hasSubmitted}
-            tabIndex={hasSubmitted ? -1 : 0}
-            onKeyDown={e => { if (!hasSubmitted && (e.key === 'Enter' || e.key === ' ')) setSelectedId(opt.id) }}
-            className="w-full text-left border rounded-lg px-3 py-2 transition-all cursor-pointer select-none"
-            style={{ borderColor, background: bgColor, color: textColor }}
+            className={[
+              'studium-quiz-option',
+              !hasSubmitted && isSelected ? 'studium-quiz-option--selected' : '',
+              hasSubmitted && isCorrectOpt ? 'studium-quiz-option--correct' : '',
+              hasSubmitted && isSelected && !isCorrectOpt ? 'studium-quiz-option--wrong' : '',
+            ].filter(Boolean).join(' ')}
           >
             <div className="flex gap-2 items-start">
-              <span className="font-bold text-sm leading-snug mt-px shrink-0 w-5 text-center" style={{ color: labelColor }}>
+              <span
+                className="font-bold text-sm leading-snug mt-px shrink-0 w-5 text-center"
+                style={{ color: hasSubmitted ? (isCorrectOpt ? 'var(--success)' : isSelected ? 'var(--error)' : 'var(--muted)') : isSelected ? 'var(--accent)' : 'var(--muted)' }}
+              >
                 {opt.label}
               </span>
               <div className="flex-1 min-w-0 min-h-0">
                 <HtmlBlock
                   html={opt.content}
                   isDark={isDark}
-                  fontSize={fontSize - 1}
+                  fontSize={answerChoiceFontSize}
                   profile="quizFigures"
                   compact
                   interactive={false}
                 />
               </div>
             </div>
-          </div>
+          </button>
         )
       })}
     </div>
@@ -442,34 +483,28 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
   const actionArea = (
     <>
       {!hasSubmitted && (
-        <div className="flex gap-2 items-stretch">
-          <button
-            type="button"
+        <div className="flex gap-2 items-stretch max-lg:hidden">
+          <Button
+            variant="secondary"
             onClick={() => goTo(currentIndex - 1)}
             disabled={currentIndex === 0}
-            className="flex items-center justify-center gap-1.5 shrink-0 px-3 py-3.5 rounded-xl text-sm font-medium border transition-all disabled:opacity-35"
-            style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--card)' }}
           >
-            <ArrowLeft size={16} /> Back
-          </button>
-          <button
-            type="button"
+            <ArrowLeft size={16} aria-hidden="true" /> Previous
+          </Button>
+          <Button
+            fullWidth
             onClick={handleSubmit}
             disabled={isFreeResponse(question) ? !freeText.trim() : !selectedId}
-            className="flex-1 min-w-0 py-3.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40"
-            style={{ background: 'var(--accent)', color: '#fff' }}
           >
-            Submit Answer
-          </button>
-          <button
-            type="button"
+            Submit answer
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => goTo(currentIndex + 1)}
             disabled={currentIndex >= questions.length - 1}
-            className="flex items-center justify-center gap-1.5 shrink-0 px-3 py-3.5 rounded-xl text-sm font-medium border transition-all disabled:opacity-35"
-            style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--card)' }}
           >
-            Next <ArrowRight size={16} />
-          </button>
+            Next <ArrowRight size={16} aria-hidden="true" />
+          </Button>
         </div>
       )}
 
@@ -489,26 +524,20 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
       )}
 
       {hasSubmitted && (
-        <div className="flex gap-3 pb-6">
+        <div className="flex gap-3 pb-6 max-lg:hidden">
           {currentIndex > 0 && (
-            <button onClick={() => goTo(currentIndex - 1)}
-              className="flex items-center gap-2 flex-1 py-3 border rounded-xl text-sm font-medium justify-center transition-all"
-              style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--card)' }}>
-              <ArrowLeft size={16} /> Previous
-            </button>
+            <Button variant="secondary" fullWidth onClick={() => goTo(currentIndex - 1)}>
+              <ArrowLeft size={16} aria-hidden="true" /> Previous
+            </Button>
           )}
           {currentIndex < questions.length - 1 ? (
-            <button onClick={() => goTo(currentIndex + 1)}
-              className="flex items-center gap-2 flex-1 py-3 rounded-xl text-sm font-semibold justify-center transition-all"
-              style={{ background: 'var(--accent)', color: '#fff' }}>
-              Next <ArrowRight size={16} />
-            </button>
+            <Button fullWidth onClick={() => goTo(currentIndex + 1)}>
+              Next <ArrowRight size={16} aria-hidden="true" />
+            </Button>
           ) : (
-            <button onClick={handleExit}
-              className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all"
-              style={{ background: 'var(--success)', color: '#fff' }}>
-              Finish Quiz
-            </button>
+            <Button fullWidth onClick={handleExit} className="studium-btn-primary" style={{ background: 'var(--success)' }}>
+              Finish quiz
+            </Button>
           )}
         </div>
       )}
@@ -519,30 +548,105 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
 
   const header = (
     <>
-      <div className="shrink-0 border-b px-4 py-3 flex items-center justify-between gap-3"
-        style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-        <button onClick={handleExit}
-          className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--muted)' }}>
-          <ChevronLeft size={16} /> Exit
+      <div className="shrink-0 border-b px-4 py-3 flex items-center justify-between gap-3 bg-[var(--card)] border-[var(--border)]">
+        <button
+          type="button"
+          onClick={handleExit}
+          className="flex items-center gap-1.5 text-sm font-medium text-[var(--muted)] border-0 bg-transparent cursor-pointer min-h-[44px]"
+        >
+          <ChevronLeft size={16} aria-hidden="true" /> Exit
         </button>
-        <button onClick={() => setShowJumper(true)}
-          className="text-sm font-semibold px-3 py-1 rounded-lg border"
-          style={{ color: 'var(--text)', borderColor: 'var(--border)', background: 'var(--input)' }}>
-          {currentIndex + 1} / {questions.length}
+        <button
+          type="button"
+          onClick={() => setShowJumper(true)}
+          className="text-sm font-semibold px-3 py-2 rounded-lg border min-h-[44px] text-[var(--text)] border-[var(--border)] bg-[var(--input)] cursor-pointer"
+          aria-label="Jump to question"
+        >
+          Question {currentIndex + 1} of {questions.length}
         </button>
-        <div className="text-sm font-medium" style={{ color: answeredCount > 0 ? 'var(--success)' : 'var(--muted)' }}>
-          {answeredCount > 0 ? `${correctCount}/${answeredCount}` : ''}
+        <span className="studium-mono text-xs text-[var(--muted)] hidden sm:inline" title="Question ID">
+          {question.questionId}
+        </span>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowFontPopover(v => !v)}
+            className="flex items-center justify-center w-10 h-10 rounded-lg border text-[var(--muted)] border-[var(--border)] bg-[var(--input)] cursor-pointer"
+            aria-label="Text size"
+            aria-expanded={showFontPopover}
+          >
+            <Type size={16} aria-hidden="true" />
+          </button>
+          {showFontPopover && (
+            <>
+              <button
+                type="button"
+                className="fixed inset-0 z-40 cursor-default border-0 bg-transparent"
+                aria-label="Close text size menu"
+                onClick={() => setShowFontPopover(false)}
+              />
+              <div
+                className="absolute right-0 top-full mt-2 z-50 w-56 rounded-xl border p-4 space-y-3 shadow-lg bg-[var(--card)] border-[var(--border)]"
+                role="dialog"
+                aria-label="Font size"
+              >
+                <div className="text-sm font-semibold text-center text-[var(--text)]">Font size</div>
+                <FontSizeRow label="Content" value={fontSize} min={13} max={22} onChange={onFontSizeChange} />
+                <FontSizeRow label="Choices" value={answerChoiceFontSize} min={13} max={22} onChange={onAnswerChoiceFontSizeChange} />
+                <button
+                  type="button"
+                  className="text-xs w-full text-center text-[var(--muted)] border-0 bg-transparent cursor-pointer"
+                  onClick={() => {
+                    onFontSizeChange(16)
+                    onAnswerChoiceFontSizeChange(15)
+                  }}
+                >
+                  Reset
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
-      <div className="shrink-0 h-0.5" style={{ background: 'var(--border)' }}>
-        <div className="h-full transition-all duration-500"
-          style={{ width: `${progressPct}%`, background: 'var(--accent)' }} />
+      <div className="shrink-0 h-0.5 bg-[var(--border)]" role="progressbar" aria-valuenow={Math.round(progressPct)} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-full transition-all duration-500 bg-[var(--accent)]" style={{ width: `${progressPct}%` }} />
       </div>
     </>
   )
 
+  const mobileQuizBar = (
+    <div className="lg:hidden shrink-0 border-t px-4 py-2 flex gap-2 bg-[var(--card)] border-[var(--border)] studium-bottom-nav">
+      {!hasSubmitted ? (
+        <>
+          <Button variant="secondary" onClick={() => goTo(currentIndex - 1)} disabled={currentIndex === 0} aria-label="Previous question">
+            <ArrowLeft size={16} aria-hidden="true" />
+          </Button>
+          <Button
+            fullWidth
+            onClick={handleSubmit}
+            disabled={isFreeResponse(question) ? !freeText.trim() : !selectedId}
+          >
+            Submit
+          </Button>
+          <Button variant="secondary" onClick={() => goTo(currentIndex + 1)} disabled={currentIndex >= questions.length - 1} aria-label="Next question">
+            <ArrowRight size={16} aria-hidden="true" />
+          </Button>
+        </>
+      ) : currentIndex < questions.length - 1 ? (
+        <>
+          <Button variant="secondary" onClick={() => goTo(currentIndex - 1)} disabled={currentIndex === 0}>
+            Previous
+          </Button>
+          <Button fullWidth onClick={() => goTo(currentIndex + 1)}>Next</Button>
+        </>
+      ) : (
+        <Button fullWidth onClick={handleExit} style={{ background: 'var(--success)' }}>Finish quiz</Button>
+      )}
+    </div>
+  )
+
   return (
-    <div className="flex flex-col h-full" style={{ background: 'var(--bg)' }}>
+    <div className="flex flex-col h-full bg-[var(--bg)]">
       {header}
 
       {/* ── English: passage | question split on lg+. Math: Desmos | question split on lg+. ── */}
@@ -815,6 +919,8 @@ export default function QuizView({ quiz, questions, progress, onProgressChange, 
           </div>
         </div>
       )}
+
+      {mobileQuizBar}
 
       {/* Question Jumper */}
       {showJumper && (

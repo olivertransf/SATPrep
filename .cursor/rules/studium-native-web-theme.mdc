@@ -4,7 +4,19 @@ globs: Studium/**/*.swift, Studium/Assets.xcassets/**/*.colorset/**
 alwaysApply: false
 ---
 
-- **Source of truth:** Web tokens live in `studium-web/src/index.css` (`:root` dark, `.light`). Native UI uses the same hex values via **Asset Catalog** colorsets: `StudiumBg`, `StudiumCard`, `StudiumSurface`, `StudiumFillTertiary`, `StudiumBorder`, plus `AccentColor` (`#007AFF`).
-- **Swift mapping:** `PlatformColors.swift` — `systemGroupedBackground` → `StudiumBg`, `systemBackground` → `StudiumCard`, `secondarySystemGroupedBackground` → `StudiumSurface`, `tertiarySystemGroupedBackground` → `StudiumSurface`, `tertiarySystemFill` → `StudiumFillTertiary`. Chip outlines use `Color.studiumBorder`.
-- **Quiz / reference HTML:** `buildHTMLString` / `StudiumHTMLBuilder` use SF Pro in HTML CSS; palette matches web. WKWebView loads with `StudiumHTMLBuilder.contentBaseURL` (CDN).
-- **Typography:** Native chrome uses system (SF Pro) via `StudiumDesignSystem`. Monospaced only for stats digits, question IDs, and optional vocab roots.
+- **Source of truth:** Web tokens live in `studium-web/src/index.css` (`:root` light, `html:not(.light)` dark). Native UI uses the same hex values via **Asset Catalog** colorsets.
+- **Token table (light / dark):**
+
+| Token | Light | Dark |
+|-------|-------|------|
+| Accent | `#007AFF` | `#0A84FF` |
+| Math | `#007AFF` | `#0A84FF` |
+| R&W | `#5856D6` | `#5E5CE6` |
+| Background | `#F8FAFC` | `#0F172A` |
+| Card | `#FFFFFF` | `#1E293B` |
+| Text | `#0F172A` | `#F1F5F9` |
+| Muted | `#475569` | `#94A3B8` |
+
+- **Swift mapping:** `PlatformColors.swift` — `systemGroupedBackground` → `StudiumBg`, `systemBackground` → `StudiumCard`, etc. Chip outlines use `Color.studiumBorder`. Accent uses `AccentColor` colorset.
+- **Quiz / reference HTML:** `buildHTMLString` / `StudiumHTMLBuilder` use SF Pro in HTML CSS; palette matches web accent `#007AFF`. WKWebView loads with `StudiumHTMLBuilder.contentBaseURL` (CDN).
+- **Typography:** Native chrome uses system (SF Pro) via `StudiumDesignSystem`. Web uses Inter. Monospaced only for stats digits, question IDs, and optional vocab roots.

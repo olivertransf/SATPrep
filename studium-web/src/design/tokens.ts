@@ -1,3 +1,12 @@
+export const colors = {
+  accent: '#007AFF',
+  accentDark: '#0A84FF',
+  math: '#007AFF',
+  mathDark: '#0A84FF',
+  rw: '#5856D6',
+  rwDark: '#5E5CE6',
+} as const
+
 /** Mirrors `StudiumDesignSystem.swift` + `LayoutMetrics` for web layout. */
 export const WIDE_BREAKPOINT_PX = 900
 export const PRACTICE_SIDEBAR_WIDTH_PX = 348
