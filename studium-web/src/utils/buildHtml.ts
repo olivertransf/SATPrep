@@ -1,3 +1,4 @@
+import { htmlEmbedTheme, htmlEmbedSurfaceBackground, type HtmlEmbedSurface } from '../design/tokens'
 import { repairInlineMathTex } from './repairInlineMathTex'
 
 export type HtmlProfile = 'standard' | 'passage' | 'quizFigures'
@@ -14,13 +15,12 @@ export function buildHtml(
   compact: boolean = false,
   profile: HtmlProfile = 'standard',
   frameId: string = '',
-  fillViewport: boolean = false,
+  embedded: boolean = true,
+  surface: HtmlEmbedSurface = 'card',
 ): string {
-  const bg       = isDark ? '#111111' : '#FFFFFF'
-  const fg       = isDark ? '#EBEBF5' : '#000000'
-  const border   = isDark ? '#48484A' : '#D1D1D6'
-  const headerBg = isDark ? '#2C2C2E' : '#F2F2F7'
-  const rowAlt   = isDark ? '#252528' : '#FAFAFA'
+  const theme = htmlEmbedTheme[isDark ? 'dark' : 'light']
+  const { fg, border, headerBg, rowAlt, blockquote } = theme
+  const bg = embedded ? htmlEmbedSurfaceBackground(isDark, surface) : (isDark ? '#0f172a' : '#f8fafc')
   const bodyClass = isDark ? 'studysat-dark' : 'studysat-light'
   const profileClass = profile === 'passage'
     ? 'studium-profile-passage'
@@ -28,9 +28,10 @@ export function buildHtml(
       ? 'studium-profile-quizfig'
       : 'studium-profile-standard'
   const densityClass = compact ? 'studium-html-compact' : 'studium-html-comfortable'
-  const padding = compact ? '2px 4px 4px' : '4px 2px 14px'
-  const fillRootClass = fillViewport ? 'studium-fill-root' : ''
-  const fillBodyClass = fillViewport ? 'studium-fill-viewport' : ''
+  const embeddedClass = embedded ? 'studium-html-embedded' : ''
+  const padding = embedded
+    ? (compact ? '0' : '0')
+    : (compact ? '2px 4px 4px' : '4px 2px 14px')
 
   // Blank replacement — mirrors the Swift replacingOccurrences chain
   const processed = repairInlineMathTex(
@@ -52,7 +53,7 @@ export function buildHtml(
                 }`
 
   return `<!DOCTYPE html>
-<html class="${fillRootClass}">
+<html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="color-scheme" content="${isDark ? 'dark' : 'light'}">
@@ -92,17 +93,7 @@ export function buildHtml(
     <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; }
-    html.studium-fill-root {
-        height: 100%;
-        overflow: hidden;
-    }
-    body.studium-fill-viewport {
-        min-height: 100%;
-        height: 100%;
-        overflow-y: auto;
-        overflow-x: hidden;
-        -webkit-overflow-scrolling: touch;
-    }
+    html { background-color: ${bg}; }
     body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
         font-size: ${fontSize}px;
@@ -122,9 +113,15 @@ export function buildHtml(
     html:has(body.studium-profile-quizfig) {
         overflow-x: visible;
     }
-    body.studium-html-comfortable.studium-profile-quizfig {
+    body.studium-html-comfortable.studium-profile-quizfig:not(.studium-html-embedded) {
         padding: 18px 22px 22px !important;
         line-height: 1.74 !important;
+    }
+    body.studium-html-embedded {
+        background-color: ${bg} !important;
+    }
+    html:has(body.studium-html-embedded) {
+        background-color: ${bg} !important;
     }
     /* Force question bank color overrides — CB HTML often hardcodes #000000 */
     * { color: ${fg} !important; }
@@ -225,7 +222,7 @@ export function buildHtml(
     strong, b { font-weight: 600; }
     em, i { font-style: italic; }
     blockquote {
-        border-left: 3px solid ${isDark ? '#636366' : '#C7C7CC'};
+        border-left: 3px solid ${blockquote};
         padding: 4px 0 4px 14px;
         margin: 12px 0;
         opacity: 0.85;
@@ -288,11 +285,16 @@ export function buildHtml(
     mjx-container[jax="CHTML"][display="false"] {
         overflow: visible !important;
     }
-    body.studium-profile-passage {
+    body.studium-profile-passage:not(.studium-html-embedded) {
         padding: 22px 28px 28px !important;
         line-height: 1.82 !important;
     }
+    body.studium-html-embedded.studium-profile-passage {
+        line-height: 1.75 !important;
+    }
     body.studium-profile-passage p { margin-bottom: 14px !important; }
+    body.studium-html-embedded.studium-profile-passage p { margin-bottom: 0.85em !important; }
+    body.studium-html-embedded.studium-profile-passage p:last-child { margin-bottom: 0 !important; }
     body.studium-profile-quizfig figure > img:not(.math-img):not([role="math"]),
     body.studium-profile-quizfig p > img:only-child:not(.math-img):not([role="math"]) {
         max-width: min(100%, 940px) !important;
@@ -314,7 +316,7 @@ export function buildHtml(
     }
     </style>
 </head>
-<body class="${bodyClass} ${profileClass} ${densityClass} ${fillBodyClass}">
+<body class="${bodyClass} ${profileClass} ${densityClass} ${embeddedClass}">
     ${processed}
     <script>
     (function() {

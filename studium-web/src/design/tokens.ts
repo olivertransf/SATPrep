@@ -25,3 +25,36 @@ export const radius = {
   card: 14,
   sheet: 16,
 } as const
+
+/** Colors for CB HTML embedded in iframes — aligned with `index.css` `--card` / text tokens. */
+export const htmlEmbedTheme = {
+  light: {
+    bg: '#ffffff',
+    fg: '#0f172a',
+    border: '#e2e8f0',
+    headerBg: '#f1f5f9',
+    rowAlt: '#f8fafc',
+    blockquote: '#cbd5e1',
+    input: '#f8fafc',
+  },
+  dark: {
+    bg: '#1e293b',
+    fg: '#f1f5f9',
+    border: '#334155',
+    headerBg: '#334155',
+    rowAlt: '#1e293b',
+    blockquote: '#475569',
+    input: '#1e293b',
+  },
+} as const
+
+export type HtmlEmbedSurface = 'card' | 'input'
+
+export function htmlEmbedSurfaceBackground(isDark: boolean, surface: HtmlEmbedSurface = 'card'): string {
+  const theme = htmlEmbedTheme[isDark ? 'dark' : 'light']
+  return surface === 'input' ? theme.input : theme.bg
+}
+
+export function htmlEmbedCardBackground(isDark: boolean): string {
+  return htmlEmbedSurfaceBackground(isDark, 'card')
+}

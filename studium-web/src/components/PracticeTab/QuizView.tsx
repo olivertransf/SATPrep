@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { useState, useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import type {
   Question,
   QuestionProgress,
@@ -22,7 +22,6 @@ import {
   CheckCircle,
   XCircle,
   ChevronLeft,
-  ChevronRight,
   GripVertical,
   Type,
   Minus,
@@ -33,10 +32,18 @@ import { Button } from '../ui/Button'
 
 const PASSAGE_SPLIT_STORAGE_KEY = 'studium-passage-split-pct'
 const MATH_DESMOS_SPLIT_STORAGE_KEY = 'studium-math-desmos-split-pct'
-/** Hit target width; must match flex-basis on the handle and `clientXToPct` track math */
-const PASSAGE_SPLIT_HANDLE_PX = 16
+/** Hit target width; must match grid column and `clientXToPct` track math */
+const PASSAGE_SPLIT_HANDLE_PX = 20
 const PASSAGE_SPLIT_MIN_PCT = 22
 const PASSAGE_SPLIT_MAX_PCT = 78
+
+function splitGridTemplate(pct: number): string {
+  return `${pct}% ${PASSAGE_SPLIT_HANDLE_PX}px minmax(0, 1fr)`
+}
+
+function applySplitGridColumns(root: HTMLElement, pct: number) {
+  root.style.gridTemplateColumns = splitGridTemplate(pct)
+}
 
 function passagePointerXToPct(clientX: number, container: HTMLElement): number {
   const rect = container.getBoundingClientRect()
@@ -75,6 +82,8 @@ interface QuizViewProps {
   isDark: boolean
   fontSize: number
   onFontSizeChange: (size: number) => void
+  passageFontSize: number
+  onPassageFontSizeChange: (size: number) => void
   answerChoiceFontSize: number
   onAnswerChoiceFontSizeChange: (size: number) => void
 }
@@ -120,6 +129,7 @@ function FontSizeRow({
 
 export default function QuizView({
   quiz, questions, progress, onProgressChange, onExit, isDark, fontSize, onFontSizeChange,
+  passageFontSize, onPassageFontSizeChange,
   answerChoiceFontSize, onAnswerChoiceFontSizeChange,
 }: QuizViewProps) {
   const [currentIndex, setCurrentIndex] = useState(quiz.currentIndex)
@@ -141,6 +151,11 @@ export default function QuizView({
   const desmosSplitContainerRef = useRef<HTMLDivElement>(null)
   const desmosSplitPctRef = useRef(desmosPanePct)
   desmosSplitPctRef.current = desmosPanePct
+
+  useEffect(() => {
+    document.documentElement.classList.add('studium-quiz-active')
+    return () => document.documentElement.classList.remove('studium-quiz-active')
+  }, [])
 
   const question = questions[currentIndex]
 
@@ -273,7 +288,7 @@ export default function QuizView({
       if (!root) return
       const pct = passagePointerXToPct(clientX, root)
       passageSplitPctRef.current = pct
-      root.style.setProperty('--passage-split-pct', `${pct}%`)
+      applySplitGridColumns(root, pct)
     }
     apply(e.clientX)
 
@@ -322,7 +337,7 @@ export default function QuizView({
       if (!root) return
       const pct = passagePointerXToPct(clientX, root)
       desmosSplitPctRef.current = pct
-      root.style.setProperty('--desmos-split-pct', `${pct}%`)
+      applySplitGridColumns(root, pct)
     }
     apply(e.clientX)
 
@@ -435,7 +450,7 @@ export default function QuizView({
       )}
     </div>
   ) : (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {answerOptions.map(opt => {
         const isSelected  = selectedId === opt.id
         const isCorrectOpt = hasSubmitted && correctAnswer.some(c => c.trim().toUpperCase() === opt.label?.toUpperCase())
@@ -454,19 +469,15 @@ export default function QuizView({
               hasSubmitted && isSelected && !isCorrectOpt ? 'studium-quiz-option--wrong' : '',
             ].filter(Boolean).join(' ')}
           >
-            <div className="flex gap-2 items-start">
-              <span
-                className="font-bold text-sm leading-snug mt-px shrink-0 w-5 text-center"
-                style={{ color: hasSubmitted ? (isCorrectOpt ? 'var(--success)' : isSelected ? 'var(--error)' : 'var(--muted)') : isSelected ? 'var(--accent)' : 'var(--muted)' }}
-              >
-                {opt.label}
-              </span>
-              <div className="flex-1 min-w-0 min-h-0">
+            <div className="studium-quiz-option__row">
+              <span className="studium-quiz-option__label">{opt.label}</span>
+              <div className="studium-quiz-option__content">
                 <HtmlBlock
                   html={opt.content}
                   isDark={isDark}
                   fontSize={answerChoiceFontSize}
                   profile="quizFigures"
+                  surface="card"
                   compact
                   interactive={false}
                 />
@@ -509,22 +520,32 @@ export default function QuizView({
       )}
 
       {hasSubmitted && rationale && (
-        <div className="explanation-reveal space-y-2">
-          <button onClick={() => setShowExplanation(!showExplanation)}
-            className="text-sm font-medium" style={{ color: 'var(--accent)' }}>
-            {showExplanation ? 'Hide' : 'Show'} Explanation
+        <div className="explanation-reveal space-y-3">
+          <button
+            type="button"
+            onClick={() => setShowExplanation(!showExplanation)}
+            className="text-sm font-medium border-0 bg-transparent cursor-pointer p-0"
+            style={{ color: 'var(--accent)' }}
+          >
+            {showExplanation ? 'Hide explanation' : 'Show explanation'}
           </button>
           {showExplanation && (
-            <div className="explanation-reveal rounded-xl overflow-hidden border"
-              style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-              <HtmlBlock html={rationale} isDark={isDark} fontSize={fontSize - 1} profile="standard" />
+            <div className="studium-quiz-explanation">
+              <p className="studium-quiz-explanation__title">Explanation</p>
+              <HtmlBlock
+                html={rationale}
+                isDark={isDark}
+                fontSize={fontSize}
+                profile="standard"
+                surface="card"
+              />
             </div>
           )}
         </div>
       )}
 
       {hasSubmitted && (
-        <div className="flex gap-3 pb-6 max-lg:hidden">
+        <div className="flex gap-3 max-lg:hidden">
           {currentIndex > 0 && (
             <Button variant="secondary" fullWidth onClick={() => goTo(currentIndex - 1)}>
               <ArrowLeft size={16} aria-hidden="true" /> Previous
@@ -548,35 +569,40 @@ export default function QuizView({
 
   const header = (
     <>
-      <div className="shrink-0 border-b px-4 py-3 flex items-center justify-between gap-3 bg-[var(--card)] border-[var(--border)]">
-        <button
-          type="button"
-          onClick={handleExit}
-          className="flex items-center gap-1.5 text-sm font-medium text-[var(--muted)] border-0 bg-transparent cursor-pointer min-h-[44px]"
-        >
-          <ChevronLeft size={16} aria-hidden="true" /> Exit
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowJumper(true)}
-          className="text-sm font-semibold px-3 py-2 rounded-lg border min-h-[44px] text-[var(--text)] border-[var(--border)] bg-[var(--input)] cursor-pointer"
-          aria-label="Jump to question"
-        >
-          Question {currentIndex + 1} of {questions.length}
-        </button>
-        <span className="studium-mono text-xs text-[var(--muted)] hidden sm:inline" title="Question ID">
-          {question.questionId}
-        </span>
-        <div className="relative">
+      <div className="studium-quiz-header shrink-0">
+        <div className="studium-quiz-header__start">
           <button
             type="button"
-            onClick={() => setShowFontPopover(v => !v)}
-            className="flex items-center justify-center w-10 h-10 rounded-lg border text-[var(--muted)] border-[var(--border)] bg-[var(--input)] cursor-pointer"
-            aria-label="Text size"
-            aria-expanded={showFontPopover}
+            onClick={handleExit}
+            className="flex items-center gap-1.5 text-sm font-medium text-[var(--muted)] border-0 bg-transparent cursor-pointer min-h-[44px] px-1"
           >
-            <Type size={16} aria-hidden="true" />
+            <ChevronLeft size={16} aria-hidden="true" /> Exit
           </button>
+        </div>
+        <div className="studium-quiz-header__center">
+          <button
+            type="button"
+            onClick={() => setShowJumper(true)}
+            className="text-sm font-semibold px-3 py-2 rounded-lg border min-h-[40px] text-[var(--text)] border-[var(--border)] bg-[var(--input)] cursor-pointer whitespace-nowrap"
+            aria-label="Jump to question"
+          >
+            Question {currentIndex + 1} of {questions.length}
+          </button>
+        </div>
+        <div className="studium-quiz-header__end">
+          <span className="studium-mono text-xs text-[var(--muted)] hidden md:inline truncate max-w-[8rem]" title="Question ID">
+            {question.questionId}
+          </span>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowFontPopover(v => !v)}
+              className="flex items-center justify-center w-10 h-10 rounded-lg border text-[var(--muted)] border-[var(--border)] bg-[var(--input)] cursor-pointer"
+              aria-label="Text size"
+              aria-expanded={showFontPopover}
+            >
+              <Type size={16} aria-hidden="true" />
+            </button>
           {showFontPopover && (
             <>
               <button
@@ -592,12 +618,14 @@ export default function QuizView({
               >
                 <div className="text-sm font-semibold text-center text-[var(--text)]">Font size</div>
                 <FontSizeRow label="Content" value={fontSize} min={13} max={22} onChange={onFontSizeChange} />
+                <FontSizeRow label="Passage" value={passageFontSize} min={13} max={22} onChange={onPassageFontSizeChange} />
                 <FontSizeRow label="Choices" value={answerChoiceFontSize} min={13} max={22} onChange={onAnswerChoiceFontSizeChange} />
                 <button
                   type="button"
                   className="text-xs w-full text-center text-[var(--muted)] border-0 bg-transparent cursor-pointer"
                   onClick={() => {
                     onFontSizeChange(16)
+                    onPassageFontSizeChange(17)
                     onAnswerChoiceFontSizeChange(15)
                   }}
                 >
@@ -606,6 +634,7 @@ export default function QuizView({
               </div>
             </>
           )}
+          </div>
         </div>
       </div>
       <div className="shrink-0 h-0.5 bg-[var(--border)]" role="progressbar" aria-valuenow={Math.round(progressPct)} aria-valuemin={0} aria-valuemax={100}>
@@ -646,21 +675,23 @@ export default function QuizView({
   )
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg)]">
+    <div className="flex flex-col flex-1 min-h-0 h-full bg-[var(--card)]">
       {header}
 
       {/* ── English: passage | question split on lg+. Math: Desmos | question split on lg+. ── */}
       {useSplitPassageLayout ? (
         <>
-          <div className="lg:hidden flex-1 overflow-y-auto">
-            <div className="max-w-[720px] mx-auto px-4 py-6 space-y-5">
+          <div className="lg:hidden flex-1 min-h-0 studium-quiz-pane--scroll bg-[var(--card)]">
+            <div className="studium-quiz-pane max-w-3xl mx-auto space-y-5">
               {metaRow}
-              <div className="rounded-xl overflow-hidden border-l-[3px]"
-                style={{ background: 'var(--card)', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)' }}>
-                <HtmlBlock html={stimulus} isDark={isDark} fontSize={fontSize} profile="passage" />
-              </div>
+              <section>
+                <p className="studium-eyebrow mb-2">Passage</p>
+                <HtmlBlock html={stimulus} isDark={isDark} fontSize={passageFontSize} profile="passage" />
+              </section>
               {stem && (
-                <HtmlBlock html={stem} isDark={isDark} fontSize={fontSize} profile="quizFigures" />
+                <section>
+                  <HtmlBlock html={stem} isDark={isDark} fontSize={fontSize} profile="quizFigures" />
+                </section>
               )}
               {answerArea}
               {actionArea}
@@ -669,28 +700,11 @@ export default function QuizView({
 
           <div
             ref={splitContainerRef}
-            className="hidden lg:flex flex-1 flex-row items-stretch overflow-hidden min-h-0 min-w-0"
-            style={{ '--passage-split-pct': `${passagePanePct}%` } as CSSProperties}
+            className="studium-quiz-split hidden lg:grid flex-1 min-h-0"
+            style={{ gridTemplateColumns: splitGridTemplate(passagePanePct) }}
           >
-            <div
-              className="flex flex-col h-full min-h-0 min-w-0 w-full overflow-hidden border-r box-border min-w-0"
-              style={{
-                borderColor: 'var(--border)',
-                background: 'var(--card)',
-                flexGrow: 0,
-                flexShrink: 0,
-                flexBasis: 'var(--passage-split-pct)',
-              }}
-            >
-              <div className="flex-1 min-h-0 min-w-0 flex flex-col px-3 py-3 box-border">
-                <HtmlBlock
-                  fillViewport
-                  html={stimulus}
-                  isDark={isDark}
-                  fontSize={fontSize}
-                  profile="passage"
-                />
-              </div>
+            <div className="studium-quiz-pane studium-quiz-pane--scroll border-r border-[var(--border)]">
+              <HtmlBlock html={stimulus} isDark={isDark} fontSize={passageFontSize} profile="passage" />
             </div>
             <div
               role="separator"
@@ -700,16 +714,10 @@ export default function QuizView({
               aria-valuemin={PASSAGE_SPLIT_MIN_PCT}
               aria-valuemax={PASSAGE_SPLIT_MAX_PCT}
               tabIndex={0}
-              className="shrink-0 self-stretch z-10 flex flex-col items-center justify-center cursor-col-resize touch-none select-none border-x rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)]"
-              style={{
-                flex: `0 0 ${PASSAGE_SPLIT_HANDLE_PX}px`,
-                width: PASSAGE_SPLIT_HANDLE_PX,
-                touchAction: 'none',
-                borderColor: 'var(--border)',
-                background: splitDragging
-                  ? 'color-mix(in srgb, var(--accent) 22%, var(--input))'
-                  : 'var(--input)',
-              }}
+              className={[
+                'studium-quiz-split__handle',
+                splitDragging ? 'studium-quiz-split__handle--active' : '',
+              ].filter(Boolean).join(' ')}
               onPointerDown={handleSplitPointerDown}
               onKeyDown={e => {
                 if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
@@ -718,7 +726,7 @@ export default function QuizView({
                 setPassagePanePct(p => {
                   const next = Math.min(PASSAGE_SPLIT_MAX_PCT, Math.max(PASSAGE_SPLIT_MIN_PCT, p + delta))
                   passageSplitPctRef.current = next
-                  splitContainerRef.current?.style.setProperty('--passage-split-pct', `${next}%`)
+                  if (splitContainerRef.current) applySplitGridColumns(splitContainerRef.current, next)
                   try {
                     localStorage.setItem(PASSAGE_SPLIT_STORAGE_KEY, String(next))
                   } catch {
@@ -728,59 +736,44 @@ export default function QuizView({
                 })
               }}
             >
-              <span className="pointer-events-none flex flex-col items-center justify-center gap-0.5 py-1">
-                <ChevronLeft
-                  size={12}
-                  strokeWidth={2.5}
-                  aria-hidden
-                  style={{ color: 'var(--muted)', opacity: 0.85 }}
-                />
-                <GripVertical
-                  size={16}
-                  strokeWidth={2.25}
-                  aria-hidden
-                  style={{ color: splitDragging ? 'var(--accent)' : 'var(--muted)' }}
-                />
-                <ChevronRight
-                  size={12}
-                  strokeWidth={2.5}
-                  aria-hidden
-                  style={{ color: 'var(--muted)', opacity: 0.85 }}
-                />
-              </span>
+              <GripVertical
+                size={18}
+                strokeWidth={2.25}
+                aria-hidden
+                style={{ color: splitDragging ? 'var(--accent)' : 'var(--muted)' }}
+              />
             </div>
-            <div
-              className="h-full min-h-0 min-w-0 flex-1 w-full overflow-y-auto box-border"
-              style={{ background: 'var(--card)' }}
-            >
-              <div className="w-full max-w-none px-3 py-3 space-y-5 box-border">
+            <div className="studium-quiz-pane studium-quiz-pane--scroll">
+              <div className="min-h-full flex flex-col gap-5">
                 {metaRow}
                 {stem && (
                   <HtmlBlock html={stem} isDark={isDark} fontSize={fontSize} profile="quizFigures" />
                 )}
                 {answerArea}
-                {actionArea}
+                <div className="studium-quiz-actions space-y-4">
+                  {actionArea}
+                </div>
               </div>
             </div>
           </div>
         </>
       ) : useMathDesmosSplitLayout ? (
         <>
-          <div className="lg:hidden flex-1 overflow-y-auto">
-            <div className="max-w-[720px] mx-auto px-4 py-6 space-y-5">
+          <div className="lg:hidden flex-1 min-h-0 studium-quiz-pane--scroll">
+            <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
               {metaRow}
               {hasStimulus && (
-                <div className="rounded-xl overflow-hidden border-l-[3px]"
-                  style={{ background: 'var(--card)', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)' }}>
-                  <HtmlBlock html={stimulus} isDark={isDark} fontSize={fontSize} profile="passage" />
-                </div>
+                <section>
+                  <p className="studium-eyebrow mb-3">Context</p>
+                  <HtmlBlock html={stimulus} isDark={isDark} fontSize={passageFontSize} profile="passage" />
+                </section>
               )}
               {stem && (
                 <HtmlBlock html={stem} isDark={isDark} fontSize={fontSize} profile="quizFigures" />
               )}
               {answerArea}
               {actionArea}
-              <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)', height: 300 }}>
+              <div className="rounded-xl overflow-hidden border border-[var(--border)]" style={{ height: 300 }}>
                 <iframe
                   src="https://www.desmos.com/testing/collegeboard/graphing"
                   className="w-full h-full border-0"
@@ -793,22 +786,13 @@ export default function QuizView({
 
           <div
             ref={desmosSplitContainerRef}
-            className="hidden lg:flex flex-1 flex-row items-stretch overflow-hidden min-h-0 min-w-0"
-            style={{ '--desmos-split-pct': `${desmosPanePct}%` } as CSSProperties}
+            className="studium-quiz-split hidden lg:grid flex-1 min-h-0"
+            style={{ gridTemplateColumns: splitGridTemplate(desmosPanePct) }}
           >
-            <div
-              className="flex flex-col h-full min-h-0 min-w-0 w-full overflow-hidden border-r box-border min-w-0"
-              style={{
-                borderColor: 'var(--border)',
-                background: 'var(--bg)',
-                flexGrow: 0,
-                flexShrink: 0,
-                flexBasis: 'var(--desmos-split-pct)',
-              }}
-            >
+            <div className="min-h-0 overflow-hidden border-r border-[var(--border)]">
               <iframe
                 src="https://www.desmos.com/testing/collegeboard/graphing"
-                className="flex-1 min-h-0 w-full border-0"
+                className="w-full h-full min-h-0 border-0"
                 title="Desmos Graphing Calculator"
                 allow="fullscreen"
               />
@@ -821,16 +805,10 @@ export default function QuizView({
               aria-valuemin={PASSAGE_SPLIT_MIN_PCT}
               aria-valuemax={PASSAGE_SPLIT_MAX_PCT}
               tabIndex={0}
-              className="shrink-0 self-stretch z-10 flex flex-col items-center justify-center cursor-col-resize touch-none select-none border-x rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)]"
-              style={{
-                flex: `0 0 ${PASSAGE_SPLIT_HANDLE_PX}px`,
-                width: PASSAGE_SPLIT_HANDLE_PX,
-                touchAction: 'none',
-                borderColor: 'var(--border)',
-                background: desmosSplitDragging
-                  ? 'color-mix(in srgb, var(--accent) 22%, var(--input))'
-                  : 'var(--input)',
-              }}
+              className={[
+                'studium-quiz-split__handle',
+                desmosSplitDragging ? 'studium-quiz-split__handle--active' : '',
+              ].filter(Boolean).join(' ')}
               onPointerDown={handleDesmosSplitPointerDown}
               onKeyDown={e => {
                 if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
@@ -839,7 +817,7 @@ export default function QuizView({
                 setDesmosPanePct(p => {
                   const next = Math.min(PASSAGE_SPLIT_MAX_PCT, Math.max(PASSAGE_SPLIT_MIN_PCT, p + delta))
                   desmosSplitPctRef.current = next
-                  desmosSplitContainerRef.current?.style.setProperty('--desmos-split-pct', `${next}%`)
+                  if (desmosSplitContainerRef.current) applySplitGridColumns(desmosSplitContainerRef.current, next)
                   try {
                     localStorage.setItem(MATH_DESMOS_SPLIT_STORAGE_KEY, String(next))
                   } catch {
@@ -849,56 +827,38 @@ export default function QuizView({
                 })
               }}
             >
-              <span className="pointer-events-none flex flex-col items-center justify-center gap-0.5 py-1">
-                <ChevronLeft
-                  size={12}
-                  strokeWidth={2.5}
-                  aria-hidden
-                  style={{ color: 'var(--muted)', opacity: 0.85 }}
-                />
-                <GripVertical
-                  size={16}
-                  strokeWidth={2.25}
-                  aria-hidden
-                  style={{ color: desmosSplitDragging ? 'var(--accent)' : 'var(--muted)' }}
-                />
-                <ChevronRight
-                  size={12}
-                  strokeWidth={2.5}
-                  aria-hidden
-                  style={{ color: 'var(--muted)', opacity: 0.85 }}
-                />
-              </span>
+              <GripVertical
+                size={18}
+                strokeWidth={2.25}
+                aria-hidden
+                style={{ color: desmosSplitDragging ? 'var(--accent)' : 'var(--muted)' }}
+              />
             </div>
-            <div
-              className="h-full min-h-0 min-w-0 flex-1 w-full overflow-y-auto box-border"
-              style={{ background: 'var(--card)' }}
-            >
-              <div className="w-full max-w-none px-3 py-3 space-y-5 box-border">
+            <div className="studium-quiz-pane studium-quiz-pane--scroll">
+              <div className="min-h-full flex flex-col gap-5">
                 {metaRow}
                 {hasStimulus && (
-                  <div className="rounded-xl overflow-hidden border-l-[3px]"
-                    style={{ background: 'var(--input)', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)' }}>
-                    <HtmlBlock html={stimulus} isDark={isDark} fontSize={fontSize} profile="passage" />
-                  </div>
+                  <HtmlBlock html={stimulus} isDark={isDark} fontSize={passageFontSize} profile="passage" />
                 )}
                 {stem && (
                   <HtmlBlock html={stem} isDark={isDark} fontSize={fontSize} profile="quizFigures" />
                 )}
                 {answerArea}
-                {actionArea}
+                <div className="studium-quiz-actions space-y-4">
+                  {actionArea}
+                </div>
               </div>
             </div>
           </div>
         </>
       ) : hasStimulus ? (
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-[720px] lg:max-w-[860px] mx-auto px-4 lg:px-8 py-6 space-y-5">
+        <div className="flex-1 min-h-0 studium-quiz-pane--scroll">
+          <div className="studium-quiz-pane max-w-3xl mx-auto space-y-5 min-h-full">
             {metaRow}
-            <div className="rounded-xl overflow-hidden border-l-[3px]"
-              style={{ background: 'var(--card)', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)' }}>
-              <HtmlBlock html={stimulus} isDark={isDark} fontSize={fontSize} profile="passage" />
-            </div>
+            <section>
+              <p className="studium-eyebrow mb-2">Passage</p>
+              <HtmlBlock html={stimulus} isDark={isDark} fontSize={passageFontSize} profile="passage" />
+            </section>
             {stem && (
               <HtmlBlock html={stem} isDark={isDark} fontSize={fontSize} profile="quizFigures" />
             )}
@@ -907,9 +867,8 @@ export default function QuizView({
           </div>
         </div>
       ) : (
-        /* No stimulus: single centered column, wider on large screens */
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-[720px] lg:max-w-[860px] mx-auto px-4 lg:px-8 py-6 space-y-5">
+        <div className="flex-1 min-h-0 studium-quiz-pane--scroll">
+          <div className="studium-quiz-pane max-w-3xl mx-auto space-y-5 min-h-full">
             {metaRow}
             {stem && (
               <HtmlBlock html={stem} isDark={isDark} fontSize={fontSize} profile="quizFigures" />

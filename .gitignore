@@ -8,3 +8,4 @@ Studium/Info.plist
 # Web env
 studium-web/.env.local
 studium-web/.vercel
+.vercel

@@ -10,6 +10,7 @@ export interface AppDataContextValue {
   savedQuizzes: SavedQuiz[]
   cbVerifiedIds: Set<string>
   htmlFontSize: number
+  passageFontSize: number
   answerChoiceFontSize: number
   dark: boolean
   practiceModulePreset: 'math' | 'english' | undefined
@@ -20,6 +21,7 @@ export interface AppDataContextValue {
   setSavedQuizzes: (quizzes: SavedQuiz[]) => void
   toggleTheme: () => void
   handleFontSizeChange: (size: number) => void
+  handlePassageFontSizeChange: (size: number) => void
   handleAnswerChoiceFontSizeChange: (size: number) => void
 }
 

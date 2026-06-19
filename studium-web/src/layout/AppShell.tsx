@@ -54,7 +54,11 @@ export function AppShell() {
   }, [location.pathname])
 
   if (isQuiz) {
-    return <Outlet />
+    return (
+      <div className="studium-quiz-root">
+        <Outlet />
+      </div>
+    )
   }
 
   return (

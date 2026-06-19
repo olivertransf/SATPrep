@@ -41,7 +41,9 @@ function AppRoutes() {
     questions, vocabWords, progress, savedQuizzes, cbVerifiedIds,
     practiceModulePreset, setPracticeModulePreset,
     handleProgressChange, handleStartQuiz, handleDeleteQuiz, setSavedQuizzes,
-    dark, toggleTheme, htmlFontSize, handleFontSizeChange, answerChoiceFontSize, handleAnswerChoiceFontSizeChange,
+    dark, toggleTheme, htmlFontSize, handleFontSizeChange,
+    passageFontSize, handlePassageFontSizeChange,
+    answerChoiceFontSize, handleAnswerChoiceFontSizeChange,
   } = useAppData()
 
   return (
@@ -81,6 +83,8 @@ function AppRoutes() {
             isDark={dark}
             fontSize={htmlFontSize}
             onFontSizeChange={handleFontSizeChange}
+            passageFontSize={passageFontSize}
+            onPassageFontSizeChange={handlePassageFontSizeChange}
             answerChoiceFontSize={answerChoiceFontSize}
             onAnswerChoiceFontSizeChange={handleAnswerChoiceFontSizeChange}
           />
@@ -105,6 +109,11 @@ export default function App() {
     const parsed = stored ? parseFloat(stored) : NaN
     return isNaN(parsed) ? 16 : parsed
   })
+  const [passageFontSize, setPassageFontSize] = useState<number>(() => {
+    const stored = localStorage.getItem('studium_passage_font_size')
+    const parsed = stored ? parseFloat(stored) : NaN
+    return isNaN(parsed) ? 17 : parsed
+  })
   const [answerChoiceFontSize, setAnswerChoiceFontSize] = useState<number>(() => {
     const stored = localStorage.getItem('studium_answer_choice_font_size')
     const parsed = stored ? parseFloat(stored) : NaN
@@ -115,6 +124,11 @@ export default function App() {
   const handleFontSizeChange = useCallback((size: number) => {
     setHtmlFontSize(size)
     localStorage.setItem('studium_html_font_size', String(size))
+  }, [])
+
+  const handlePassageFontSizeChange = useCallback((size: number) => {
+    setPassageFontSize(size)
+    localStorage.setItem('studium_passage_font_size', String(size))
   }, [])
 
   const handleAnswerChoiceFontSizeChange = useCallback((size: number) => {
@@ -197,6 +211,7 @@ export default function App() {
     savedQuizzes,
     cbVerifiedIds,
     htmlFontSize,
+    passageFontSize,
     answerChoiceFontSize,
     dark,
     practiceModulePreset,
@@ -207,11 +222,12 @@ export default function App() {
     setSavedQuizzes,
     toggleTheme: toggle,
     handleFontSizeChange,
+    handlePassageFontSizeChange,
     handleAnswerChoiceFontSizeChange,
   }), [
-    questions, vocabWords, progress, savedQuizzes, cbVerifiedIds, htmlFontSize, answerChoiceFontSize, dark,
+    questions, vocabWords, progress, savedQuizzes, cbVerifiedIds, htmlFontSize, passageFontSize, answerChoiceFontSize, dark,
     practiceModulePreset, handleProgressChange, handleStartQuiz, handleDeleteQuiz, toggle, handleFontSizeChange,
-    handleAnswerChoiceFontSizeChange,
+    handlePassageFontSizeChange, handleAnswerChoiceFontSizeChange,
   ])
 
   if (loading) {

@@ -1,5 +1,6 @@
-import { useRef, useState, useEffect, useId, useMemo } from 'react'
+import { useRef, useState, useEffect, useId, useMemo, useCallback } from 'react'
 import { buildHtml, type HtmlProfile } from '../utils/buildHtml'
+import { htmlEmbedSurfaceBackground, type HtmlEmbedSurface } from '../design/tokens'
 
 interface HtmlBlockProps {
   html: string
@@ -7,22 +8,22 @@ interface HtmlBlockProps {
   fontSize?: number
   profile?: HtmlProfile
   compact?: boolean
+  surface?: HtmlEmbedSurface
+  /** Match native `embedded` HTML — card-colored background, no extra inset padding. */
+  embedded?: boolean
   /** When false, pointer events are disabled so clicks pass through to a parent button/div */
   interactive?: boolean
   className?: string
-  /**
-   * Iframe fills the parent height; passage scrolls inside the document.
-   * Use only when the parent has a definite height (e.g. split-pane passage column).
-   */
-  fillViewport?: boolean
+}
+
+const IFRAME_SANDBOX = 'allow-scripts allow-same-origin'
+
+function minIframeHeight(compact: boolean): number {
+  return compact ? 28 : 56
 }
 
 /**
- * Renders question bank HTML in an isolated iframe with:
- * - MathJax 3 for LaTeX rendering
- * - DPR-aware scaling for CB bitmap PNGs
- * - Dark mode white plates for block images
- * - Auto-sizing height via postMessage from iframe
+ * Renders question bank HTML in an isolated iframe with MathJax, DPR-aware images, and auto height.
  */
 export function HtmlBlock({
   html,
@@ -30,95 +31,85 @@ export function HtmlBlock({
   fontSize = 16,
   profile = 'standard',
   compact = false,
+  surface = 'card',
+  embedded = true,
   interactive = true,
   className,
-  fillViewport = false,
 }: HtmlBlockProps) {
   const rawId = useId()
-  // useId produces ":r0:" — strip colons so it's safe as a JS string key
   const frameId = rawId.replace(/:/g, '')
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const heightPad = compact ? 2 : 4
-  const initialHeight = compact ? 22 : 60
-  const [height, setHeight] = useState(initialHeight)
+  const heightPad = compact ? 0 : 4
+  const floorHeight = minIframeHeight(compact)
+  const [height, setHeight] = useState(floorHeight)
+  const blockBackground = htmlEmbedSurfaceBackground(isDark, surface)
 
   const srcDoc = useMemo(
-    () => buildHtml(html, isDark, fontSize, compact, profile, frameId, fillViewport),
-    [html, isDark, fontSize, compact, profile, frameId, fillViewport],
+    () => buildHtml(html, isDark, fontSize, compact, profile, frameId, embedded, surface),
+    [html, isDark, fontSize, compact, profile, frameId, embedded, surface],
   )
 
-  useEffect(() => {
-    if (fillViewport) return
-    setHeight(initialHeight)
-  }, [srcDoc, fillViewport, initialHeight])
+  const applyHeight = useCallback(
+    (raw: number) => {
+      if (raw <= 0 || raw >= 10000) return
+      setHeight(prev => Math.max(floorHeight, raw + heightPad, prev))
+    },
+    [floorHeight, heightPad],
+  )
+
+  const measureFromDocument = useCallback(() => {
+    try {
+      const doc = iframeRef.current?.contentDocument
+      if (!doc?.body) return
+      const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight)
+      if (h > 0) applyHeight(h)
+    } catch {
+      /* postMessage path handles it */
+    }
+  }, [applyHeight])
 
   useEffect(() => {
-    if (fillViewport) return
+    setHeight(floorHeight)
+  }, [srcDoc, floorHeight])
+
+  useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (
         event.data?.type === 'studium-height' &&
         event.data?.id === frameId &&
         typeof event.data.value === 'number'
       ) {
-        const h = event.data.value as number
-        if (h > 0 && h < 10000) setHeight(h + heightPad)
+        applyHeight(event.data.value as number)
       }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [frameId, fillViewport, heightPad])
+  }, [frameId, applyHeight])
 
-  function handleLoad() {
-    if (fillViewport) return
-    try {
-      const doc = iframeRef.current?.contentDocument
-      if (doc) {
-        const h = doc.body.scrollHeight
-        if (h > 0) setHeight(h + heightPad)
-      }
-    } catch {
-      /* cross-origin — postMessage path handles it */
-    }
-  }
-
-  if (fillViewport) {
-    return (
-      <div className={`flex flex-1 flex-col min-h-0 w-full ${className ?? ''}`.trim()}>
-        <iframe
-          ref={iframeRef}
-          srcDoc={srcDoc}
-          onLoad={handleLoad}
-          sandbox="allow-scripts"
-          title="Question content"
-          style={{
-            width: '100%',
-            flex: '1 1 0',
-            minHeight: 0,
-            border: 'none',
-            display: 'block',
-            overflow: 'hidden',
-            pointerEvents: interactive ? 'auto' : 'none',
-          }}
-        />
-      </div>
-    )
-  }
+  useEffect(() => {
+    const delays = [120, 400, 900, 1800]
+    const timers = delays.map(ms => window.setTimeout(measureFromDocument, ms))
+    return () => timers.forEach(window.clearTimeout)
+  }, [srcDoc, measureFromDocument])
 
   return (
     <iframe
       ref={iframeRef}
       srcDoc={srcDoc}
-      onLoad={handleLoad}
-      sandbox="allow-scripts"
+      onLoad={measureFromDocument}
+      sandbox={IFRAME_SANDBOX}
       title="Question content"
       className={className}
       style={{
         width: '100%',
         height,
+        minHeight: floorHeight,
         border: 'none',
         display: 'block',
         overflow: 'hidden',
+        backgroundColor: embedded ? blockBackground : 'transparent',
+        colorScheme: isDark ? 'dark' : 'light',
         pointerEvents: interactive ? 'auto' : 'none',
       }}
     />

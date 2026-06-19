@@ -109,6 +109,26 @@ body {
   color: var(--text);
 }
 
+/* Quiz fills the viewport on one continuous card surface (not page --bg). */
+html.studium-quiz-active,
+html.studium-quiz-active body,
+html.studium-quiz-active #root {
+  background: var(--card);
+  min-height: 100dvh;
+  height: 100%;
+}
+
+.studium-quiz-root {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--card);
+  color: var(--text);
+}
+
 .studium-eyebrow {
   font-size: 0.8125rem;
   font-weight: 600;
@@ -527,15 +547,16 @@ html:not(.light) .studium-flashcard {
   text-align: left;
   border: 1px solid var(--border);
   border-radius: var(--radius-chip);
-  padding: var(--space-md);
+  padding: 0.625rem 0.75rem;
   background: var(--card);
   color: var(--text);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .studium-quiz-option:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .studium-quiz-option:disabled {
@@ -543,18 +564,157 @@ html:not(.light) .studium-flashcard {
 }
 
 .studium-quiz-option--selected {
-  border-color: var(--accent-chip-border);
-  background: var(--accent-chip-fill);
+  border-width: 2px;
+  border-color: var(--accent);
+  padding: calc(0.625rem - 1px) calc(0.75rem - 1px);
+  box-shadow: none;
+  background: var(--card);
 }
 
 .studium-quiz-option--correct {
+  border-width: 2px;
   border-color: var(--success);
-  background: color-mix(in srgb, var(--success) 10%, var(--card));
+  padding: calc(0.625rem - 1px) calc(0.75rem - 1px);
+  box-shadow: none;
+  background: var(--card);
 }
 
 .studium-quiz-option--wrong {
+  border-width: 2px;
   border-color: var(--error);
-  background: color-mix(in srgb, var(--error) 10%, var(--card));
+  padding: calc(0.625rem - 1px) calc(0.75rem - 1px);
+  box-shadow: none;
+  background: var(--card);
+}
+
+.studium-quiz-option__row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.studium-quiz-option__label {
+  flex-shrink: 0;
+  width: 1.625rem;
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.studium-quiz-option--selected .studium-quiz-option__label {
+  color: var(--accent);
+}
+
+.studium-quiz-option--correct .studium-quiz-option__label {
+  color: var(--success);
+}
+
+.studium-quiz-option--wrong .studium-quiz-option__label {
+  color: var(--error);
+}
+
+.studium-quiz-option__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.studium-quiz-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.studium-quiz-header__start {
+  justify-self: start;
+}
+
+.studium-quiz-header__center {
+  justify-self: center;
+}
+
+.studium-quiz-header__end {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.studium-quiz-pane {
+  padding: 1.25rem 1.5rem;
+}
+
+.studium-quiz-pane--scroll {
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--card);
+}
+
+.studium-quiz-split {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+  background: var(--card);
+}
+
+.studium-quiz-split > * {
+  min-height: 0;
+  min-width: 0;
+}
+
+.studium-quiz-split__handle {
+  touch-action: none;
+  cursor: col-resize;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  background: var(--card);
+}
+
+.studium-quiz-split__handle--active {
+  background: color-mix(in srgb, var(--accent) 8%, var(--card));
+}
+
+.studium-quiz-explanation {
+  padding: 1.125rem 1.25rem;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.studium-quiz-explanation__title {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.studium-quiz-actions {
+  margin-top: auto;
+  padding-top: 1rem;
+  background: var(--card);
+}
+
+.studium-quiz-actions__nav {
+  display: flex;
+  gap: 0.75rem;
 }
 
 .studium-filter-badge {

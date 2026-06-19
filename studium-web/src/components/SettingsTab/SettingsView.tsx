@@ -23,12 +23,15 @@ interface SettingsViewProps {
   isDark: boolean
   fontSize: number
   onFontSizeChange: (size: number) => void
+  passageFontSize: number
+  onPassageFontSizeChange: (size: number) => void
   answerChoiceFontSize: number
   onAnswerChoiceFontSizeChange: (size: number) => void
 }
 
 export default function SettingsView({
   progress, onProgressChange, onQuizzesChange, onToggleTheme, isDark, fontSize, onFontSizeChange,
+  passageFontSize, onPassageFontSizeChange,
   answerChoiceFontSize, onAnswerChoiceFontSizeChange,
 }: SettingsViewProps) {
   const [showConfirm, setShowConfirm] = useState(false)
@@ -141,7 +144,7 @@ export default function SettingsView({
         />
         <SettingRow
           label="Question font size"
-          sub="Applies to questions and passages"
+          sub="Applies to question stems and explanations"
           right={
             <div className="flex items-center gap-3">
               <span className="text-xs studium-mono w-8 text-right tabular-nums text-[var(--muted)]">{fontSize}px</span>
@@ -154,6 +157,25 @@ export default function SettingsView({
                 onChange={e => onFontSizeChange(Number(e.target.value))}
                 className="w-28 accent-[var(--accent)]"
                 aria-label="Question font size"
+              />
+            </div>
+          }
+        />
+        <SettingRow
+          label="Passage font size"
+          sub="Applies to reading passages and context blocks"
+          right={
+            <div className="flex items-center gap-3">
+              <span className="text-xs studium-mono w-8 text-right tabular-nums text-[var(--muted)]">{passageFontSize}px</span>
+              <input
+                type="range"
+                min={13}
+                max={22}
+                step={1}
+                value={passageFontSize}
+                onChange={e => onPassageFontSizeChange(Number(e.target.value))}
+                className="w-28 accent-[var(--accent)]"
+                aria-label="Passage font size"
               />
             </div>
           }
@@ -180,6 +202,9 @@ export default function SettingsView({
         <div className="px-4 py-3 border-t border-[var(--border)]">
           <p className="text-sm m-0 text-[var(--text)]" style={{ fontSize: `${fontSize}px` }}>
             Preview: The value of x is 12 when 2x + 3 = 27.
+          </p>
+          <p className="text-sm mt-2 mb-0 text-[var(--text)]" style={{ fontSize: `${passageFontSize}px` }}>
+            Passage preview: A short passage appears with its own readable size.
           </p>
           <p className="text-sm mt-2 mb-0 text-[var(--muted)]" style={{ fontSize: `${answerChoiceFontSize}px` }}>
             A) 12 &nbsp; B) 15 &nbsp; C) 27 &nbsp; D) 30

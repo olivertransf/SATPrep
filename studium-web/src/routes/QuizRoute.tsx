@@ -8,7 +8,12 @@ import type { Question } from '../types'
 export default function QuizRoute() {
   const { quizId } = useParams<{ quizId: string }>()
   const navigate = useNavigate()
-  const { questions, progress, handleProgressChange, dark, htmlFontSize, handleFontSizeChange, answerChoiceFontSize, handleAnswerChoiceFontSizeChange } = useAppData()
+  const {
+    questions, progress, handleProgressChange, dark,
+    htmlFontSize, handleFontSizeChange,
+    passageFontSize, handlePassageFontSizeChange,
+    answerChoiceFontSize, handleAnswerChoiceFontSizeChange,
+  } = useAppData()
 
   const quiz = loadAllQuizzes().find(q => q.id === quizId)
 
@@ -28,17 +33,21 @@ export default function QuizRoute() {
   const quizQuestions = quiz.questionIds.map(id => map[id]).filter(Boolean) as Question[]
 
   return (
-    <QuizView
-      quiz={quiz}
-      questions={quizQuestions}
-      progress={progress}
-      onProgressChange={handleProgressChange}
-      onExit={() => navigate('/practice')}
-      isDark={dark}
-      fontSize={htmlFontSize}
-      onFontSizeChange={handleFontSizeChange}
-      answerChoiceFontSize={answerChoiceFontSize}
-      onAnswerChoiceFontSizeChange={handleAnswerChoiceFontSizeChange}
-    />
+    <div className="flex flex-1 min-h-0 h-full flex-col">
+      <QuizView
+        quiz={quiz}
+        questions={quizQuestions}
+        progress={progress}
+        onProgressChange={handleProgressChange}
+        onExit={() => navigate('/practice')}
+        isDark={dark}
+        fontSize={htmlFontSize}
+        onFontSizeChange={handleFontSizeChange}
+        passageFontSize={passageFontSize}
+        onPassageFontSizeChange={handlePassageFontSizeChange}
+        answerChoiceFontSize={answerChoiceFontSize}
+        onAnswerChoiceFontSizeChange={handleAnswerChoiceFontSizeChange}
+      />
+    </div>
   )
 }
